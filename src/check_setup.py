@@ -144,7 +144,7 @@ def main() -> None:
         print("\nSETUP CHECK FAILED")
         for failure in failures:
             print(f"[FAIL] {failure}")
-        print("\nSee ENVIRONMENT.md and data/README.md, then run this check again.")
+        print("\nSee README.md, correct the setup, then run this check again.")
         raise SystemExit(1)
 
     print("\nSETUP CHECK PASSED")

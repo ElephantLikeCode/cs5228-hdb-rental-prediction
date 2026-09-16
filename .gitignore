@@ -13,14 +13,12 @@ __pycache__/
 htmlcov/
 
 # Course data and supplied templates are not distributed through GitHub
-data/**
-!data/README.md
+data/
 templates/
 *.zip
 
 # Generated artifacts and experiment outputs
 reports/figures/*
-!reports/figures/.gitkeep
 reports/data_audit.md
 reports/prototype_metrics.json
 submissions/*.csv
