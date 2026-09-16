@@ -1,0 +1,33 @@
+.venv/
+.venv-*/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+.idea/
+.vscode/
+.coverage
+htmlcov/
+
+# Course data and supplied templates are not distributed through GitHub
+data/**
+!data/README.md
+templates/
+*.zip
+
+# Generated artifacts and experiment outputs
+reports/figures/*
+!reports/figures/.gitkeep
+reports/data_audit.md
+reports/prototype_metrics.json
+submissions/*.csv
+artifacts/
+
+# Secrets
+.env
+.env.*
+*.token
+kaggle.json

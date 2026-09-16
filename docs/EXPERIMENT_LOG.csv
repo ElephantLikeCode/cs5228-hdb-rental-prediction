@@ -1,0 +1,3 @@
+experiment_id,date,owner,code_version,data_version,validation_window,metric,score,model,feature_groups,parameters,runtime_minutes,artifact_path,notes,status
+EXP-000,2026-09-16,Unassigned,initial,supplied-v1,not-applicable,not-applicable,,Data audit,raw,{},,artifacts/data_audit.json,Initial reproducible data audit,complete
+EXP-001,2026-09-17,TBD,prototype-v1,supplied-v1,2025-01 to 2025-03,RMSE,457.0766,CatBoost,core+date+lease_age+address,"{""iterations"":700,""depth"":8,""learning_rate"":0.05,""seed"":42}",9.29,reports/prototype_metrics.json,"Baselines: global median 844.5982; town+flat-type median 546.8056. Kaggle file generated but not uploaded.",complete
