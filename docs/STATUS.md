@@ -19,14 +19,16 @@ Last updated: 17 September 2026
 - Created a Python 3.12 project environment and passed all three automated tests.
 - Trained the first chronological CatBoost prototype and generated a locally validated Kaggle submission.
 - Recorded validation RMSE: global median 844.60, town/flat-type median 546.81, CatBoost 457.08.
+- Created a private GitHub repository containing only code, tests, documentation, and reproducible environment specifications.
+- Added a fresh-clone setup check, exact verified top-level dependency versions, team handoff, and collaboration workflow.
 
 ## Current phase
 
-Phase 3 - First working model and submission prototype.
+Phase 4 - Reproducible team handoff and core feature engineering.
 
 ## Next action
 
-After the other members join Kaggle team 44, submit the reviewed prototype once, record its public score, and begin spatial-feature ablations.
+Have every member reproduce the reference checkpoint, submit the reviewed prototype once, record its public score, and begin spatial-feature ablations using the shared chronological-validation protocol.
 
 ## Blocked items
 

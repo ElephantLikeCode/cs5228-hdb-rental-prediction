@@ -2,6 +2,50 @@
 
 This is a self-contained working directory for the CS5228 group project. It is intentionally stored outside OneDrive so it can be evaluated, shared as a ZIP file, or deleted without changing the original course folder.
 
+## Start here: reproduce the project from a fresh clone
+
+This is a private repository. Ask the owner to add your GitHub account as a
+collaborator before cloning.
+
+```bash
+git clone https://github.com/ElephantLikeCode/cs5228-hdb-rental-prediction.git
+cd cs5228-hdb-rental-prediction
+```
+
+Use Python 3.12 and create an environment. On Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+& '.\.venv\Scripts\Activate.ps1'
+python -m pip install --upgrade pip
+python -m pip install -r requirements-lock.txt
+```
+
+On macOS/Linux:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-lock.txt
+```
+
+Obtain the course/Kaggle data through the official private channel and place it
+exactly as shown in `data/README.md`. Then run:
+
+```bash
+python src/check_setup.py
+python src/data_audit.py
+python -m pytest -q
+python src/train_prototype.py
+```
+
+A correct setup reports `SETUP CHECK PASSED`, `3 passed`, and a CatBoost
+chronological-validation RMSE near `457.08`. The reference training run takes
+about three minutes on the verified Windows machine. See
+`docs/TEAM_HANDOFF.md` for completed work and the prioritized next steps, and
+`CONTRIBUTING.md` before making changes.
+
 ## Confirmed project requirements
 
 - Task: predict the monthly rent of Singapore HDB flats as a regression problem.
@@ -32,18 +76,14 @@ The reproducible skeleton and first prototype are implemented:
 
 See `docs/STATUS.md` for the latest checkpoint and `docs/PROJECT_PLAN.md` for the full plan.
 
-## Quick start
+## Command reference
 
-Python 3.12 is the reference version. After cloning the repository, obtain the
-course dataset separately and follow `data/README.md` to place it under
-`data/raw/`. The dataset, trained models, generated submissions, local virtual
-environments, and supplied report templates are intentionally not stored on
-GitHub.
+Python 3.12 is the reference version. The dataset, trained models, generated
+submissions, local virtual environments, and supplied report templates are
+intentionally not stored on GitHub.
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python src\check_setup.py
 python src\data_audit.py
 python -m pytest -q
 python src\train_prototype.py
@@ -57,6 +97,8 @@ Generated audit outputs are written to:
 - `submissions/prototype_catboost_v1.csv`
 
 See `ENVIRONMENT.md` for Windows, macOS/Linux, VS Code, and Jupyter setup notes.
+Use `requirements-lock.txt` for the exact verified environment and
+`requirements.txt` when compatible version ranges are preferable.
 
 ## Directory structure
 
@@ -65,7 +107,7 @@ CS5228_Project_Workspace/
 |-- data/
 |   |-- raw/               Supplied, immutable input data
 |   `-- processed/         Reproducibly generated feature tables
-|-- docs/                  Requirements, plan, decisions, and progress
+|-- docs/                  Requirements, handoff, plan, decisions, and progress
 |-- notebooks/             Exploration only; final logic belongs in src/
 |-- reports/               Report drafts and figures
 |-- submissions/           Kaggle submission CSV files
@@ -83,6 +125,9 @@ CS5228_Project_Workspace/
 4. Use time-based validation as the primary evaluation method.
 5. Do not use post-release public rental records to reconstruct hidden Kaggle targets.
 6. Do not publish supplied course data or templates publicly unless the teaching team permits it.
+
+Use feature branches and pull requests rather than committing directly to
+`main`; the complete workflow is in `CONTRIBUTING.md`.
 
 See `docs/COURSE_ALIGNMENT.md` for the mapping between our methods, lecture topics, and project guidance.
 For a Chinese team-facing overview, see `docs/项目总方案_中文.md`.

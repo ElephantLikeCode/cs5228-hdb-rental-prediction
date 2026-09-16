@@ -224,10 +224,14 @@ Everyone should contribute code or analysis and review at least one other workst
 
 ## 9. Immediate implementation queue
 
-1. Run and review the data audit.
-2. Confirm the official Kaggle metric/link and exact deadlines when released.
-3. Implement chronological split utilities and EDA figures.
-4. Implement global/hierarchical median, kNN, linear regression and regression-tree baselines.
-5. Implement course-covered ensemble baselines and the submission validator.
-6. Add block and distance features with ablations.
-7. Train an early CatBoost reference and retain or replace it according to chronological validation, interpretability and runtime.
+Completed checkpoint: data audit, data-contract tests, chronological holdout,
+global/hierarchical median baselines, CatBoost reference, submission generation,
+and private-repository handoff.
+
+1. Have every member reproduce the setup check, three tests, and RMSE near 457.08.
+2. Submit the reviewed prototype once and log its public Kaggle score.
+3. Extract chronological split and evaluation logic into reusable modules.
+4. Add HDB-block joins and MRT/school/mall distance features with controlled ablations.
+5. Produce focused EDA and residual/error-analysis figures for the reports.
+6. Compare transparent and course-aligned models under the identical validation protocol.
+7. Tune only the strongest justified candidates, then run robustness checks and freeze the final pipeline.
