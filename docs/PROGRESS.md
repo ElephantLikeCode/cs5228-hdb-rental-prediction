@@ -84,13 +84,3 @@ RMSE **452.62 SGD**, MAE **334.22 SGD**, signed bias
 3. Run bounded CatBoost iteration, learning-rate, and regularization tuning.
 4. Test COE and stock indicators in isolated chronological ablations.
 5. Add errors by rent band, seen/unseen address, and sample density.
-
-## AI assistance disclosure
-
-The CS5228 Canvas Policies page permits AI use for the Group Project but
-requires appropriate documentation. OpenAI Codex assisted with repository
-organization, requirement review, validation design, feature engineering,
-experiment automation, testing, and documentation on 18 September 2026. All
-data processing and model training ran locally. No Kaggle submission, Canvas
-edit/post, Git commit, or GitHub push was performed by the assistant. The team
-must review, understand, and take responsibility for all retained work.

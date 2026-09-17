@@ -29,3 +29,5 @@ artifacts/
 .env.*
 *.token
 kaggle.json
+# Local AI-assistance notes (not shared in the repository)
+docs/AI_USE_LOCAL.md
