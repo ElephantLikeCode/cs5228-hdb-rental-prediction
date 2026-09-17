@@ -1,0 +1,16 @@
+{
+  "model": "CatBoostRegressor",
+  "feature_set": "core_spatial",
+  "iterations": 965,
+  "learning_rate": 0.04,
+  "depth": 8,
+  "l2_leaf_reg": 6.0,
+  "seed": 42,
+  "train_rows": 150000,
+  "test_rows": 50000,
+  "prediction_min": 1684.5483769591426,
+  "prediction_max": 5287.004531600825,
+  "elapsed_seconds": 116.34,
+  "submission": "submissions\\catboost_spatial_v2.csv",
+  "model_path": "artifacts\\catboost_spatial_v2.cbm"
+}

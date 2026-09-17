@@ -1,0 +1,8 @@
+metric,value
+rows,150000
+months,51
+target_mean,2719.0368933333334
+target_median,2700.0
+target_std,749.7310963563276
+exact_duplicate_rows,425
+constant_columns,"FURNISHED, FEE"

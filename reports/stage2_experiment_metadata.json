@@ -1,0 +1,30 @@
+{
+  "folds": [
+    {
+      "name": "2024-07_to_2024-09",
+      "train_end": "2024-06",
+      "validation_start": "2024-07",
+      "validation_end": "2024-09",
+      "train_rows": 124016,
+      "validation_rows": 8786
+    },
+    {
+      "name": "2024-10_to_2024-12",
+      "train_end": "2024-09",
+      "validation_start": "2024-10",
+      "validation_end": "2024-12",
+      "train_rows": 132802,
+      "validation_rows": 8274
+    },
+    {
+      "name": "2025-01_to_2025-03",
+      "train_end": "2024-12",
+      "validation_start": "2025-01",
+      "validation_end": "2025-03",
+      "train_rows": 141076,
+      "validation_rows": 8924
+    }
+  ],
+  "iterations_limit": 1000,
+  "seed": 42
+}

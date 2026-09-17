@@ -58,6 +58,8 @@ Exit condition: `python src/data_audit.py` and `python -m pytest` pass on a clea
 
 ### Phase 2 - EDA and validation design
 
+Status: first reproducible EDA and three rolling three-month folds implemented.
+
 Planned outputs:
 
 - target distribution and monthly trend;
@@ -76,6 +78,10 @@ Primary validation proposal:
 This split is provisional until the Kaggle metric is published. Random cross-validation may be retained as a secondary diagnostic but not the main evidence.
 
 ### Phase 3 - Baselines and early strong reference
+
+Status: global/group medians, Ridge, Decision Tree, Random Forest, and CatBoost
+have been compared on the latest chronological window. CatBoost remains the
+strongest current model.
 
 Models:
 
@@ -96,6 +102,11 @@ Required outputs:
 Exit condition: a single command can train, evaluate, save the model metadata, and create a schema-valid submission.
 
 ### Phase 4 - Core feature engineering
+
+Status: first combined spatial ablation implemented. Adding HDB block attributes
+and nearest open-MRT, mall, and school features reduced three-fold mean CatBoost
+RMSE from 461.07 to 458.58 and latest-window RMSE from 456.66 to 453.10.
+The next experiment must separate block and individual amenity groups.
 
 Feature groups, in priority order:
 
