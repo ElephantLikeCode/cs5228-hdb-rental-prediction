@@ -24,4 +24,5 @@ def test_regression_metrics_include_signed_bias() -> None:
     metrics = regression_metrics(np.array([1.0, 2.0]), np.array([2.0, 4.0]))
     assert metrics["rmse"] == np.sqrt(2.5)
     assert metrics["mae"] == 1.5
+    assert metrics["r2"] == -9.0
     assert metrics["bias"] == 1.5

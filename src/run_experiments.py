@@ -1,4 +1,4 @@
-"""Run course baselines and CatBoost spatial-feature ablations."""
+"""Run course baselines, rolling validation, and strict spatial ablations."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 
-from project_features import (
+from features import (
     add_spatial_features,
     build_block_lookup,
     make_core_features,
@@ -30,6 +30,15 @@ from validation import regression_metrics, rolling_time_folds, subgroup_metrics
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 TARGET = "MONTHLY_RENT"
+FEATURE_SETS = [
+    "core",
+    "block",
+    "block_mrt",
+    "block_mall",
+    "block_school",
+    "all_spatial",
+]
+LEAKAGE_CHECK = "train_month<validation_month;target-free spatial features;train-fitted preprocessing"
 
 
 def group_median_predict(
@@ -40,7 +49,10 @@ def group_median_predict(
     fallback = train.assign(_target=target.to_numpy()).groupby("FLAT_TYPE")["_target"].median()
     global_median = float(target.median())
     return np.asarray(
-        [lookup.get((town, flat), fallback.get(flat, global_median)) for town, flat in validation[keys].itertuples(index=False, name=None)],
+        [
+            lookup.get((town, flat), fallback.get(flat, global_median))
+            for town, flat in validation[keys].itertuples(index=False, name=None)
+        ],
         dtype=float,
     )
 
@@ -58,6 +70,42 @@ def classical_preprocessor(frame: pd.DataFrame, linear: bool) -> ColumnTransform
         [("numeric", numeric_transformer, numeric), ("categorical", categorical_transformer, categorical)],
         sparse_threshold=0.3,
     )
+
+
+def classical_models(frame: pd.DataFrame, seed: int) -> dict[str, object]:
+    """Course-aligned models sharing the same latest chronological fold."""
+    return {
+        "linear_regression": make_pipeline(
+            classical_preprocessor(frame, linear=True), LinearRegression()
+        ),
+        "ridge": make_pipeline(
+            classical_preprocessor(frame, linear=True), Ridge(alpha=10.0)
+        ),
+        "decision_tree": make_pipeline(
+            classical_preprocessor(frame, linear=False),
+            DecisionTreeRegressor(max_depth=18, min_samples_leaf=20, random_state=seed),
+        ),
+        "random_forest": make_pipeline(
+            classical_preprocessor(frame, linear=False),
+            RandomForestRegressor(
+                n_estimators=180,
+                max_features=0.7,
+                min_samples_leaf=3,
+                n_jobs=-1,
+                random_state=seed,
+            ),
+        ),
+        "hist_gradient_boosting": make_pipeline(
+            classical_preprocessor(frame, linear=False),
+            HistGradientBoostingRegressor(
+                learning_rate=0.08,
+                max_iter=250,
+                max_leaf_nodes=31,
+                l2_regularization=2.0,
+                random_state=seed,
+            ),
+        ),
+    }
 
 
 def fit_predict_catboost(
@@ -90,7 +138,7 @@ def fit_predict_catboost(
         eval_set=(validation, y_validation),
         early_stopping_rounds=100,
         use_best_model=True,
-        verbose=200,
+        verbose=False,
     )
     return model.predict(validation), int(model.get_best_iteration())
 
@@ -99,7 +147,8 @@ def record(
     rows: list[dict[str, object]],
     model: str,
     feature_set: str,
-    fold_name: str,
+    protocol: str,
+    fold,
     y_true: pd.Series,
     prediction: np.ndarray,
     elapsed: float,
@@ -109,11 +158,17 @@ def record(
         {
             "model": model,
             "feature_set": feature_set,
-            "fold": fold_name,
+            "protocol": protocol,
+            "fold": fold.name,
+            "train_end": fold.train_end,
+            "validation_start": fold.validation_start,
+            "validation_end": fold.validation_end,
+            "train_rows": int(fold.train_mask.sum()),
+            "validation_rows": int(fold.validation_mask.sum()),
             **regression_metrics(y_true, prediction),
             "best_iteration": best_iteration,
-            "elapsed_seconds": round(elapsed, 2),
-            "validation_rows": len(y_true),
+            "runtime_seconds": round(elapsed, 3),
+            "leakage_checks": LEAKAGE_CHECK,
         }
     )
 
@@ -134,104 +189,123 @@ def main() -> None:
     reports.mkdir(exist_ok=True)
     train_raw = pd.read_csv(RAW / "train.csv")
     y = train_raw[TARGET].astype(float)
-    core_raw = train_raw.drop(columns=[TARGET])
-    core_features = make_core_features(core_raw)
+    raw_features = train_raw.drop(columns=[TARGET])
+    core_features = make_core_features(raw_features)
     block_lookup = build_block_lookup(RAW / "auxiliary")
-    spatial_features = add_spatial_features(core_features, block_lookup)
     folds = rolling_time_folds(
         train_raw,
         validation_months=args.validation_months,
         folds=args.folds,
     )
+    latest = folds[-1]
     rows: list[dict[str, object]] = []
 
-    latest = folds[-1]
+    y_train = y.loc[latest.train_mask].reset_index(drop=True)
+    y_valid = y.loc[latest.validation_mask].reset_index(drop=True)
     if not args.skip_classical:
-        train_core_raw = core_raw.loc[latest.train_mask].reset_index(drop=True)
-        valid_core_raw = core_raw.loc[latest.validation_mask].reset_index(drop=True)
-        y_train = y.loc[latest.train_mask].reset_index(drop=True)
-        y_valid = y.loc[latest.validation_mask].reset_index(drop=True)
-
+        train_raw_fold = raw_features.loc[latest.train_mask].reset_index(drop=True)
+        valid_raw_fold = raw_features.loc[latest.validation_mask].reset_index(drop=True)
         started = time.perf_counter()
-        prediction = np.full(len(y_valid), y_train.median())
-        record(rows, "global_median", "raw", latest.name, y_valid, prediction, time.perf_counter() - started)
+        record(
+            rows,
+            "global_median",
+            "raw",
+            "latest_fold_comparison",
+            latest,
+            y_valid,
+            np.full(len(y_valid), y_train.median()),
+            time.perf_counter() - started,
+        )
         started = time.perf_counter()
-        prediction = group_median_predict(train_core_raw, valid_core_raw, y_train)
-        record(rows, "town_flat_type_median", "raw", latest.name, y_valid, prediction, time.perf_counter() - started)
+        record(
+            rows,
+            "town_flat_type_median",
+            "raw",
+            "latest_fold_comparison",
+            latest,
+            y_valid,
+            group_median_predict(train_raw_fold, valid_raw_fold, y_train),
+            time.perf_counter() - started,
+        )
 
         X_train = core_features.loc[latest.train_mask].reset_index(drop=True)
         X_valid = core_features.loc[latest.validation_mask].reset_index(drop=True)
-        classical_models = {
-            "ridge": make_pipeline(classical_preprocessor(X_train, linear=True), Ridge(alpha=10.0)),
-            "decision_tree": make_pipeline(
-                classical_preprocessor(X_train, linear=False),
-                DecisionTreeRegressor(max_depth=18, min_samples_leaf=20, random_state=args.seed),
-            ),
-            "random_forest": make_pipeline(
-                classical_preprocessor(X_train, linear=False),
-                RandomForestRegressor(
-                    n_estimators=180,
-                    max_features=0.7,
-                    min_samples_leaf=3,
-                    n_jobs=-1,
-                    random_state=args.seed,
-                ),
-            ),
-        }
-        for name, model in classical_models.items():
+        for name, model in classical_models(X_train, args.seed).items():
             started = time.perf_counter()
             model.fit(X_train, y_train)
             prediction = model.predict(X_valid)
-            record(rows, name, "core", latest.name, y_valid, prediction, time.perf_counter() - started)
+            record(
+                rows,
+                name,
+                "core",
+                "latest_fold_comparison",
+                latest,
+                y_valid,
+                prediction,
+                time.perf_counter() - started,
+            )
 
     latest_spatial_prediction: np.ndarray | None = None
     for fold in folds:
-        y_train = y.loc[fold.train_mask].reset_index(drop=True)
-        y_valid = y.loc[fold.validation_mask].reset_index(drop=True)
-        for feature_set, feature_frame in (("core", core_features), ("core_spatial", spatial_features)):
+        fold_y_train = y.loc[fold.train_mask].reset_index(drop=True)
+        fold_y_valid = y.loc[fold.validation_mask].reset_index(drop=True)
+        feature_sets = FEATURE_SETS if fold.name == latest.name else ["core", "all_spatial"]
+        for feature_set in feature_sets:
+            feature_frame = add_spatial_features(core_features, block_lookup, feature_set)
             X_train = feature_frame.loc[fold.train_mask].reset_index(drop=True)
             X_valid = feature_frame.loc[fold.validation_mask].reset_index(drop=True)
             started = time.perf_counter()
             prediction, best_iteration = fit_predict_catboost(
-                X_train, y_train, X_valid, y_valid, args.iterations, args.seed
+                X_train,
+                fold_y_train,
+                X_valid,
+                fold_y_valid,
+                args.iterations,
+                args.seed,
+            )
+            protocol = (
+                "latest_spatial_ablation"
+                if fold.name == latest.name
+                else "rolling_stability"
             )
             record(
                 rows,
                 "catboost",
                 feature_set,
-                fold.name,
-                y_valid,
+                protocol,
+                fold,
+                fold_y_valid,
                 prediction,
                 time.perf_counter() - started,
                 best_iteration,
             )
-            if fold == latest and feature_set == "core_spatial":
+            if fold.name == latest.name and feature_set == "all_spatial":
                 latest_spatial_prediction = prediction
 
     results = pd.DataFrame(rows)
-    results.to_csv(reports / "stage2_experiment_results.csv", index=False)
+    results.to_csv(reports / "experiment_results.csv", index=False)
     summary = (
-        results.groupby(["model", "feature_set"], as_index=False)
+        results.groupby(["protocol", "model", "feature_set"], as_index=False)
         .agg(
-            folds=("fold", "count"),
+            runs=("fold", "count"),
             mean_rmse=("rmse", "mean"),
             std_rmse=("rmse", "std"),
             mean_mae=("mae", "mean"),
+            mean_r2=("r2", "mean"),
             mean_bias=("bias", "mean"),
-            total_seconds=("elapsed_seconds", "sum"),
+            total_runtime_seconds=("runtime_seconds", "sum"),
         )
-        .sort_values("mean_rmse")
+        .sort_values(["protocol", "mean_rmse"])
     )
-    summary.to_csv(reports / "stage2_experiment_summary.csv", index=False)
-    if latest_spatial_prediction is not None:
-        valid_meta = train_raw.loc[latest.validation_mask].reset_index(drop=True)
-        errors = subgroup_metrics(
-            valid_meta,
-            y.loc[latest.validation_mask].reset_index(drop=True),
-            latest_spatial_prediction,
-            ["RENT_APPROVAL_DATE", "TOWN", "FLAT_TYPE"],
-        )
-        errors.to_csv(reports / "stage2_subgroup_errors.csv", index=False)
+    summary.to_csv(reports / "experiment_summary.csv", index=False)
+    if latest_spatial_prediction is None:
+        raise AssertionError("Latest all-spatial CatBoost prediction was not produced")
+    subgroup_metrics(
+        train_raw.loc[latest.validation_mask].reset_index(drop=True),
+        y_valid,
+        latest_spatial_prediction,
+        ["RENT_APPROVAL_DATE", "TOWN", "FLAT_TYPE", "FLAT_MODEL"],
+    ).to_csv(reports / "subgroup_errors.csv", index=False)
     metadata = {
         "folds": [
             {
@@ -246,8 +320,19 @@ def main() -> None:
         ],
         "iterations_limit": args.iterations,
         "seed": args.seed,
+        "leakage_controls": [
+            "validation months are strictly later than all training months",
+            "spatial joins never use MONTHLY_RENT",
+            "only MRT stations marked open in supplied data are used",
+            "encoders, imputers, and scalers are fitted inside each training fold",
+        ],
+        "kaggle_data": {
+            "competition": "cs-5228-2610-project",
+            "downloaded_zip_sha256": "BB7FF2EE4AE7EABE73DAF929D352B27F98592CD9AEA89EAA99804011612F3BC6",
+            "official_files_match_existing_raw_data": True,
+        },
     }
-    (reports / "stage2_experiment_metadata.json").write_text(
+    (reports / "experiment_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"
     )
     print(summary.to_string(index=False))

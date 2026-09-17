@@ -25,6 +25,17 @@
       "validation_rows": 8924
     }
   ],
-  "iterations_limit": 1000,
-  "seed": 42
+  "iterations_limit": 1200,
+  "seed": 42,
+  "leakage_controls": [
+    "validation months are strictly later than all training months",
+    "spatial joins never use MONTHLY_RENT",
+    "only MRT stations marked open in supplied data are used",
+    "encoders, imputers, and scalers are fitted inside each training fold"
+  ],
+  "kaggle_data": {
+    "competition": "cs-5228-2610-project",
+    "downloaded_zip_sha256": "BB7FF2EE4AE7EABE73DAF929D352B27F98592CD9AEA89EAA99804011612F3BC6",
+    "official_files_match_existing_raw_data": true
+  }
 }

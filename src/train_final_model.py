@@ -1,4 +1,4 @@
-"""Train the validated spatial CatBoost model on all data and create submission v2."""
+"""Train the validated final CatBoost pipeline and create a submission file."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 
-from project_features import (
+from features import (
     add_spatial_features,
     build_block_lookup,
     make_core_features,
@@ -26,12 +26,12 @@ TARGET = "MONTHLY_RENT"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iterations", type=int, default=965)
+    parser.add_argument("--iterations", type=int, default=1200)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--submission",
         type=Path,
-        default=ROOT / "submissions" / "catboost_spatial_v2.csv",
+        default=ROOT / "submissions" / "final_submission.csv",
     )
     return parser.parse_args()
 
@@ -44,9 +44,13 @@ def main() -> None:
     sample = pd.read_csv(RAW / "example-submission.csv")
     lookup = build_block_lookup(RAW / "auxiliary")
     X_train = prepare_for_catboost(
-        add_spatial_features(make_core_features(train.drop(columns=[TARGET])), lookup)
+        add_spatial_features(
+            make_core_features(train.drop(columns=[TARGET])), lookup, "all_spatial"
+        )
     )
-    X_test = prepare_for_catboost(add_spatial_features(make_core_features(test), lookup))
+    X_test = prepare_for_catboost(
+        add_spatial_features(make_core_features(test), lookup, "all_spatial")
+    )
     y = train[TARGET].astype(float)
     categorical = X_train.select_dtypes(include=["object"]).columns.tolist()
     model = CatBoostRegressor(
@@ -86,11 +90,11 @@ def main() -> None:
     ):
         raise ValueError("Reloaded predictions differ beyond CSV precision")
 
-    model_path = ROOT / "artifacts" / "catboost_spatial_v2.cbm"
+    model_path = ROOT / "artifacts" / "final_model.cbm"
     model.save_model(model_path)
     metadata = {
         "model": "CatBoostRegressor",
-        "feature_set": "core_spatial",
+        "feature_set": "all_spatial",
         "iterations": args.iterations,
         "learning_rate": 0.04,
         "depth": 8,
@@ -104,7 +108,7 @@ def main() -> None:
         "submission": str(args.submission.relative_to(ROOT)),
         "model_path": str(model_path.relative_to(ROOT)),
     }
-    (ROOT / "reports" / "spatial_v2_metadata.json").write_text(
+    (ROOT / "reports" / "final_model_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"
     )
     print(json.dumps(metadata, indent=2))

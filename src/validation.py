@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 
 
 @dataclass(frozen=True)
@@ -58,6 +58,7 @@ def regression_metrics(y_true: pd.Series | np.ndarray, prediction: np.ndarray) -
     return {
         "rmse": float(root_mean_squared_error(y_true, prediction)),
         "mae": float(mean_absolute_error(y_true, prediction)),
+        "r2": float(r2_score(y_true, prediction)),
         "bias": float(residual.mean()),
     }
 

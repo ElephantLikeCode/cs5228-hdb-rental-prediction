@@ -30,16 +30,18 @@ The project is successful when it produces all of the following:
 
 ### Phase 0 - Requirements and governance
 
-Status: mostly complete.
+Status: complete. Kaggle overview, data, rules, leaderboard protocol, and
+discussion page were checked on 18 September 2026; see `docs/KAGGLE_AUDIT.md`.
 
 Deliverables:
 
 - confirmed Canvas requirements;
-- confirmed report dates and list of unresolved Kaggle rules;
+- confirmed report dates and Kaggle rules;
 - isolated, shareable folder;
 - data-sharing and leakage rules.
 
-Exit condition: the official Kaggle link, evaluation metric and submission rules have been added when released.
+Exit condition met: RMSE, `Id,Predicted`, public/private leaderboard split,
+external-data permission, and official data checksums are documented.
 
 ### Phase 1 - Data audit and reproducible skeleton
 
@@ -68,20 +70,22 @@ Planned outputs:
 - analysis of exact-feature duplicates with different target values;
 - chronological holdout and rolling-origin splits.
 
-Primary validation proposal:
+Primary validation design:
 
-- development training: 2021-01 through 2024-09;
-- main validation: 2024-10 through 2025-03;
-- two additional rolling backtests using earlier six-month validation windows;
-- report mean and variability across windows.
+- three expanding-window chronological folds;
+- each validation window contains three consecutive months;
+- latest validation window: 2025-01 through 2025-03;
+- report the latest common-window comparison plus rolling mean and variability.
 
-This split is provisional until the Kaggle metric is published. Random cross-validation may be retained as a secondary diagnostic but not the main evidence.
+Kaggle confirms RMSE as the metric. Random cross-validation may be retained as
+a secondary diagnostic but not the main evidence.
 
 ### Phase 3 - Baselines and early strong reference
 
-Status: global/group medians, Ridge, Decision Tree, Random Forest, and CatBoost
-have been compared on the latest chronological window. CatBoost remains the
-strongest current model.
+Status: global/group medians, Linear Regression, Ridge, Decision Tree, Random
+Forest, HistGradientBoosting, and CatBoost have been compared on the identical
+latest chronological window. CatBoost remains strongest; HistGradientBoosting
+is the strongest low-cost course-aligned alternative.
 
 Models:
 
@@ -103,10 +107,10 @@ Exit condition: a single command can train, evaluate, save the model metadata, a
 
 ### Phase 4 - Core feature engineering
 
-Status: first combined spatial ablation implemented. Adding HDB block attributes
-and nearest open-MRT, mall, and school features reduced three-fold mean CatBoost
-RMSE from 461.07 to 458.58 and latest-window RMSE from 456.66 to 453.10.
-The next experiment must separate block and individual amenity groups.
+Status: strict spatial ablations implemented for block-only, block + MRT,
+block + mall, block + school, and the combined set. Distance and 0.5/1/2 km
+facility-count features are included. The combined model reduced latest-window
+RMSE from 455.71 to 452.62 and three-fold mean RMSE from 460.49 to 457.81.
 
 Feature groups, in priority order:
 
@@ -121,6 +125,10 @@ Historical rent summaries are optional because they can easily leak the target. 
 Exit condition: each feature group has a documented ablation result.
 
 ### Phase 5 - Model comparison and tuning
+
+Status: model comparison complete; bounded tuning is next. The current best
+CatBoost reached the 1,200-iteration ceiling, so iteration/regularization tuning
+should be tested together rather than increasing trees alone.
 
 Candidate models:
 
@@ -235,14 +243,15 @@ Everyone should contribute code or analysis and review at least one other workst
 
 ## 9. Immediate implementation queue
 
-Completed checkpoint: data audit, data-contract tests, chronological holdout,
-global/hierarchical median baselines, CatBoost reference, submission generation,
-and private-repository handoff.
+Completed checkpoint: official Kaggle audit and data verification, data-contract
+tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
+ablations, subgroup errors, and a validated all-spatial submission generator.
 
-1. Have every member reproduce the setup check, three tests, and RMSE near 457.08.
-2. Submit the reviewed prototype once and log its public Kaggle score.
-3. Extract chronological split and evaluation logic into reusable modules.
-4. Add HDB-block joins and MRT/school/mall distance features with controlled ablations.
-5. Produce focused EDA and residual/error-analysis figures for the reports.
-6. Compare transparent and course-aligned models under the identical validation protocol.
-7. Tune only the strongest justified candidates, then run robustness checks and freeze the final pipeline.
+1. Have every member reproduce `check_setup.py`, seven tests, and the current experiment results.
+2. Review the all-spatial candidate as a team, submit once, and log its public score.
+3. Diagnose temporal extrapolation and signed underprediction on later months.
+4. Implement leakage-safe past-only address/town/flat-type rent summaries.
+5. Run a bounded CatBoost iteration/learning-rate/regularization study.
+6. Test COE and stock indicators in isolated chronological ablations.
+7. Add error bands by rent level, seen/unseen address, and sample density.
+8. Freeze the strongest stable pipeline before preparing the final report.

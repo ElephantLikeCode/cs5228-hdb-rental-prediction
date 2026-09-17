@@ -4,18 +4,18 @@ Private group-project repository for predicting Singapore HDB monthly rent.
 The evaluation metric is RMSE, and chronological validation is the primary
 local evaluation method.
 
-## Current checkpoint
+## Current validated pipeline
 
 The repository currently provides:
 
 - a reproducible data audit;
-- three automated data-contract tests;
+- seven automated data-contract and feature/validation tests;
 - a January-March 2025 chronological holdout;
 - global-median and town/flat-type median baselines;
-- a CatBoost reference model;
-- generation and validation of a 50,000-row Kaggle submission.
+- Linear, Ridge, Decision Tree, Random Forest, HistGradientBoosting, and CatBoost comparisons;
+- generation and validation of a 50,000-row Kaggle submission;
 - three-fold rolling chronological validation and subgroup error analysis;
-- course-aligned Ridge, Decision Tree, and Random Forest comparisons;
+- strict block/MRT/mall/school/all-spatial ablations with facility-radius counts;
 - reproducible EDA figures;
 - HDB block and nearest open-MRT, mall, and school spatial features.
 
@@ -25,13 +25,18 @@ Verified results with Python 3.12 and seed 42:
 |---|---:|
 | Global median | 844.60 |
 | Town + flat-type median | 546.81 |
-| CatBoost prototype | 457.08 |
-| CatBoost + spatial features (stage 2) | 453.10 |
+| HistGradientBoosting | 463.36 |
+| CatBoost core | 455.71 |
+| CatBoost + all spatial features | **452.62** |
 
 Across three consecutive three-month validation windows, CatBoost improves from
-mean RMSE 461.07 with core features to 458.58 with spatial features. The latest
+mean RMSE 460.49 with core features to 457.81 with spatial features. The latest
 window is January-March 2025; do not compare the three-fold mean directly with a
 single-window score.
+
+The official Kaggle ZIP was downloaded and checked on 18 September 2026. All
+eight CSVs match the existing raw files byte-for-byte. See
+`docs/KAGGLE_AUDIT.md`; the private ZIP is kept under ignored `data/source/`.
 
 ## Setup from a fresh clone
 
@@ -94,39 +99,41 @@ Run from the repository root:
 ```bash
 python src/data_audit.py
 python -m pytest -q
-python src/train_prototype.py
 python src/generate_eda.py
-python src/run_stage2_experiments.py
-python src/generate_stage2_figures.py
-python src/train_spatial_v2.py
+python src/run_experiments.py
+python src/generate_figures.py
+python src/update_progress.py
+python src/train_final_model.py
 ```
 
 Expected results:
 
-- `3 passed` from pytest;
-- CatBoost validation RMSE near `457.08`;
-- `submissions/prototype_catboost_v1.csv` with columns `Id,Predicted` and
+- `7 passed` from pytest;
+- latest-window CatBoost validation RMSE near `452.62`;
+- `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
-- a loadable model at `artifacts/prototype_catboost_v1.cbm`.
+- a loadable model at `artifacts/final_model.cbm`.
 
-The full reference run takes about three minutes on the verified Windows
-machine. Generated audits, models, figures, and submissions are local artifacts
-and are ignored by Git.
+The full experiment comparison takes about 27 minutes and final-model training
+about three minutes on the verified Windows machine. Private data, model files,
+figures, and Kaggle submissions are ignored by Git.
 
 ## Repository structure
 
 ```text
-docs/PROJECT_PLAN.md       Project scope, phases, deadlines, and next work
-src/check_setup.py         Read-only environment/data validation
+docs/PROJECT_PLAN.md       Project scope, deadlines, risks, and next work
+docs/PROGRESS.md           Single cumulative record of current progress
+docs/KAGGLE_AUDIT.md       Official data/rules audit and planning implications
+src/check_setup.py         Read-only environment and private-data validation
 src/data_audit.py          Reproducible data audit
-src/train_prototype.py     Baselines, CatBoost model, and submission creation
-src/project_features.py    Shared leakage-safe core and spatial features
+src/features.py            Leakage-safe core and spatial features
 src/validation.py          Rolling time folds and regression/error metrics
 src/generate_eda.py        Reproducible EDA figures and summaries
-src/run_stage2_experiments.py  Course baselines and spatial ablations
-src/generate_stage2_figures.py Report-ready experiment and error plots
-src/train_spatial_v2.py    Train the validated v2 model and submission
-tests/                     Automated data-contract tests
+src/run_experiments.py     Baselines, rolling validation, and feature ablations
+src/generate_figures.py    Report-ready experiment and error plots
+src/update_progress.py     Refresh current results in the cumulative progress log
+src/train_final_model.py   Train the selected model and validate its submission
+tests/                     Automated data, feature, and validation tests
 requirements.txt           Exact verified direct dependencies
 ```
 
@@ -147,12 +154,12 @@ models, or generated submissions.
 
 ## Next work
 
-1. Give every member repository and Kaggle-team access and reproduce RMSE 457.08.
-2. Review and submit the spatial v2 candidate once, then record its public score.
-3. Separate block attributes from amenity-distance features in the next ablation.
-4. Add leakage-safe historical/location statistics and explicit time-trend tests.
-5. Investigate high-error towns and Executive flats with residual diagnostics.
-6. Run bounded tuning only after the next feature ablations are stable.
+1. Give every member repository and Kaggle-team access and reproduce RMSE 452.62.
+2. Review and submit the current candidate once, then record its public score.
+3. Add leakage-safe historical/location statistics and explicit time-trend tests.
+4. Investigate high-error towns and Executive flats with residual diagnostics.
+5. Run bounded CatBoost iteration/learning-rate/regularization tuning.
+6. Test COE and stock features only through isolated chronological ablations.
 7. Freeze the final pipeline, reproduce it cleanly, and prepare the reports.
 
 The detailed schedule, risk controls, role suggestions, and methodological plan
