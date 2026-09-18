@@ -112,7 +112,8 @@ block + mall, block + school, and the combined set. Distance and 0.5/1/2 km
 facility-count features are included. Past-only rent statistics were then added
 for address, town-flat-type, town, flat type, and flat model. The selected
 pipeline reduced latest-window RMSE from 452.62 to 450.04 and three-fold mean
-RMSE from 457.81 to 456.44.
+RMSE from 457.81 to 456.44. A two-seed ensemble then reduced these to 449.20
+and 455.70 respectively without changing the feature set.
 
 Feature groups, in priority order:
 
@@ -133,6 +134,8 @@ Exit condition: each feature group has a documented ablation result.
 Status: model comparison complete. A bounded iteration test improved the latest
 window from 450.73 at 1,200 trees to 450.04 at 1,600 trees. Learning-rate and
 regularization testing at 2,200 trees did not improve the retained configuration.
+Equal-weight averaging of seeds 42 and 2026 subsequently improved all three
+short validation folds and both 12-month robustness folds, so it is retained.
 
 Candidate models:
 
@@ -249,11 +252,10 @@ Everyone should contribute code or analysis and review at least one other workst
 
 Completed checkpoint: official Kaggle audit and data verification, data-contract
 tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
-ablations, past-only rent statistics, subgroup errors, and a validated submission generator.
+ablations, past-only rent statistics, segmented errors, and a validated submission generator.
 
 1. Have every member reproduce `check_setup.py`, eight tests, and the current experiment results.
 2. Review the first public score (438.94488) and long-horizon results as a team.
-3. Add error bands by rent level, seen/unseen address, and sample density.
-4. Investigate long-horizon underprediction without tuning directly to the public board.
-5. Test residual blending only if a complementary model is identified.
-6. Freeze the strongest stable pipeline before preparing the final report.
+3. Investigate the strong regression-to-the-mean pattern in low/high rent bands.
+4. Test COE and stock features through isolated chronological ablations.
+5. Freeze the strongest stable pipeline before preparing the final report.

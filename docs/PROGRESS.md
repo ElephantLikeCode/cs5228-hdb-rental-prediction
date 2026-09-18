@@ -25,15 +25,16 @@ Tree, Random Forest, HistGradientBoosting, and CatBoost share a common latest
 comparison window. Historical rent statistics use only strictly earlier months;
 spatial features never use the target.
 
-Best latest-window candidate: **catboost with all_spatial_history**,
-RMSE **450.04 SGD**, MAE **320.03 SGD**, signed bias
-**18.69 SGD**.
+Best latest-window candidate: **catboost_seed_ensemble with all_spatial_history**,
+RMSE **449.20 SGD**, MAE **319.29 SGD**, signed bias
+**18.57 SGD**.
 
 ### Latest-window comparison (January-March 2025)
 
 | model | feature_set | rmse | mae | r2 | bias | runtime_seconds |
 | --- | --- | --- | --- | --- | --- | --- |
-| catboost | all_spatial_history | 450.04 | 320.03 | 0.52 | 18.69 | 281.05 |
+| catboost_seed_ensemble | all_spatial_history | 449.20 | 319.29 | 0.52 | 18.57 | 957.19 |
+| catboost | all_spatial_history | 450.04 | 320.03 | 0.52 | 18.69 | 441.37 |
 | catboost | all_spatial | 452.62 | 334.22 | 0.51 | -44.98 | 182.97 |
 | catboost | block_mrt | 452.89 | 334.84 | 0.51 | -48.09 | 174.78 |
 | catboost | block_school | 453.71 | 335.49 | 0.51 | -48.81 | 192.83 |
@@ -50,35 +51,45 @@ RMSE **450.04 SGD**, MAE **320.03 SGD**, signed bias
 
 ### Rolling CatBoost stability
 
-| feature_set | runs | mean_rmse | std_rmse | mean_mae | mean_bias |
+| pipeline | runs | mean_rmse | std_rmse | mean_mae | mean_bias |
 | --- | --- | --- | --- | --- | --- |
-| all_spatial_history | 3 | 456.44 | 15.37 | 328.28 | 3.54 |
-| all_spatial | 3 | 457.81 | 16.43 | 336.31 | -36.56 |
-| core | 3 | 460.49 | 14.91 | 339.69 | -40.01 |
+| all_spatial_history_2seed_ensemble | 3 | 455.70 | 15.50 | 328.06 | 0.15 |
+| all_spatial_history_seed42 | 3 | 456.44 | 15.37 | 328.28 | 3.54 |
+| all_spatial | 2 | 460.41 | 22.35 | 337.36 | -32.36 |
+| core | 2 | 462.89 | 20.25 | 340.99 | -37.13 |
 
-### Highest-error towns
+### Error by actual rent band
 
 | group_value | rows | rmse | mae | bias |
 | --- | --- | --- | --- | --- |
-| jurong west | 620 | 551.27 | 384.48 | 72.29 |
-| kallang/whampoa | 342 | 540.79 | 404.49 | 45.92 |
-| bukit merah | 530 | 509.15 | 358.73 | -50.52 |
-| bishan | 174 | 496.93 | 330.83 | 67.57 |
-| toa payoh | 341 | 494.79 | 377.80 | 35.99 |
+| <=2500 | 1458 | 822.01 | 656.98 | 629.55 |
+| 2501-3000 | 2525 | 299.26 | 226.18 | 70.29 |
+| 3001-3500 | 2823 | 263.01 | 206.16 | -96.72 |
+| 3501-4000 | 1541 | 356.64 | 295.86 | -246.27 |
+| >4000 | 577 | 585.91 | 489.55 | -480.25 |
+
+### Seen versus unseen addresses
+
+| group_value | rows | rmse | mae | bias |
+| --- | --- | --- | --- | --- |
+| seen | 8901 | 448.75 | 318.87 | 19.23 |
+| unseen | 23 | 596.64 | 482.98 | -235.68 |
 
 ### Findings
 
 - Past-only address, town/flat-type, town, flat-type, and flat-model rent
   statistics improve the selected pipeline without using same-month targets.
-- Increasing the selected CatBoost limit from 1,200 to 1,600 trees improved the
-  latest window further; two earlier folds stopped early.
-- The selected history pipeline improves two of three folds and reduces the
-  three-fold mean, although the middle fold is slightly worse.
+- Equal-weight averaging of seeds 42 and 2026 improves the retained single
+  CatBoost on all three short folds and both 12-month robustness folds.
+- The selected ensemble reaches a three-fold mean RMSE of 455.70 versus 456.44
+  for the seed-42 history model; the gain is small but consistent.
+- Error is concentrated at the lowest and highest rent bands. The unseen-address
+  slice contains only 23 rows, so its estimate is informative but uncertain.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
-- The test horizon extends well beyond training, so long-horizon trend robustness
-  remains a higher priority than broad model search.
+- The current Kaggle score 438.94488 belongs to the earlier seed-42 submission;
+  the new ensemble submission has not yet been uploaded.
 <!-- CURRENT_RESULTS_END -->
 
 ## Robustness and first Kaggle result (18 September 2026)

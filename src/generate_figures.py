@@ -33,9 +33,10 @@ def main() -> None:
         )
     ].copy()
     latest["label"] = latest["model"].str.replace("_", " ").str.title()
+    latest.loc[latest["model"] == "catboost", "label"] = "CatBoost (seed 42)"
     latest.loc[
-        latest["feature_set"] == "all_spatial_history", "label"
-    ] += " + spatial/history"
+        latest["model"] == "catboost_seed_ensemble", "label"
+    ] = "CatBoost (2-seed ensemble)"
     latest = latest.sort_values("rmse", ascending=False)
     plt.figure(figsize=(8.5, 4.8))
     ax = sns.barplot(data=latest, x="rmse", y="label", color="#3D7EA6")
@@ -46,16 +47,19 @@ def main() -> None:
     save("latest_model_comparison.png")
 
     catboost = results.loc[
-        (results["model"] == "catboost")
-        & (results["feature_set"].isin(["core", "all_spatial", "all_spatial_history"]))
+        results["protocol"].isin(
+            ["rolling_stability", "rolling_history_single", "rolling_selected_pipeline"]
+        )
     ].copy()
     catboost["Features"] = catboost["feature_set"].map(
-        {
-            "core": "Core",
-            "all_spatial": "Core + all spatial",
-            "all_spatial_history": "Spatial + past rent",
-        }
+        {"core": "Core", "all_spatial": "Core + all spatial"}
     )
+    catboost.loc[
+        catboost["protocol"] == "rolling_history_single", "Features"
+    ] = "Spatial + history (seed 42)"
+    catboost.loc[
+        catboost["protocol"] == "rolling_selected_pipeline", "Features"
+    ] = "Spatial + history (2-seed ensemble)"
     plt.figure(figsize=(8.5, 4.8))
     sns.lineplot(
         data=catboost,
@@ -94,16 +98,21 @@ def main() -> None:
     plt.title("Strict spatial ablation (Jan-Mar 2025)")
     save("spatial_ablation.png")
 
-    groups = pd.read_csv(REPORTS / "subgroup_errors.csv")
-    towns = groups.loc[(groups["group_column"] == "TOWN") & (groups["rows"] >= 100)]
-    towns = towns.nlargest(10, "rmse").sort_values("rmse")
+    groups = pd.read_csv(REPORTS / "error_analysis.csv")
+    rent_bands = groups.loc[groups["group_column"] == "RENT_BAND"].copy()
+    rent_bands["group_value"] = pd.Categorical(
+        rent_bands["group_value"],
+        categories=["<=2500", "2501-3000", "3001-3500", "3501-4000", ">4000"],
+        ordered=True,
+    )
+    rent_bands = rent_bands.sort_values("group_value")
     plt.figure(figsize=(8.5, 5.5))
-    ax = sns.barplot(data=towns, x="rmse", y="group_value", color="#C96A4A")
+    ax = sns.barplot(data=rent_bands, x="group_value", y="rmse", color="#C96A4A")
     ax.bar_label(ax.containers[0], fmt="%.0f", padding=4)
-    plt.xlabel("RMSE (SGD)")
-    plt.ylabel("Town")
-    plt.title("Highest-error towns (at least 100 validation rows)")
-    save("high_error_towns.png")
+    plt.xlabel("Actual monthly rent band (SGD)")
+    plt.ylabel("RMSE (SGD)")
+    plt.title("Selected ensemble error by rent band")
+    save("error_by_rent_band.png")
     print(f"Wrote current experiment figures to {FIGURES}")
 
 

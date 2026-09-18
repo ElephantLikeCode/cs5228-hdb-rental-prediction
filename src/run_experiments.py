@@ -188,6 +188,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--iterations", type=int, default=1200)
     parser.add_argument("--history-iterations", type=int, default=1600)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--ensemble-seeds", type=int, nargs="+", default=[42, 2026])
     parser.add_argument("--skip-classical", action="store_true")
     parser.add_argument(
         "--refresh-selected",
@@ -220,50 +221,86 @@ def run_long_horizon(
         fold_y_valid = y.loc[fold.validation_mask].reset_index(drop=True)
         X_train_base = all_spatial.loc[fold.train_mask].reset_index(drop=True)
         X_valid_base = all_spatial.loc[fold.validation_mask].reset_index(drop=True)
-        for feature_set, iterations in (
-            ("all_spatial", args.iterations),
-            ("all_spatial_history", args.history_iterations),
-        ):
+        started = time.perf_counter()
+        prediction, best_iteration = fit_predict_catboost(
+            X_train_base,
+            fold_y_train,
+            X_valid_base,
+            fold_y_valid,
+            args.iterations,
+            args.seed,
+        )
+        record(
+            rows,
+            "catboost",
+            "all_spatial",
+            "long_horizon_12m",
+            fold,
+            fold_y_valid,
+            prediction,
+            time.perf_counter() - started,
+            best_iteration,
+            args.iterations,
+            LEAKAGE_CHECK,
+        )
+        fold_train_raw = raw_features.loc[fold.train_mask].reset_index(drop=True)
+        fold_valid_raw = raw_features.loc[fold.validation_mask].reset_index(drop=True)
+        history_train = add_past_rent_features(
+            fold_train_raw, fold_y_train, fold_train_raw
+        )
+        history_valid = add_past_rent_features(
+            fold_train_raw, fold_y_train, fold_valid_raw
+        )
+        history_columns = [
+            column for column in history_train if column.startswith("HIST_")
+        ]
+        X_train = X_train_base.copy()
+        X_valid = X_valid_base.copy()
+        X_train[history_columns] = history_train[history_columns]
+        X_valid[history_columns] = history_valid[history_columns]
+        predictions: list[np.ndarray] = []
+        total_elapsed = 0.0
+        for seed in args.ensemble_seeds:
             started = time.perf_counter()
-            X_train = X_train_base.copy()
-            X_valid = X_valid_base.copy()
-            leakage_checks = LEAKAGE_CHECK
-            if feature_set == "all_spatial_history":
-                fold_train_raw = raw_features.loc[fold.train_mask].reset_index(drop=True)
-                fold_valid_raw = raw_features.loc[fold.validation_mask].reset_index(drop=True)
-                history_train = add_past_rent_features(
-                    fold_train_raw, fold_y_train, fold_train_raw
-                )
-                history_valid = add_past_rent_features(
-                    fold_train_raw, fold_y_train, fold_valid_raw
-                )
-                history_columns = [
-                    column for column in history_train if column.startswith("HIST_")
-                ]
-                X_train[history_columns] = history_train[history_columns]
-                X_valid[history_columns] = history_valid[history_columns]
-                leakage_checks = HISTORY_LEAKAGE_CHECK
             prediction, best_iteration = fit_predict_catboost(
                 X_train,
                 fold_y_train,
                 X_valid,
                 fold_y_valid,
-                iterations,
-                args.seed,
+                args.history_iterations,
+                seed,
             )
-            record(
-                rows,
-                "catboost",
-                feature_set,
-                "long_horizon_12m",
-                fold,
-                fold_y_valid,
-                prediction,
-                time.perf_counter() - started,
-                best_iteration,
-                iterations,
-                leakage_checks,
-            )
+            elapsed = time.perf_counter() - started
+            total_elapsed += elapsed
+            predictions.append(prediction)
+            if seed == args.seed:
+                record(
+                    rows,
+                    "catboost",
+                    "all_spatial_history",
+                    "long_horizon_12m",
+                    fold,
+                    fold_y_valid,
+                    prediction,
+                    elapsed,
+                    best_iteration,
+                    args.history_iterations,
+                    HISTORY_LEAKAGE_CHECK,
+                )
+        ensemble_prediction = np.mean(predictions, axis=0)
+        record(
+            rows,
+            "catboost_seed_ensemble",
+            "all_spatial_history",
+            "long_horizon_12m",
+            fold,
+            fold_y_valid,
+            ensemble_prediction,
+            total_elapsed,
+            None,
+            args.history_iterations,
+            HISTORY_LEAKAGE_CHECK,
+        )
     results = pd.DataFrame(rows)
     results.to_csv(reports / "long_horizon_results.csv", index=False)
     print(results.to_string(index=False))
@@ -271,6 +308,12 @@ def run_long_horizon(
 
 def main() -> None:
     args = parse_args()
+    if not args.ensemble_seeds or len(set(args.ensemble_seeds)) != len(
+        args.ensemble_seeds
+    ):
+        raise ValueError("--ensemble-seeds must contain unique seed values")
+    if args.seed not in args.ensemble_seeds:
+        raise ValueError("--ensemble-seeds must include --seed for the single-model control")
     reports = ROOT / "reports"
     reports.mkdir(exist_ok=True)
     train_raw = pd.read_csv(RAW / "train.csv")
@@ -402,25 +445,46 @@ def main() -> None:
         X_valid = all_spatial.loc[fold.validation_mask].reset_index(drop=True)
         X_train[history_columns] = history_train[history_columns]
         X_valid[history_columns] = history_valid[history_columns]
-        started = time.perf_counter()
-        prediction, best_iteration = fit_predict_catboost(
-            X_train,
-            fold_y_train,
-            X_valid,
-            fold_y_valid,
-            args.history_iterations,
-            args.seed,
-        )
+        predictions: list[np.ndarray] = []
+        total_elapsed = 0.0
+        for seed in args.ensemble_seeds:
+            started = time.perf_counter()
+            prediction, best_iteration = fit_predict_catboost(
+                X_train,
+                fold_y_train,
+                X_valid,
+                fold_y_valid,
+                args.history_iterations,
+                seed,
+            )
+            elapsed = time.perf_counter() - started
+            total_elapsed += elapsed
+            predictions.append(prediction)
+            if seed == args.seed:
+                record(
+                    rows,
+                    "catboost",
+                    "all_spatial_history",
+                    "rolling_history_single",
+                    fold,
+                    fold_y_valid,
+                    prediction,
+                    elapsed,
+                    best_iteration,
+                    args.history_iterations,
+                    HISTORY_LEAKAGE_CHECK,
+                )
+        prediction = np.mean(predictions, axis=0)
         record(
             rows,
-            "catboost",
+            "catboost_seed_ensemble",
             "all_spatial_history",
             "rolling_selected_pipeline",
             fold,
             fold_y_valid,
             prediction,
-            time.perf_counter() - started,
-            best_iteration,
+            total_elapsed,
+            None,
             args.history_iterations,
             HISTORY_LEAKAGE_CHECK,
         )
@@ -445,12 +509,44 @@ def main() -> None:
     summary.to_csv(reports / "experiment_summary.csv", index=False)
     if latest_history_prediction is None:
         raise AssertionError("Latest selected CatBoost prediction was not produced")
-    subgroup_metrics(
-        train_raw.loc[latest.validation_mask].reset_index(drop=True),
+    validation_raw = train_raw.loc[latest.validation_mask].reset_index(drop=True)
+    error_groups = subgroup_metrics(
+        validation_raw,
         y_valid,
         latest_history_prediction,
         ["RENT_APPROVAL_DATE", "TOWN", "FLAT_TYPE", "FLAT_MODEL"],
-    ).to_csv(reports / "subgroup_errors.csv", index=False)
+    )
+    diagnostics = validation_raw.assign(
+        _target=y_valid.to_numpy(),
+        _prediction=latest_history_prediction,
+        RENT_BAND=pd.cut(
+            y_valid,
+            bins=[-np.inf, 2500, 3000, 3500, 4000, np.inf],
+            labels=["<=2500", "2501-3000", "3001-3500", "3501-4000", ">4000"],
+        ).astype(str),
+        ADDRESS_STATUS=np.where(
+            validation_raw["ADDRESS"].isin(
+                raw_features.loc[latest.train_mask, "ADDRESS"]
+            ),
+            "seen",
+            "unseen",
+        ),
+    )
+    density = history_valid["HIST_ADDRESS_COUNT"].to_numpy()
+    diagnostics["ADDRESS_HISTORY_DENSITY"] = pd.cut(
+        density,
+        bins=[-np.inf, 0, 5, 20, np.inf],
+        labels=["0", "1-5", "6-20", ">20"],
+    ).astype(str)
+    extra_groups = subgroup_metrics(
+        diagnostics,
+        diagnostics["_target"],
+        diagnostics["_prediction"],
+        ["RENT_BAND", "ADDRESS_STATUS", "ADDRESS_HISTORY_DENSITY"],
+    )
+    pd.concat([error_groups, extra_groups], ignore_index=True).to_csv(
+        reports / "error_analysis.csv", index=False
+    )
     metadata = {
         "folds": [
             {
@@ -465,8 +561,10 @@ def main() -> None:
         ],
         "iterations_limit": args.iterations,
         "selected_pipeline": {
-            "model": "catboost",
+            "model": "catboost_seed_ensemble",
             "feature_set": "all_spatial_history",
+            "seeds": args.ensemble_seeds,
+            "weights": [1.0 / len(args.ensemble_seeds)] * len(args.ensemble_seeds),
             "iterations_limit": args.history_iterations,
             "learning_rate": 0.04,
             "depth": 8,

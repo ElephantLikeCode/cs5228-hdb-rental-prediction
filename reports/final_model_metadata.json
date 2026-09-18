@@ -1,5 +1,5 @@
 {
-  "model": "CatBoostRegressor",
+  "model": "CatBoostRegressor equal-weight seed ensemble",
   "feature_set": "all_spatial_history",
   "history_features": [
     "HIST_GLOBAL_MEAN",
@@ -19,12 +19,22 @@
   "learning_rate": 0.04,
   "depth": 8,
   "l2_leaf_reg": 6.0,
-  "seed": 42,
+  "seeds": [
+    42,
+    2026
+  ],
+  "weights": [
+    0.5,
+    0.5
+  ],
   "train_rows": 150000,
   "test_rows": 50000,
-  "prediction_min": 1701.70436297684,
-  "prediction_max": 5246.745586784014,
-  "elapsed_seconds": 242.0,
+  "prediction_min": 1701.833957593995,
+  "prediction_max": 5370.13481458433,
+  "elapsed_seconds": 941.97,
   "submission": "submissions\\final_submission.csv",
-  "model_path": "artifacts\\final_model.cbm"
+  "model_paths": [
+    "artifacts\\final_model_seed_42.cbm",
+    "artifacts\\final_model_seed_2026.cbm"
+  ]
 }

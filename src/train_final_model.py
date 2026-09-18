@@ -28,7 +28,7 @@ TARGET = "MONTHLY_RENT"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=1600)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 2026])
     parser.add_argument(
         "--submission",
         type=Path,
@@ -39,6 +39,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if not args.seeds or len(set(args.seeds)) != len(args.seeds):
+        raise ValueError("--seeds must contain unique seed values")
     started = time.perf_counter()
     train = pd.read_csv(RAW / "train.csv")
     test = pd.read_csv(RAW / "test.csv")
@@ -58,19 +60,26 @@ def main() -> None:
     X_train = prepare_for_catboost(X_train)
     X_test = prepare_for_catboost(X_test)
     categorical = X_train.select_dtypes(include=["object"]).columns.tolist()
-    model = CatBoostRegressor(
-        loss_function="RMSE",
-        iterations=args.iterations,
-        learning_rate=0.04,
-        depth=8,
-        l2_leaf_reg=6.0,
-        random_seed=args.seed,
-        thread_count=-1,
-        allow_writing_files=False,
-        verbose=200,
-    )
-    model.fit(X_train, y, cat_features=categorical)
-    prediction = model.predict(X_test)
+    predictions: list[np.ndarray] = []
+    model_paths: list[Path] = []
+    for seed in args.seeds:
+        model = CatBoostRegressor(
+            loss_function="RMSE",
+            iterations=args.iterations,
+            learning_rate=0.04,
+            depth=8,
+            l2_leaf_reg=6.0,
+            random_seed=seed,
+            thread_count=-1,
+            allow_writing_files=False,
+            verbose=200,
+        )
+        model.fit(X_train, y, cat_features=categorical)
+        predictions.append(model.predict(X_test))
+        model_path = ROOT / "artifacts" / f"final_model_seed_{seed}.cbm"
+        model.save_model(model_path)
+        model_paths.append(model_path)
+    prediction = np.mean(predictions, axis=0)
     if sample.columns.tolist() != ["Id", "Predicted"]:
         raise ValueError("Unexpected sample-submission schema")
     if len(sample) != len(prediction):
@@ -95,24 +104,23 @@ def main() -> None:
     ):
         raise ValueError("Reloaded predictions differ beyond CSV precision")
 
-    model_path = ROOT / "artifacts" / "final_model.cbm"
-    model.save_model(model_path)
     metadata = {
-        "model": "CatBoostRegressor",
+        "model": "CatBoostRegressor equal-weight seed ensemble",
         "feature_set": "all_spatial_history",
         "history_features": history_columns,
         "iterations": args.iterations,
         "learning_rate": 0.04,
         "depth": 8,
         "l2_leaf_reg": 6.0,
-        "seed": args.seed,
+        "seeds": args.seeds,
+        "weights": [1.0 / len(args.seeds)] * len(args.seeds),
         "train_rows": len(train),
         "test_rows": len(test),
         "prediction_min": float(prediction.min()),
         "prediction_max": float(prediction.max()),
         "elapsed_seconds": round(time.perf_counter() - started, 2),
         "submission": str(args.submission.relative_to(ROOT)),
-        "model_path": str(model_path.relative_to(ROOT)),
+        "model_paths": [str(path.relative_to(ROOT)) for path in model_paths],
     }
     (ROOT / "reports" / "final_model_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"

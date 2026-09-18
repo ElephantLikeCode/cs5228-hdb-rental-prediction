@@ -36,15 +36,28 @@ def current_results_text() -> str:
     latest = results.loc[
         (results["fold"] == latest_fold)
         & results["protocol"].isin(
-            ["latest_fold_comparison", "latest_spatial_ablation", "rolling_selected_pipeline"]
+            [
+                "latest_fold_comparison",
+                "latest_spatial_ablation",
+                "rolling_history_single",
+                "rolling_selected_pipeline",
+            ]
         )
     ].sort_values("rmse")
     rolling = results.loc[
-        (results["model"] == "catboost")
-        & results["feature_set"].isin(["core", "all_spatial", "all_spatial_history"])
-    ]
+        results["protocol"].isin(
+            ["rolling_stability", "rolling_history_single", "rolling_selected_pipeline"]
+        )
+    ].copy()
+    rolling["pipeline"] = rolling["feature_set"]
+    rolling.loc[
+        rolling["protocol"] == "rolling_history_single", "pipeline"
+    ] = "all_spatial_history_seed42"
+    rolling.loc[
+        rolling["protocol"] == "rolling_selected_pipeline", "pipeline"
+    ] = "all_spatial_history_2seed_ensemble"
     rolling_summary = (
-        rolling.groupby("feature_set", as_index=False)
+        rolling.groupby("pipeline", as_index=False)
         .agg(
             runs=("fold", "count"),
             mean_rmse=("rmse", "mean"),
@@ -54,10 +67,9 @@ def current_results_text() -> str:
         )
         .sort_values("mean_rmse")
     )
-    groups = pd.read_csv(REPORTS / "subgroup_errors.csv")
-    worst_towns = groups.loc[
-        (groups["group_column"] == "TOWN") & (groups["rows"] >= 100)
-    ].nlargest(5, "rmse")
+    groups = pd.read_csv(REPORTS / "error_analysis.csv")
+    rent_bands = groups.loc[groups["group_column"] == "RENT_BAND"]
+    address_status = groups.loc[groups["group_column"] == "ADDRESS_STATUS"]
     best = latest.iloc[0]
     return f"""{START}
 ## Current validated pipeline (18 September 2026)
@@ -78,25 +90,31 @@ RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
 
 ### Rolling CatBoost stability
 
-{markdown_table(rolling_summary, ['feature_set', 'runs', 'mean_rmse', 'std_rmse', 'mean_mae', 'mean_bias'])}
+{markdown_table(rolling_summary, ['pipeline', 'runs', 'mean_rmse', 'std_rmse', 'mean_mae', 'mean_bias'])}
 
-### Highest-error towns
+### Error by actual rent band
 
-{markdown_table(worst_towns, ['group_value', 'rows', 'rmse', 'mae', 'bias'])}
+{markdown_table(rent_bands, ['group_value', 'rows', 'rmse', 'mae', 'bias'])}
+
+### Seen versus unseen addresses
+
+{markdown_table(address_status, ['group_value', 'rows', 'rmse', 'mae', 'bias'])}
 
 ### Findings
 
 - Past-only address, town/flat-type, town, flat-type, and flat-model rent
   statistics improve the selected pipeline without using same-month targets.
-- Increasing the selected CatBoost limit from 1,200 to 1,600 trees improved the
-  latest window further; two earlier folds stopped early.
-- The selected history pipeline improves two of three folds and reduces the
-  three-fold mean, although the middle fold is slightly worse.
+- Equal-weight averaging of seeds 42 and 2026 improves the retained single
+  CatBoost on all three short folds and both 12-month robustness folds.
+- The selected ensemble reaches a three-fold mean RMSE of 455.70 versus 456.44
+  for the seed-42 history model; the gain is small but consistent.
+- Error is concentrated at the lowest and highest rent bands. The unseen-address
+  slice contains only 23 rows, so its estimate is informative but uncertain.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
-- The test horizon extends well beyond training, so long-horizon trend robustness
-  remains a higher priority than broad model search.
+- The current Kaggle score 438.94488 belongs to the earlier seed-42 submission;
+  the new ensemble submission has not yet been uploaded.
 <!-- CURRENT_RESULTS_END -->"""
 
 

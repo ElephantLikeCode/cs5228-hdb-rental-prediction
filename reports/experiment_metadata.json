@@ -27,8 +27,16 @@
   ],
   "iterations_limit": 1200,
   "selected_pipeline": {
-    "model": "catboost",
+    "model": "catboost_seed_ensemble",
     "feature_set": "all_spatial_history",
+    "seeds": [
+      42,
+      2026
+    ],
+    "weights": [
+      0.5,
+      0.5
+    ],
     "iterations_limit": 1600,
     "learning_rate": 0.04,
     "depth": 8,
