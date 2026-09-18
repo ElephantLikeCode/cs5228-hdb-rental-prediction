@@ -12,6 +12,7 @@ import pandas as pd
 from catboost import CatBoostRegressor
 
 from features import (
+    add_past_rent_features,
     add_spatial_features,
     build_block_lookup,
     make_core_features,
@@ -26,7 +27,7 @@ TARGET = "MONTHLY_RENT"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iterations", type=int, default=1200)
+    parser.add_argument("--iterations", type=int, default=1600)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--submission",
@@ -43,15 +44,19 @@ def main() -> None:
     test = pd.read_csv(RAW / "test.csv")
     sample = pd.read_csv(RAW / "example-submission.csv")
     lookup = build_block_lookup(RAW / "auxiliary")
-    X_train = prepare_for_catboost(
-        add_spatial_features(
-            make_core_features(train.drop(columns=[TARGET])), lookup, "all_spatial"
-        )
-    )
-    X_test = prepare_for_catboost(
-        add_spatial_features(make_core_features(test), lookup, "all_spatial")
-    )
     y = train[TARGET].astype(float)
+    raw_train = train.drop(columns=[TARGET])
+    X_train = add_spatial_features(make_core_features(raw_train), lookup, "all_spatial")
+    X_test = add_spatial_features(make_core_features(test), lookup, "all_spatial")
+    history_train = add_past_rent_features(raw_train, y, raw_train)
+    history_test = add_past_rent_features(raw_train, y, test)
+    history_columns = [
+        column for column in history_train if column.startswith("HIST_")
+    ]
+    X_train[history_columns] = history_train[history_columns]
+    X_test[history_columns] = history_test[history_columns]
+    X_train = prepare_for_catboost(X_train)
+    X_test = prepare_for_catboost(X_test)
     categorical = X_train.select_dtypes(include=["object"]).columns.tolist()
     model = CatBoostRegressor(
         loss_function="RMSE",
@@ -94,7 +99,8 @@ def main() -> None:
     model.save_model(model_path)
     metadata = {
         "model": "CatBoostRegressor",
-        "feature_set": "all_spatial",
+        "feature_set": "all_spatial_history",
+        "history_features": history_columns,
         "iterations": args.iterations,
         "learning_rate": 0.04,
         "depth": 8,

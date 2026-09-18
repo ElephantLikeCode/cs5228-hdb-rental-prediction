@@ -27,6 +27,13 @@ FACILITY_FEATURE_SETS = {
     "block_school": ["SCHOOL"],
     "all_spatial": ["MRT", "MALL", "SCHOOL"],
 }
+HISTORY_GROUPS = {
+    "ADDRESS": ["_ADDRESS_KEY"],
+    "TOWN_FLAT": ["_TOWN_KEY", "_FLAT_TYPE_KEY"],
+    "TOWN": ["_TOWN_KEY"],
+    "FLAT_TYPE": ["_FLAT_TYPE_KEY"],
+    "FLAT_MODEL": ["_FLAT_MODEL_KEY"],
+}
 
 
 def normalize_text(series: pd.Series) -> pd.Series:
@@ -61,6 +68,105 @@ def make_core_features(frame: pd.DataFrame) -> pd.DataFrame:
     )
     result = result.drop(columns=["FURNISHED", "FEE"], errors="ignore")
     return result
+
+
+def _history_keys(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return normalized grouping keys used by past-only target statistics."""
+    result = pd.DataFrame(index=frame.index)
+    result["_TOWN_KEY"] = normalize_text(frame["TOWN"])
+    result["_FLAT_TYPE_KEY"] = normalize_text(frame["FLAT_TYPE"])
+    result["_FLAT_MODEL_KEY"] = normalize_text(frame["FLAT_MODEL"])
+    result["_ADDRESS_KEY"] = (
+        normalize_text(frame["BLOCK"]).fillna("missing")
+        + " "
+        + normalize_text(frame["STREET"]).fillna("missing")
+    )
+    return result
+
+
+def add_past_rent_features(
+    reference: pd.DataFrame,
+    reference_target: pd.Series,
+    query: pd.DataFrame,
+    smoothing: float = 20.0,
+) -> pd.DataFrame:
+    """Create target statistics using only reference rows before each query month.
+
+    The function is safe for both training and future prediction.  When
+    ``reference`` and ``query`` contain the same rows, observations from the
+    query month (including the row's own target) are excluded.
+    """
+    if len(reference) != len(reference_target):
+        raise ValueError("Reference features and target have different lengths")
+    reference = reference.reset_index(drop=True)
+    target = pd.Series(reference_target, dtype="float64").reset_index(drop=True)
+    query = query.reset_index(drop=True)
+    reference_dates = pd.to_datetime(
+        reference[DATE_COLUMN], format="%Y-%m", errors="raise"
+    )
+    query_dates = pd.to_datetime(query[DATE_COLUMN], format="%Y-%m", errors="raise")
+    reference_keys = _history_keys(reference)
+    query_keys = _history_keys(query)
+    output = pd.DataFrame(index=query.index)
+
+    feature_columns = ["HIST_GLOBAL_MEAN", "HIST_GLOBAL_TREND"]
+    for name in HISTORY_GROUPS:
+        feature_columns.extend([f"HIST_{name}_MEAN", f"HIST_{name}_LOG_COUNT"])
+    for column in feature_columns:
+        output[column] = np.nan
+
+    for month in sorted(query_dates.unique()):
+        query_mask = query_dates.eq(month).to_numpy()
+        prior_mask = reference_dates.lt(month).to_numpy()
+        if not prior_mask.any():
+            for name in HISTORY_GROUPS:
+                output.loc[query_mask, f"HIST_{name}_LOG_COUNT"] = 0.0
+            continue
+
+        prior_target = target.loc[prior_mask]
+        global_mean = float(prior_target.mean())
+        output.loc[query_mask, "HIST_GLOBAL_MEAN"] = global_mean
+
+        monthly = (
+            pd.DataFrame(
+                {
+                    "month": reference_dates.loc[prior_mask].to_numpy(),
+                    "target": prior_target.to_numpy(),
+                }
+            )
+            .groupby("month", as_index=False)["target"]
+            .mean()
+            .tail(24)
+        )
+        if len(monthly) >= 2:
+            x = (
+                monthly["month"].dt.year * 12 + monthly["month"].dt.month
+            ).to_numpy(float)
+            query_x = float(month.year * 12 + month.month)
+            slope, intercept = np.polyfit(x, monthly["target"].to_numpy(float), 1)
+            output.loc[query_mask, "HIST_GLOBAL_TREND"] = intercept + slope * query_x
+        else:
+            output.loc[query_mask, "HIST_GLOBAL_TREND"] = global_mean
+
+        prior = reference_keys.loc[prior_mask].copy()
+        prior["_TARGET"] = prior_target.to_numpy()
+        for name, keys in HISTORY_GROUPS.items():
+            stats = prior.groupby(keys, dropna=False)["_TARGET"].agg(["sum", "count"])
+            smoothed = (stats["sum"] + smoothing * global_mean) / (
+                stats["count"] + smoothing
+            )
+            current = query_keys.loc[query_mask, keys]
+            if len(keys) == 1:
+                lookup_key = current[keys[0]]
+            else:
+                lookup_key = pd.MultiIndex.from_frame(current)
+            output.loc[query_mask, f"HIST_{name}_MEAN"] = smoothed.reindex(
+                lookup_key
+            ).to_numpy()
+            counts = stats["count"].reindex(lookup_key).fillna(0).to_numpy(float)
+            output.loc[query_mask, f"HIST_{name}_LOG_COUNT"] = np.log1p(counts)
+
+    return pd.concat([query.copy(), output], axis=1)
 
 
 def _haversine_matrix(

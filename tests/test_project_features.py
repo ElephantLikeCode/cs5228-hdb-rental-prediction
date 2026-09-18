@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.features import (
+    add_past_rent_features,
     add_spatial_features,
     build_block_lookup,
     make_core_features,
@@ -40,3 +41,23 @@ def test_spatial_feature_groups_are_strictly_additive() -> None:
     assert "DIST_MRT_KM" in mrt and "DIST_MALL_KM" not in mrt
     assert {"DIST_MRT_KM", "DIST_MALL_KM", "DIST_SCHOOL_KM"}.issubset(all_spatial)
     assert len(core) == len(block) == len(mrt) == len(all_spatial)
+
+
+def test_past_rent_features_exclude_same_and_future_months() -> None:
+    frame = pd.DataFrame(
+        {
+            "RENT_APPROVAL_DATE": ["2024-01", "2024-01", "2024-02", "2024-03"],
+            "TOWN": ["a", "b", "a", "a"],
+            "BLOCK": ["1", "2", "1", "1"],
+            "STREET": ["road", "road", "road", "road"],
+            "FLAT_TYPE": ["3 room"] * 4,
+            "FLAT_MODEL": ["model a"] * 4,
+        }
+    )
+    target = pd.Series([1000.0, 3000.0, 5000.0, 9000.0])
+    features = add_past_rent_features(frame, target, frame, smoothing=0.0)
+    assert pd.isna(features.loc[0, "HIST_GLOBAL_MEAN"])
+    assert features.loc[2, "HIST_GLOBAL_MEAN"] == 2000.0
+    assert features.loc[2, "HIST_ADDRESS_MEAN"] == 1000.0
+    assert features.loc[3, "HIST_GLOBAL_MEAN"] == 3000.0
+    assert features.loc[3, "HIST_ADDRESS_MEAN"] == 3000.0

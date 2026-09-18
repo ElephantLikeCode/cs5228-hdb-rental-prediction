@@ -29,13 +29,19 @@ def markdown_table(frame: pd.DataFrame, columns: list[str]) -> str:
 
 def current_results_text() -> str:
     results = pd.read_csv(REPORTS / "experiment_results.csv")
-    json.loads((REPORTS / "experiment_metadata.json").read_text(encoding="utf-8"))
+    metadata = json.loads(
+        (REPORTS / "experiment_metadata.json").read_text(encoding="utf-8")
+    )
+    latest_fold = metadata["folds"][-1]["name"]
     latest = results.loc[
-        results["protocol"].isin(["latest_fold_comparison", "latest_spatial_ablation"])
+        (results["fold"] == latest_fold)
+        & results["protocol"].isin(
+            ["latest_fold_comparison", "latest_spatial_ablation", "rolling_selected_pipeline"]
+        )
     ].sort_values("rmse")
     rolling = results.loc[
         (results["model"] == "catboost")
-        & results["feature_set"].isin(["core", "all_spatial"])
+        & results["feature_set"].isin(["core", "all_spatial", "all_spatial_history"])
     ]
     rolling_summary = (
         rolling.groupby("feature_set", as_index=False)
@@ -56,11 +62,11 @@ def current_results_text() -> str:
     return f"""{START}
 ## Current validated pipeline (18 September 2026)
 
-Three expanding chronological folds were introduced, with every validation
-month strictly later than its training months. Linear Regression, Ridge,
-Decision Tree, Random Forest, HistGradientBoosting, and CatBoost use a common
-latest comparison window. Encoders and imputers are fitted inside the training
-fold, and spatial features do not use the target.
+Three expanding chronological folds are used, with every validation month
+strictly later than its training months. Linear Regression, Ridge, Decision
+Tree, Random Forest, HistGradientBoosting, and CatBoost share a common latest
+comparison window. Historical rent statistics use only strictly earlier months;
+spatial features never use the target.
 
 Best latest-window candidate: **{best['model']} with {best['feature_set']}**,
 RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
@@ -80,15 +86,17 @@ RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
 
 ### Findings
 
-- The full spatial set is best, but block and MRT information provide most of
-  the gain; malls and schools add only small increments.
-- The best CatBoost run reached the 1,200-tree cap, motivating bounded joint
-  tuning of iterations, learning rate, and regularization.
+- Past-only address, town/flat-type, town, flat-type, and flat-model rent
+  statistics improve the selected pipeline without using same-month targets.
+- Increasing the selected CatBoost limit from 1,200 to 1,600 trees improved the
+  latest window further; two earlier folds stopped early.
+- The selected history pipeline improves two of three folds and reduces the
+  three-fold mean, although the middle fold is slightly worse.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
-- The test horizon extends well beyond training, so temporal extrapolation and
-  leakage-safe past-only aggregates are higher priorities than broad model search.
+- The test horizon extends well beyond training, so long-horizon trend robustness
+  remains a higher priority than broad model search.
 <!-- CURRENT_RESULTS_END -->"""
 
 

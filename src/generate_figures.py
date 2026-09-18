@@ -27,10 +27,15 @@ def main() -> None:
 
     latest = results.loc[
         (results["fold"] == "2025-01_to_2025-03")
-        & ((results["model"] != "catboost") | (results["feature_set"] == "all_spatial"))
+        & (
+            (results["model"] != "catboost")
+            | (results["feature_set"] == "all_spatial_history")
+        )
     ].copy()
     latest["label"] = latest["model"].str.replace("_", " ").str.title()
-    latest.loc[latest["feature_set"] == "all_spatial", "label"] += " + spatial"
+    latest.loc[
+        latest["feature_set"] == "all_spatial_history", "label"
+    ] += " + spatial/history"
     latest = latest.sort_values("rmse", ascending=False)
     plt.figure(figsize=(8.5, 4.8))
     ax = sns.barplot(data=latest, x="rmse", y="label", color="#3D7EA6")
@@ -42,10 +47,14 @@ def main() -> None:
 
     catboost = results.loc[
         (results["model"] == "catboost")
-        & (results["feature_set"].isin(["core", "all_spatial"]))
+        & (results["feature_set"].isin(["core", "all_spatial", "all_spatial_history"]))
     ].copy()
     catboost["Features"] = catboost["feature_set"].map(
-        {"core": "Core", "all_spatial": "Core + all spatial"}
+        {
+            "core": "Core",
+            "all_spatial": "Core + all spatial",
+            "all_spatial_history": "Spatial + past rent",
+        }
     )
     plt.figure(figsize=(8.5, 4.8))
     sns.lineplot(
@@ -58,7 +67,7 @@ def main() -> None:
     )
     plt.xlabel("Validation window")
     plt.ylabel("RMSE (SGD)")
-    plt.title("Core versus spatial features across rolling time folds")
+    plt.title("Selected feature sets across rolling time folds")
     plt.xticks(rotation=15)
     save("rolling_stability.png")
 

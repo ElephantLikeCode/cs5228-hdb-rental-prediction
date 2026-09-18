@@ -109,8 +109,10 @@ Exit condition: a single command can train, evaluate, save the model metadata, a
 
 Status: strict spatial ablations implemented for block-only, block + MRT,
 block + mall, block + school, and the combined set. Distance and 0.5/1/2 km
-facility-count features are included. The combined model reduced latest-window
-RMSE from 455.71 to 452.62 and three-fold mean RMSE from 460.49 to 457.81.
+facility-count features are included. Past-only rent statistics were then added
+for address, town-flat-type, town, flat type, and flat model. The selected
+pipeline reduced latest-window RMSE from 452.62 to 450.04 and three-fold mean
+RMSE from 457.81 to 456.44.
 
 Feature groups, in priority order:
 
@@ -118,17 +120,19 @@ Feature groups, in priority order:
 2. Flat: normalized flat type/model, floor area, lease age.
 3. Block: coordinates, completion year, maximum floor, subzone, planning area, region.
 4. Spatial: distance to nearest open MRT, mall, primary school, CBD, and counts within selected radii.
-5. Optional historical group statistics: past-only rent summaries for town, address, town-flat-type, and area band.
+5. Historical group statistics: past-only rent summaries for address, town, town-flat-type, flat type, and flat model.
 
-Historical rent summaries are optional because they can easily leak the target. If tested, training rows must be constructed without using their own target and validation/test rows may use only earlier dates.
+Historical rent summaries are implemented with strict monthly cutoffs: training
+rows cannot use their own month, while validation and test rows can use only
+strictly earlier reference months.
 
 Exit condition: each feature group has a documented ablation result.
 
 ### Phase 5 - Model comparison and tuning
 
-Status: model comparison complete; bounded tuning is next. The current best
-CatBoost reached the 1,200-iteration ceiling, so iteration/regularization tuning
-should be tested together rather than increasing trees alone.
+Status: model comparison complete. A bounded iteration test improved the latest
+window from 450.73 at 1,200 trees to 450.04 at 1,600 trees. Learning-rate and
+regularization pairs around this budget remain to be tested.
 
 Candidate models:
 
@@ -245,13 +249,12 @@ Everyone should contribute code or analysis and review at least one other workst
 
 Completed checkpoint: official Kaggle audit and data verification, data-contract
 tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
-ablations, subgroup errors, and a validated all-spatial submission generator.
+ablations, past-only rent statistics, subgroup errors, and a validated submission generator.
 
-1. Have every member reproduce `check_setup.py`, seven tests, and the current experiment results.
-2. Review the all-spatial candidate as a team, submit once, and log its public score.
-3. Diagnose temporal extrapolation and signed underprediction on later months.
-4. Implement leakage-safe past-only address/town/flat-type rent summaries.
-5. Run a bounded CatBoost iteration/learning-rate/regularization study.
-6. Test COE and stock indicators in isolated chronological ablations.
-7. Add error bands by rent level, seen/unseen address, and sample density.
-8. Freeze the strongest stable pipeline before preparing the final report.
+1. Have every member reproduce `check_setup.py`, eight tests, and the current experiment results.
+2. Review the spatial/history candidate as a team, submit once, and log its public score.
+3. Stress-test long-horizon temporal extrapolation beyond three-month windows.
+4. Test learning-rate and regularization pairs around the 1,600-tree budget.
+5. Test COE and stock indicators in isolated chronological ablations.
+6. Add error bands by rent level, seen/unseen address, and sample density.
+7. Freeze the strongest stable pipeline before preparing the final report.

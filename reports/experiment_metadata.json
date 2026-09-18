@@ -26,12 +26,21 @@
     }
   ],
   "iterations_limit": 1200,
+  "selected_pipeline": {
+    "model": "catboost",
+    "feature_set": "all_spatial_history",
+    "iterations_limit": 1600,
+    "learning_rate": 0.04,
+    "depth": 8,
+    "l2_leaf_reg": 6.0
+  },
   "seed": 42,
   "leakage_controls": [
     "validation months are strictly later than all training months",
     "spatial joins never use MONTHLY_RENT",
     "only MRT stations marked open in supplied data are used",
-    "encoders, imputers, and scalers are fitted inside each training fold"
+    "encoders, imputers, and scalers are fitted inside each training fold",
+    "historical rent statistics use only rows from strictly earlier months"
   ],
   "kaggle_data": {
     "competition": "cs-5228-2610-project",

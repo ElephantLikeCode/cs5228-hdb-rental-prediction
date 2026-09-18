@@ -35,8 +35,8 @@ Checked on 18 September 2026 using the signed-in competition pages for
 
 1. Continue using chronological rolling validation; public leaderboard scores
    are supporting evidence only.
-2. Prioritize temporal extrapolation and past-only location statistics because
-   the hidden test range extends well beyond training.
+2. Continue stress-testing temporal extrapolation; past-only location statistics
+   are now implemented, but the hidden test range extends well beyond training.
 3. Test COE/stock and any external source in separate, leakage-safe ablations.
 4. Record source, retrieval date, license, transformation, and prediction-time
    availability for every external feature used in the report.

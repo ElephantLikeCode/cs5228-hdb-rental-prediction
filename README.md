@@ -9,7 +9,7 @@ local evaluation method.
 The repository currently provides:
 
 - a reproducible data audit;
-- seven automated data-contract and feature/validation tests;
+- eight automated data-contract and feature/validation tests;
 - a January-March 2025 chronological holdout;
 - global-median and town/flat-type median baselines;
 - Linear, Ridge, Decision Tree, Random Forest, HistGradientBoosting, and CatBoost comparisons;
@@ -18,6 +18,7 @@ The repository currently provides:
 - strict block/MRT/mall/school/all-spatial ablations with facility-radius counts;
 - reproducible EDA figures;
 - HDB block and nearest open-MRT, mall, and school spatial features.
+- leakage-safe past-only rent statistics for address and property groups.
 
 Verified results with Python 3.12 and seed 42:
 
@@ -27,10 +28,10 @@ Verified results with Python 3.12 and seed 42:
 | Town + flat-type median | 546.81 |
 | HistGradientBoosting | 463.36 |
 | CatBoost core | 455.71 |
-| CatBoost + all spatial features | **452.62** |
+| CatBoost + spatial and past-rent features | **450.04** |
 
 Across three consecutive three-month validation windows, CatBoost improves from
-mean RMSE 460.49 with core features to 457.81 with spatial features. The latest
+mean RMSE 460.49 with core features to 456.44 with the selected features. The latest
 window is January-March 2025; do not compare the three-fold mean directly with a
 single-window score.
 
@@ -108,14 +109,14 @@ python src/train_final_model.py
 
 Expected results:
 
-- `7 passed` from pytest;
-- latest-window CatBoost validation RMSE near `452.62`;
+- `8 passed` from pytest;
+- latest-window CatBoost validation RMSE near `450.04`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
 - a loadable model at `artifacts/final_model.cbm`.
 
-The full experiment comparison takes about 27 minutes and final-model training
-about three minutes on the verified Windows machine. Private data, model files,
+The full experiment comparison takes roughly 35-45 minutes and final-model training
+about five minutes on the verified Windows machine. Private data, model files,
 figures, and Kaggle submissions are ignored by Git.
 
 ## Repository structure
@@ -126,7 +127,7 @@ docs/PROGRESS.md           Single cumulative record of current progress
 docs/KAGGLE_AUDIT.md       Official data/rules audit and planning implications
 src/check_setup.py         Read-only environment and private-data validation
 src/data_audit.py          Reproducible data audit
-src/features.py            Leakage-safe core and spatial features
+src/features.py            Leakage-safe core, spatial, and past-rent features
 src/validation.py          Rolling time folds and regression/error metrics
 src/generate_eda.py        Reproducible EDA figures and summaries
 src/run_experiments.py     Baselines, rolling validation, and feature ablations
@@ -154,11 +155,11 @@ models, or generated submissions.
 
 ## Next work
 
-1. Give every member repository and Kaggle-team access and reproduce RMSE 452.62.
+1. Give every member repository and Kaggle-team access and reproduce RMSE 450.04.
 2. Review and submit the current candidate once, then record its public score.
-3. Add leakage-safe historical/location statistics and explicit time-trend tests.
+3. Strengthen explicit long-horizon time-trend tests.
 4. Investigate high-error towns and Executive flats with residual diagnostics.
-5. Run bounded CatBoost iteration/learning-rate/regularization tuning.
+5. Test alternative CatBoost learning-rate/regularization pairs around the selected budget.
 6. Test COE and stock features only through isolated chronological ablations.
 7. Freeze the final pipeline, reproduce it cleanly, and prepare the reports.
 

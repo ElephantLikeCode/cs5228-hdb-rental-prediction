@@ -19,20 +19,21 @@ rolling validation.
 <!-- CURRENT_RESULTS_START -->
 ## Current validated pipeline (18 September 2026)
 
-Three expanding chronological folds were introduced, with every validation
-month strictly later than its training months. Linear Regression, Ridge,
-Decision Tree, Random Forest, HistGradientBoosting, and CatBoost use a common
-latest comparison window. Encoders and imputers are fitted inside the training
-fold, and spatial features do not use the target.
+Three expanding chronological folds are used, with every validation month
+strictly later than its training months. Linear Regression, Ridge, Decision
+Tree, Random Forest, HistGradientBoosting, and CatBoost share a common latest
+comparison window. Historical rent statistics use only strictly earlier months;
+spatial features never use the target.
 
-Best latest-window candidate: **catboost with all_spatial**,
-RMSE **452.62 SGD**, MAE **334.22 SGD**, signed bias
-**-44.98 SGD**.
+Best latest-window candidate: **catboost with all_spatial_history**,
+RMSE **450.04 SGD**, MAE **320.03 SGD**, signed bias
+**18.69 SGD**.
 
 ### Latest-window comparison (January-March 2025)
 
 | model | feature_set | rmse | mae | r2 | bias | runtime_seconds |
 | --- | --- | --- | --- | --- | --- | --- |
+| catboost | all_spatial_history | 450.04 | 320.03 | 0.52 | 18.69 | 281.05 |
 | catboost | all_spatial | 452.62 | 334.22 | 0.51 | -44.98 | 182.97 |
 | catboost | block_mrt | 452.89 | 334.84 | 0.51 | -48.09 | 174.78 |
 | catboost | block_school | 453.71 | 335.49 | 0.51 | -48.81 | 192.83 |
@@ -51,6 +52,7 @@ RMSE **452.62 SGD**, MAE **334.22 SGD**, signed bias
 
 | feature_set | runs | mean_rmse | std_rmse | mean_mae | mean_bias |
 | --- | --- | --- | --- | --- | --- |
+| all_spatial_history | 3 | 456.44 | 15.37 | 328.28 | 3.54 |
 | all_spatial | 3 | 457.81 | 16.43 | 336.31 | -36.56 |
 | core | 3 | 460.49 | 14.91 | 339.69 | -40.01 |
 
@@ -58,29 +60,31 @@ RMSE **452.62 SGD**, MAE **334.22 SGD**, signed bias
 
 | group_value | rows | rmse | mae | bias |
 | --- | --- | --- | --- | --- |
-| jurong west | 620 | 548.57 | 394.44 | 26.01 |
-| kallang/whampoa | 342 | 543.80 | 418.77 | -33.98 |
-| bukit merah | 530 | 510.98 | 366.34 | -101.45 |
-| toa payoh | 341 | 497.11 | 397.43 | -71.28 |
-| bishan | 174 | 487.64 | 343.79 | -12.79 |
+| jurong west | 620 | 551.27 | 384.48 | 72.29 |
+| kallang/whampoa | 342 | 540.79 | 404.49 | 45.92 |
+| bukit merah | 530 | 509.15 | 358.73 | -50.52 |
+| bishan | 174 | 496.93 | 330.83 | 67.57 |
+| toa payoh | 341 | 494.79 | 377.80 | 35.99 |
 
 ### Findings
 
-- The full spatial set is best, but block and MRT information provide most of
-  the gain; malls and schools add only small increments.
-- The best CatBoost run reached the 1,200-tree cap, motivating bounded joint
-  tuning of iterations, learning rate, and regularization.
+- Past-only address, town/flat-type, town, flat-type, and flat-model rent
+  statistics improve the selected pipeline without using same-month targets.
+- Increasing the selected CatBoost limit from 1,200 to 1,600 trees improved the
+  latest window further; two earlier folds stopped early.
+- The selected history pipeline improves two of three folds and reduces the
+  three-fold mean, although the middle fold is slightly worse.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
-- The test horizon extends well beyond training, so temporal extrapolation and
-  leakage-safe past-only aggregates are higher priorities than broad model search.
+- The test horizon extends well beyond training, so long-horizon trend robustness
+  remains a higher priority than broad model search.
 <!-- CURRENT_RESULTS_END -->
 
 ## Current next steps
 
-1. Diagnose long-horizon time extrapolation and later-month underprediction.
-2. Implement leakage-safe past-only location rent statistics.
-3. Run bounded CatBoost iteration, learning-rate, and regularization tuning.
-4. Test COE and stock indicators in isolated chronological ablations.
-5. Add errors by rent band, seen/unseen address, and sample density.
+1. Stress-test long-horizon time extrapolation beyond three-month validation windows.
+2. Test alternative CatBoost learning-rate and regularization pairs around 1,600 trees.
+3. Test COE and stock indicators in isolated chronological ablations.
+4. Add errors by rent band, seen/unseen address, and sample density.
+5. Review the candidate as a team before the first Kaggle submission.
