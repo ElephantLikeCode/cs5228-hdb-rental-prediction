@@ -81,10 +81,27 @@ RMSE **450.04 SGD**, MAE **320.03 SGD**, signed bias
   remains a higher priority than broad model search.
 <!-- CURRENT_RESULTS_END -->
 
+## Robustness and first Kaggle result (18 September 2026)
+
+The selected spatial/history pipeline was compared with the spatial-only model
+on two consecutive 12-month validation windows. It improved RMSE from 595.21 to
+580.75 on April 2023-March 2024 and from 473.72 to 472.67 on April 2024-March
+2025, while reducing underprediction bias in both windows. Results are stored in
+`reports/long_horizon_results.csv` and reproduced with
+`python src/run_experiments.py --long-horizon`.
+
+The first Kaggle submission scored **438.94488 public RMSE**, ranking 9 of 14 at
+submission time. The public leaderboard covers approximately half of the test
+set and is treated only as supporting evidence.
+
+Three additional candidates were rejected on the January-March 2025 window:
+lagged COE/stock indicators (452.68 RMSE), recent-12-month group statistics
+(450.28), and a 2,200-tree lower-learning-rate configuration (450.59), versus
+450.04 for the retained pipeline.
+
 ## Current next steps
 
-1. Stress-test long-horizon time extrapolation beyond three-month validation windows.
-2. Test alternative CatBoost learning-rate and regularization pairs around 1,600 trees.
-3. Test COE and stock indicators in isolated chronological ablations.
-4. Add errors by rent band, seen/unseen address, and sample density.
-5. Review the candidate as a team before the first Kaggle submission.
+1. Add errors by rent band, seen/unseen address, and sample density.
+2. Investigate the remaining long-horizon underprediction in the earlier window.
+3. Test residual blending only if a genuinely complementary model is identified.
+4. Review robustness and leaderboard evidence with the team before another submission.

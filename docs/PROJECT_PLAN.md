@@ -132,7 +132,7 @@ Exit condition: each feature group has a documented ablation result.
 
 Status: model comparison complete. A bounded iteration test improved the latest
 window from 450.73 at 1,200 trees to 450.04 at 1,600 trees. Learning-rate and
-regularization pairs around this budget remain to be tested.
+regularization testing at 2,200 trees did not improve the retained configuration.
 
 Candidate models:
 
@@ -252,9 +252,8 @@ tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
 ablations, past-only rent statistics, subgroup errors, and a validated submission generator.
 
 1. Have every member reproduce `check_setup.py`, eight tests, and the current experiment results.
-2. Review the spatial/history candidate as a team, submit once, and log its public score.
-3. Stress-test long-horizon temporal extrapolation beyond three-month windows.
-4. Test learning-rate and regularization pairs around the 1,600-tree budget.
-5. Test COE and stock indicators in isolated chronological ablations.
-6. Add error bands by rent level, seen/unseen address, and sample density.
-7. Freeze the strongest stable pipeline before preparing the final report.
+2. Review the first public score (438.94488) and long-horizon results as a team.
+3. Add error bands by rent level, seen/unseen address, and sample density.
+4. Investigate long-horizon underprediction without tuning directly to the public board.
+5. Test residual blending only if a complementary model is identified.
+6. Freeze the strongest stable pipeline before preparing the final report.

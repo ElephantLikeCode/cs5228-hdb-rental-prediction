@@ -194,7 +194,79 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reuse existing baseline rows and recompute only the selected pipeline.",
     )
+    parser.add_argument(
+        "--long-horizon",
+        action="store_true",
+        help="Run two 12-month robustness folds and write long_horizon_results.csv.",
+    )
     return parser.parse_args()
+
+
+def run_long_horizon(
+    args: argparse.Namespace,
+    train_raw: pd.DataFrame,
+    y: pd.Series,
+    raw_features: pd.DataFrame,
+    core_features: pd.DataFrame,
+    block_lookup: pd.DataFrame,
+    reports: Path,
+) -> None:
+    """Compare spatial and selected history pipelines on two 12-month windows."""
+    rows: list[dict[str, object]] = []
+    folds = rolling_time_folds(train_raw, validation_months=12, folds=2)
+    all_spatial = add_spatial_features(core_features, block_lookup, "all_spatial")
+    for fold in folds:
+        fold_y_train = y.loc[fold.train_mask].reset_index(drop=True)
+        fold_y_valid = y.loc[fold.validation_mask].reset_index(drop=True)
+        X_train_base = all_spatial.loc[fold.train_mask].reset_index(drop=True)
+        X_valid_base = all_spatial.loc[fold.validation_mask].reset_index(drop=True)
+        for feature_set, iterations in (
+            ("all_spatial", args.iterations),
+            ("all_spatial_history", args.history_iterations),
+        ):
+            started = time.perf_counter()
+            X_train = X_train_base.copy()
+            X_valid = X_valid_base.copy()
+            leakage_checks = LEAKAGE_CHECK
+            if feature_set == "all_spatial_history":
+                fold_train_raw = raw_features.loc[fold.train_mask].reset_index(drop=True)
+                fold_valid_raw = raw_features.loc[fold.validation_mask].reset_index(drop=True)
+                history_train = add_past_rent_features(
+                    fold_train_raw, fold_y_train, fold_train_raw
+                )
+                history_valid = add_past_rent_features(
+                    fold_train_raw, fold_y_train, fold_valid_raw
+                )
+                history_columns = [
+                    column for column in history_train if column.startswith("HIST_")
+                ]
+                X_train[history_columns] = history_train[history_columns]
+                X_valid[history_columns] = history_valid[history_columns]
+                leakage_checks = HISTORY_LEAKAGE_CHECK
+            prediction, best_iteration = fit_predict_catboost(
+                X_train,
+                fold_y_train,
+                X_valid,
+                fold_y_valid,
+                iterations,
+                args.seed,
+            )
+            record(
+                rows,
+                "catboost",
+                feature_set,
+                "long_horizon_12m",
+                fold,
+                fold_y_valid,
+                prediction,
+                time.perf_counter() - started,
+                best_iteration,
+                iterations,
+                leakage_checks,
+            )
+    results = pd.DataFrame(rows)
+    results.to_csv(reports / "long_horizon_results.csv", index=False)
+    print(results.to_string(index=False))
 
 
 def main() -> None:
@@ -206,6 +278,17 @@ def main() -> None:
     raw_features = train_raw.drop(columns=[TARGET])
     core_features = make_core_features(raw_features)
     block_lookup = build_block_lookup(RAW / "auxiliary")
+    if args.long_horizon:
+        run_long_horizon(
+            args,
+            train_raw,
+            y,
+            raw_features,
+            core_features,
+            block_lookup,
+            reports,
+        )
+        return
     folds = rolling_time_folds(
         train_raw,
         validation_months=args.validation_months,

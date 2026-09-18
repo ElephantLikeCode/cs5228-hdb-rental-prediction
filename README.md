@@ -35,6 +35,11 @@ mean RMSE 460.49 with core features to 456.44 with the selected features. The la
 window is January-March 2025; do not compare the three-fold mean directly with a
 single-window score.
 
+Two additional 12-month robustness windows also favor the selected history
+pipeline. The first Kaggle submission scored `438.94488` on the public half of
+the test set (rank 9 of 14 at submission time); this is supporting evidence,
+not a replacement for chronological validation.
+
 The official Kaggle ZIP was downloaded and checked on 18 September 2026. All
 eight CSVs match the existing raw files byte-for-byte. See
 `docs/KAGGLE_AUDIT.md`; the private ZIP is kept under ignored `data/source/`.
@@ -102,6 +107,7 @@ python src/data_audit.py
 python -m pytest -q
 python src/generate_eda.py
 python src/run_experiments.py
+python src/run_experiments.py --long-horizon
 python src/generate_figures.py
 python src/update_progress.py
 python src/train_final_model.py
