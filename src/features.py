@@ -34,6 +34,14 @@ HISTORY_GROUPS = {
     "FLAT_TYPE": ["_FLAT_TYPE_KEY"],
     "FLAT_MODEL": ["_FLAT_MODEL_KEY"],
 }
+DETAILED_HISTORY_GROUPS = {
+    **HISTORY_GROUPS,
+    "ADDRESS_FLAT": ["_ADDRESS_KEY", "_FLAT_TYPE_KEY"],
+    "ADDRESS_FLAT_AREA": ["_ADDRESS_KEY", "_FLAT_TYPE_KEY", "_AREA_KEY"],
+    "STREET_FLAT": ["_STREET_KEY", "_FLAT_TYPE_KEY"],
+    "TOWN_FLAT_MODEL": ["_TOWN_KEY", "_FLAT_TYPE_KEY", "_FLAT_MODEL_KEY"],
+}
+CATEGORY_COLUMNS = ["TOWN", "BLOCK", "STREET", "FLAT_TYPE", "FLAT_MODEL"]
 
 
 def normalize_text(series: pd.Series) -> pd.Series:
@@ -47,7 +55,9 @@ def normalize_text(series: pd.Series) -> pd.Series:
     )
 
 
-def make_core_features(frame: pd.DataFrame) -> pd.DataFrame:
+def make_core_features(
+    frame: pd.DataFrame, canonical_categories: bool = True
+) -> pd.DataFrame:
     """Create date, age, and address features available at prediction time."""
     result = frame.copy()
     dates = pd.to_datetime(result.pop(DATE_COLUMN), format="%Y-%m", errors="raise")
@@ -66,6 +76,10 @@ def make_core_features(frame: pd.DataFrame) -> pd.DataFrame:
         + " "
         + normalize_text(result["STREET"]).fillna("missing")
     )
+    if canonical_categories:
+        for column in CATEGORY_COLUMNS:
+            if column in result:
+                result[column] = normalize_text(result[column]).fillna("missing")
     result = result.drop(columns=["FURNISHED", "FEE"], errors="ignore")
     return result
 
@@ -76,6 +90,16 @@ def _history_keys(frame: pd.DataFrame) -> pd.DataFrame:
     result["_TOWN_KEY"] = normalize_text(frame["TOWN"])
     result["_FLAT_TYPE_KEY"] = normalize_text(frame["FLAT_TYPE"])
     result["_FLAT_MODEL_KEY"] = normalize_text(frame["FLAT_MODEL"])
+    result["_STREET_KEY"] = normalize_text(frame["STREET"])
+    if "FLOOR_AREA_SQM" in frame:
+        result["_AREA_KEY"] = (
+            pd.to_numeric(frame["FLOOR_AREA_SQM"], errors="coerce")
+            .round(1)
+            .astype("string")
+            .fillna("missing")
+        )
+    else:
+        result["_AREA_KEY"] = "missing"
     result["_ADDRESS_KEY"] = (
         normalize_text(frame["BLOCK"]).fillna("missing")
         + " "
@@ -89,6 +113,11 @@ def add_past_rent_features(
     reference_target: pd.Series,
     query: pd.DataFrame,
     smoothing: float = 20.0,
+    detailed: bool = False,
+    recent_months: int = 24,
+    market_features: bool | None = None,
+    include_recent: bool | None = None,
+    include_market_adjusted: bool | None = None,
 ) -> pd.DataFrame:
     """Create target statistics using only reference rows before each query month.
 
@@ -109,9 +138,26 @@ def add_past_rent_features(
     query_keys = _history_keys(query)
     output = pd.DataFrame(index=query.index)
 
+    groups = DETAILED_HISTORY_GROUPS if detailed else HISTORY_GROUPS
+    if market_features is None:
+        market_features = detailed
+    if include_recent is None:
+        include_recent = market_features
+    if include_market_adjusted is None:
+        include_market_adjusted = market_features
     feature_columns = ["HIST_GLOBAL_MEAN", "HIST_GLOBAL_TREND"]
-    for name in HISTORY_GROUPS:
+    for name in groups:
         feature_columns.extend([f"HIST_{name}_MEAN", f"HIST_{name}_LOG_COUNT"])
+        if include_recent:
+            feature_columns.extend(
+                [
+                    f"HIST_{name}_RECENT_MEAN",
+                    f"HIST_{name}_RECENT_MEDIAN",
+                    f"HIST_{name}_RECENT_LOG_COUNT",
+                ]
+            )
+        if include_market_adjusted:
+            feature_columns.append(f"HIST_{name}_MARKET_ADJUSTED")
     for column in feature_columns:
         output[column] = np.nan
 
@@ -119,8 +165,10 @@ def add_past_rent_features(
         query_mask = query_dates.eq(month).to_numpy()
         prior_mask = reference_dates.lt(month).to_numpy()
         if not prior_mask.any():
-            for name in HISTORY_GROUPS:
+            for name in groups:
                 output.loc[query_mask, f"HIST_{name}_LOG_COUNT"] = 0.0
+                if include_recent:
+                    output.loc[query_mask, f"HIST_{name}_RECENT_LOG_COUNT"] = 0.0
             continue
 
         prior_target = target.loc[prior_mask]
@@ -150,7 +198,19 @@ def add_past_rent_features(
 
         prior = reference_keys.loc[prior_mask].copy()
         prior["_TARGET"] = prior_target.to_numpy()
-        for name, keys in HISTORY_GROUPS.items():
+        if include_market_adjusted:
+            reference_month_means = target.groupby(reference_dates).transform("mean")
+            prior["_PREMIUM"] = (
+                target.loc[prior_mask].to_numpy()
+                - reference_month_means.loc[prior_mask].to_numpy()
+            )
+        if include_recent:
+            recent_start = month - pd.DateOffset(months=recent_months)
+            recent_mask = prior_mask & reference_dates.ge(recent_start).to_numpy()
+            recent = reference_keys.loc[recent_mask].copy()
+            recent["_TARGET"] = target.loc[recent_mask].to_numpy()
+            recent_global = float(target.loc[recent_mask].mean())
+        for name, keys in groups.items():
             stats = prior.groupby(keys, dropna=False)["_TARGET"].agg(["sum", "count"])
             smoothed = (stats["sum"] + smoothing * global_mean) / (
                 stats["count"] + smoothing
@@ -165,6 +225,34 @@ def add_past_rent_features(
             ).to_numpy()
             counts = stats["count"].reindex(lookup_key).fillna(0).to_numpy(float)
             output.loc[query_mask, f"HIST_{name}_LOG_COUNT"] = np.log1p(counts)
+            if include_recent:
+                recent_stats = recent.groupby(keys, dropna=False)["_TARGET"].agg(
+                    ["sum", "count", "median"]
+                )
+                recent_smoothed = (
+                    recent_stats["sum"] + smoothing * recent_global
+                ) / (recent_stats["count"] + smoothing)
+                output.loc[query_mask, f"HIST_{name}_RECENT_MEAN"] = (
+                    recent_smoothed.reindex(lookup_key).to_numpy()
+                )
+                output.loc[query_mask, f"HIST_{name}_RECENT_MEDIAN"] = (
+                    recent_stats["median"].reindex(lookup_key).to_numpy()
+                )
+                recent_counts = (
+                    recent_stats["count"].reindex(lookup_key).fillna(0).to_numpy(float)
+                )
+                output.loc[query_mask, f"HIST_{name}_RECENT_LOG_COUNT"] = np.log1p(
+                    recent_counts
+                )
+            if include_market_adjusted:
+                premium_stats = prior.groupby(keys, dropna=False)["_PREMIUM"].agg(
+                    ["sum", "count"]
+                )
+                premium = premium_stats["sum"] / (premium_stats["count"] + smoothing)
+                output.loc[query_mask, f"HIST_{name}_MARKET_ADJUSTED"] = (
+                    output.loc[query_mask, "HIST_GLOBAL_TREND"].to_numpy()
+                    + premium.reindex(lookup_key).to_numpy()
+                )
 
     return pd.concat([query.copy(), output], axis=1)
 

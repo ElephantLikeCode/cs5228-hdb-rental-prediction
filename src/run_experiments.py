@@ -23,6 +23,7 @@ from features import (
     add_spatial_features,
     build_block_lookup,
     make_core_features,
+    normalize_text,
     prepare_for_catboost,
 )
 from validation import regression_metrics, rolling_time_folds, subgroup_metrics
@@ -120,6 +121,7 @@ def fit_predict_catboost(
     learning_rate: float = 0.04,
     depth: int = 8,
     l2_leaf_reg: float = 6.0,
+    task_type: str = "CPU",
 ) -> tuple[np.ndarray, int]:
     train = prepare_for_catboost(train)
     validation = prepare_for_catboost(validation)
@@ -133,6 +135,8 @@ def fit_predict_catboost(
         l2_leaf_reg=l2_leaf_reg,
         random_seed=seed,
         thread_count=-1,
+        task_type=task_type,
+        devices="0" if task_type == "GPU" else None,
         allow_writing_files=False,
         verbose=False,
     )
@@ -189,6 +193,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history-iterations", type=int, default=1600)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--ensemble-seeds", type=int, nargs="+", default=[42, 2026])
+    parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
     parser.add_argument("--skip-classical", action="store_true")
     parser.add_argument(
         "--refresh-selected",
@@ -229,6 +234,7 @@ def run_long_horizon(
             fold_y_valid,
             args.iterations,
             args.seed,
+            task_type=args.task_type,
         )
         record(
             rows,
@@ -246,10 +252,18 @@ def run_long_horizon(
         fold_train_raw = raw_features.loc[fold.train_mask].reset_index(drop=True)
         fold_valid_raw = raw_features.loc[fold.validation_mask].reset_index(drop=True)
         history_train = add_past_rent_features(
-            fold_train_raw, fold_y_train, fold_train_raw
+            fold_train_raw,
+            fold_y_train,
+            fold_train_raw,
+            detailed=True,
+            market_features=False,
         )
         history_valid = add_past_rent_features(
-            fold_train_raw, fold_y_train, fold_valid_raw
+            fold_train_raw,
+            fold_y_train,
+            fold_valid_raw,
+            detailed=True,
+            market_features=False,
         )
         history_columns = [
             column for column in history_train if column.startswith("HIST_")
@@ -269,6 +283,7 @@ def run_long_horizon(
                 fold_y_valid,
                 args.history_iterations,
                 seed,
+                task_type=args.task_type,
             )
             elapsed = time.perf_counter() - started
             total_elapsed += elapsed
@@ -277,7 +292,7 @@ def run_long_horizon(
                 record(
                     rows,
                     "catboost",
-                    "all_spatial_history",
+                    "all_spatial_detailed_history",
                     "long_horizon_12m",
                     fold,
                     fold_y_valid,
@@ -291,7 +306,7 @@ def run_long_horizon(
         record(
             rows,
             "catboost_seed_ensemble",
-            "all_spatial_history",
+            "all_spatial_detailed_history",
             "long_horizon_12m",
             fold,
             fold_y_valid,
@@ -343,7 +358,9 @@ def main() -> None:
         if not existing_path.exists():
             raise FileNotFoundError("--refresh-selected requires existing experiment results")
         existing = pd.read_csv(existing_path)
-        existing = existing.loc[existing["feature_set"] != "all_spatial_history"]
+        existing = existing.loc[
+            ~existing["feature_set"].astype(str).str.contains("history")
+        ]
         rows = existing.to_dict(orient="records")
     else:
         rows: list[dict[str, object]] = []
@@ -410,6 +427,7 @@ def main() -> None:
                 fold_y_valid,
                 args.iterations,
                 args.seed,
+                task_type=args.task_type,
             )
             protocol = (
                 "latest_spatial_ablation"
@@ -432,10 +450,18 @@ def main() -> None:
         fold_train_raw = raw_features.loc[fold.train_mask].reset_index(drop=True)
         fold_valid_raw = raw_features.loc[fold.validation_mask].reset_index(drop=True)
         history_train = add_past_rent_features(
-            fold_train_raw, fold_y_train, fold_train_raw
+            fold_train_raw,
+            fold_y_train,
+            fold_train_raw,
+            detailed=True,
+            market_features=False,
         )
         history_valid = add_past_rent_features(
-            fold_train_raw, fold_y_train, fold_valid_raw
+            fold_train_raw,
+            fold_y_train,
+            fold_valid_raw,
+            detailed=True,
+            market_features=False,
         )
         history_columns = [
             column for column in history_train if column.startswith("HIST_")
@@ -456,6 +482,7 @@ def main() -> None:
                 fold_y_valid,
                 args.history_iterations,
                 seed,
+                task_type=args.task_type,
             )
             elapsed = time.perf_counter() - started
             total_elapsed += elapsed
@@ -464,7 +491,7 @@ def main() -> None:
                 record(
                     rows,
                     "catboost",
-                    "all_spatial_history",
+                    "all_spatial_detailed_history",
                     "rolling_history_single",
                     fold,
                     fold_y_valid,
@@ -478,7 +505,7 @@ def main() -> None:
         record(
             rows,
             "catboost_seed_ensemble",
-            "all_spatial_history",
+            "all_spatial_detailed_history",
             "rolling_selected_pipeline",
             fold,
             fold_y_valid,
@@ -525,14 +552,22 @@ def main() -> None:
             labels=["<=2500", "2501-3000", "3001-3500", "3501-4000", ">4000"],
         ).astype(str),
         ADDRESS_STATUS=np.where(
-            validation_raw["ADDRESS"].isin(
-                raw_features.loc[latest.train_mask, "ADDRESS"]
+            (
+                normalize_text(validation_raw["BLOCK"]).fillna("missing")
+                + " "
+                + normalize_text(validation_raw["STREET"]).fillna("missing")
+            ).isin(
+                normalize_text(raw_features.loc[latest.train_mask, "BLOCK"])
+                .fillna("missing")
+                + " "
+                + normalize_text(raw_features.loc[latest.train_mask, "STREET"])
+                .fillna("missing")
             ),
             "seen",
             "unseen",
         ),
     )
-    density = history_valid["HIST_ADDRESS_COUNT"].to_numpy()
+    density = np.expm1(history_valid["HIST_ADDRESS_LOG_COUNT"].to_numpy())
     diagnostics["ADDRESS_HISTORY_DENSITY"] = pd.cut(
         density,
         bins=[-np.inf, 0, 5, 20, np.inf],
@@ -562,13 +597,26 @@ def main() -> None:
         "iterations_limit": args.iterations,
         "selected_pipeline": {
             "model": "catboost_seed_ensemble",
-            "feature_set": "all_spatial_history",
+            "feature_set": "all_spatial_detailed_history",
+            "history_groups": [
+                "address",
+                "address_flat_type",
+                "address_flat_type_area",
+                "street_flat_type",
+                "town_flat_type",
+                "town_flat_type_model",
+                "town",
+                "flat_type",
+                "flat_model",
+            ],
+            "recent_or_market_adjusted_features": False,
             "seeds": args.ensemble_seeds,
             "weights": [1.0 / len(args.ensemble_seeds)] * len(args.ensemble_seeds),
             "iterations_limit": args.history_iterations,
             "learning_rate": 0.04,
             "depth": 8,
             "l2_leaf_reg": 6.0,
+            "task_type": args.task_type,
         },
         "seed": args.seed,
         "leakage_controls": [

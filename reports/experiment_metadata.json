@@ -28,7 +28,19 @@
   "iterations_limit": 1200,
   "selected_pipeline": {
     "model": "catboost_seed_ensemble",
-    "feature_set": "all_spatial_history",
+    "feature_set": "all_spatial_detailed_history",
+    "history_groups": [
+      "address",
+      "address_flat_type",
+      "address_flat_type_area",
+      "street_flat_type",
+      "town_flat_type",
+      "town_flat_type_model",
+      "town",
+      "flat_type",
+      "flat_model"
+    ],
+    "recent_or_market_adjusted_features": false,
     "seeds": [
       42,
       2026
@@ -40,7 +52,8 @@
     "iterations_limit": 1600,
     "learning_rate": 0.04,
     "depth": 8,
-    "l2_leaf_reg": 6.0
+    "l2_leaf_reg": 6.0,
+    "task_type": "GPU"
   },
   "seed": 42,
   "leakage_controls": [

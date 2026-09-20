@@ -113,7 +113,9 @@ facility-count features are included. Past-only rent statistics were then added
 for address, town-flat-type, town, flat type, and flat model. The selected
 pipeline reduced latest-window RMSE from 452.62 to 450.04 and three-fold mean
 RMSE from 457.81 to 456.44. A two-seed ensemble then reduced these to 449.20
-and 455.70 respectively without changing the feature set.
+and 455.70. Canonical category cleaning and finer past-only comparables by
+address/flat type/area, street/flat type, and town/flat type/model subsequently
+reduced them to 448.06 and 454.31.
 
 Feature groups, in priority order:
 
@@ -121,7 +123,7 @@ Feature groups, in priority order:
 2. Flat: normalized flat type/model, floor area, lease age.
 3. Block: coordinates, completion year, maximum floor, subzone, planning area, region.
 4. Spatial: distance to nearest open MRT, mall, primary school, CBD, and counts within selected radii.
-5. Historical group statistics: past-only rent summaries for address, town, town-flat-type, flat type, and flat model.
+5. Historical group statistics: past-only rent summaries for address, address-flat-type-area, street-flat-type, town-flat-type-model, town, flat type, and flat model.
 
 Historical rent summaries are implemented with strict monthly cutoffs: training
 rows cannot use their own month, while validation and test rows can use only
@@ -136,6 +138,9 @@ window from 450.73 at 1,200 trees to 450.04 at 1,600 trees. Learning-rate and
 regularization testing at 2,200 trees did not improve the retained configuration.
 Equal-weight averaging of seeds 42 and 2026 subsequently improved all three
 short validation folds and both 12-month robustness folds, so it is retained.
+The selected implementation now uses GPU CatBoost for faster iteration. XGBoost
+native categorical training and CatBoost/XGBoost blends were tested and rejected;
+the XGBoost result was materially worse and residuals were highly correlated.
 
 Candidate models:
 
@@ -254,8 +259,11 @@ Completed checkpoint: official Kaggle audit and data verification, data-contract
 tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
 ablations, past-only rent statistics, segmented errors, and a validated submission generator.
 
-1. Have every member reproduce `check_setup.py`, eight tests, and the current experiment results.
+1. Have every member reproduce `check_setup.py`, ten tests, and the current experiment results.
 2. Review the first public score (438.94488) and long-horizon results as a team.
-3. Investigate the strong regression-to-the-mean pattern in low/high rent bands.
-4. Test COE and stock features through isolated chronological ablations.
-5. Freeze the strongest stable pipeline before preparing the final report.
+3. Submit the detailed-comparable candidate and record its public score.
+4. Investigate the strong regression-to-the-mean pattern in low/high rent bands.
+5. Revisit market trend only with bounded, horizon-aware extrapolation; the
+   unconstrained candidate was rejected despite a strong latest-window score.
+6. Test COE and stock features through isolated chronological ablations.
+7. Freeze the strongest stable pipeline before preparing the final report.

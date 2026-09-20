@@ -52,10 +52,10 @@ def current_results_text() -> str:
     rolling["pipeline"] = rolling["feature_set"]
     rolling.loc[
         rolling["protocol"] == "rolling_history_single", "pipeline"
-    ] = "all_spatial_history_seed42"
+    ] = "detailed_comparables_seed42"
     rolling.loc[
         rolling["protocol"] == "rolling_selected_pipeline", "pipeline"
-    ] = "all_spatial_history_2seed_ensemble"
+    ] = "detailed_comparables_2seed_ensemble"
     rolling_summary = (
         rolling.groupby("pipeline", as_index=False)
         .agg(
@@ -70,15 +70,19 @@ def current_results_text() -> str:
     groups = pd.read_csv(REPORTS / "error_analysis.csv")
     rent_bands = groups.loc[groups["group_column"] == "RENT_BAND"]
     address_status = groups.loc[groups["group_column"] == "ADDRESS_STATUS"]
+    long_horizon = pd.read_csv(REPORTS / "long_horizon_results.csv")
+    long_selected = long_horizon.loc[
+        long_horizon["feature_set"].str.contains("history")
+    ]
     best = latest.iloc[0]
     return f"""{START}
-## Current validated pipeline (18 September 2026)
+## Current validated pipeline (21 September 2026)
 
 Three expanding chronological folds are used, with every validation month
 strictly later than its training months. Linear Regression, Ridge, Decision
 Tree, Random Forest, HistGradientBoosting, and CatBoost share a common latest
-comparison window. Historical rent statistics use only strictly earlier months;
-spatial features never use the target.
+comparison window. Historical comparable-rent statistics use only strictly
+earlier months; spatial features never use the target.
 
 Best latest-window candidate: **{best['model']} with {best['feature_set']}**,
 RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
@@ -100,21 +104,30 @@ RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
 
 {markdown_table(address_status, ['group_value', 'rows', 'rmse', 'mae', 'bias'])}
 
+### Twelve-month robustness
+
+{markdown_table(long_selected, ['model', 'feature_set', 'fold', 'rmse', 'mae', 'bias'])}
+
 ### Findings
 
-- Past-only address, town/flat-type, town, flat-type, and flat-model rent
-  statistics improve the selected pipeline without using same-month targets.
-- Equal-weight averaging of seeds 42 and 2026 improves the retained single
-  CatBoost on all three short folds and both 12-month robustness folds.
-- The selected ensemble reaches a three-fold mean RMSE of 455.70 versus 456.44
-  for the seed-42 history model; the gain is small but consistent.
+- Category strings are canonicalized before modeling, including `3 room` versus
+  `3-room`, which were year-dependent aliases in the raw data.
+- Past-only comparables now separate address by flat type and floor area, and
+  add street/flat-type and town/flat-type/model groups. They improve every
+  three-month, 12-month, and 16-month window tested.
+- The selected GPU ensemble reaches latest-window RMSE 448.06 and three-fold
+  mean 454.31, versus 449.20 and 455.70 for the previous CPU ensemble.
+- Unconstrained recent/market-trend features reached 445.49 on the latest
+  window but were rejected because they degraded some long-horizon windows.
+- XGBoost reached 470.13 and worsened every tested blend; CatBoost remains the
+  retained model because of validation evidence, not by assumption.
 - Error is concentrated at the lowest and highest rent bands. The unseen-address
   slice contains only 23 rows, so its estimate is informative but uncertain.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
 - The current Kaggle score 438.94488 belongs to the earlier seed-42 submission;
-  the new ensemble submission has not yet been uploaded.
+  the new detailed-comparable ensemble has not yet been uploaded.
 <!-- CURRENT_RESULTS_END -->"""
 
 

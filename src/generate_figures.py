@@ -29,7 +29,7 @@ def main() -> None:
         (results["fold"] == "2025-01_to_2025-03")
         & (
             (results["model"] != "catboost")
-            | (results["feature_set"] == "all_spatial_history")
+            | (results["feature_set"].str.contains("history"))
         )
     ].copy()
     latest["label"] = latest["model"].str.replace("_", " ").str.title()

@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import pytest
 
 from src.features import (
     add_past_rent_features,
@@ -28,6 +30,27 @@ def test_core_and_spatial_features_have_full_coverage() -> None:
     assert expected.issubset(spatial.columns)
     assert spatial[list(expected)].notna().all().all()
     assert len(spatial) == len(train)
+
+
+def test_core_features_canonicalize_equivalent_flat_types() -> None:
+    frame = pd.DataFrame(
+        {
+            "RENT_APPROVAL_DATE": ["2021-01", "2022-01"],
+            "TOWN": ["ANG MO KIO", "ang mo kio"],
+            "BLOCK": ["1", "1"],
+            "STREET": ["TEST ROAD", "test road"],
+            "FLAT_TYPE": ["3 room", "3-room"],
+            "FLAT_MODEL": ["Model A", "model-a"],
+            "FLOOR_AREA_SQM": [70, 70],
+            "LEASE_COMMENCE_DATE": [1980, 1980],
+            "FURNISHED": ["yes", "yes"],
+            "FEE": [0, 0],
+        }
+    )
+    features = make_core_features(frame)
+    assert features["FLAT_TYPE"].nunique() == 1
+    assert features["FLAT_MODEL"].nunique() == 1
+    assert features["TOWN"].nunique() == 1
 
 
 def test_spatial_feature_groups_are_strictly_additive() -> None:
@@ -59,5 +82,29 @@ def test_past_rent_features_exclude_same_and_future_months() -> None:
     assert pd.isna(features.loc[0, "HIST_GLOBAL_MEAN"])
     assert features.loc[2, "HIST_GLOBAL_MEAN"] == 2000.0
     assert features.loc[2, "HIST_ADDRESS_MEAN"] == 1000.0
+    assert features.loc[2, "HIST_ADDRESS_LOG_COUNT"] == pytest.approx(
+        np.log1p(1)
+    )
     assert features.loc[3, "HIST_GLOBAL_MEAN"] == 3000.0
     assert features.loc[3, "HIST_ADDRESS_MEAN"] == 3000.0
+
+
+def test_detailed_history_separates_flat_types_within_address() -> None:
+    frame = pd.DataFrame(
+        {
+            "RENT_APPROVAL_DATE": ["2024-01", "2024-01", "2024-02"],
+            "TOWN": ["a", "a", "a"],
+            "BLOCK": ["1", "1", "1"],
+            "STREET": ["road", "road", "road"],
+            "FLAT_TYPE": ["3 room", "5-room", "3-room"],
+            "FLAT_MODEL": ["model a"] * 3,
+            "FLOOR_AREA_SQM": [70, 110, 70],
+        }
+    )
+    target = pd.Series([2000.0, 4000.0, 2500.0])
+    features = add_past_rent_features(
+        frame, target, frame, smoothing=0.0, detailed=True
+    )
+    assert features.loc[2, "HIST_ADDRESS_MEAN"] == 3000.0
+    assert features.loc[2, "HIST_ADDRESS_FLAT_MEAN"] == 2000.0
+    assert features.loc[2, "HIST_ADDRESS_FLAT_AREA_MEAN"] == 2000.0

@@ -1,6 +1,6 @@
 {
   "model": "CatBoostRegressor equal-weight seed ensemble",
-  "feature_set": "all_spatial_history",
+  "feature_set": "all_spatial_detailed_history",
   "history_features": [
     "HIST_GLOBAL_MEAN",
     "HIST_GLOBAL_TREND",
@@ -13,12 +13,23 @@
     "HIST_FLAT_TYPE_MEAN",
     "HIST_FLAT_TYPE_LOG_COUNT",
     "HIST_FLAT_MODEL_MEAN",
-    "HIST_FLAT_MODEL_LOG_COUNT"
+    "HIST_FLAT_MODEL_LOG_COUNT",
+    "HIST_ADDRESS_FLAT_MEAN",
+    "HIST_ADDRESS_FLAT_LOG_COUNT",
+    "HIST_ADDRESS_FLAT_AREA_MEAN",
+    "HIST_ADDRESS_FLAT_AREA_LOG_COUNT",
+    "HIST_STREET_FLAT_MEAN",
+    "HIST_STREET_FLAT_LOG_COUNT",
+    "HIST_TOWN_FLAT_MODEL_MEAN",
+    "HIST_TOWN_FLAT_MODEL_LOG_COUNT"
   ],
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,
   "l2_leaf_reg": 6.0,
+  "task_type": "GPU",
+  "category_normalization": true,
+  "recent_or_market_adjusted_features": false,
   "seeds": [
     42,
     2026
@@ -29,9 +40,9 @@
   ],
   "train_rows": 150000,
   "test_rows": 50000,
-  "prediction_min": 1701.833957593995,
-  "prediction_max": 5370.13481458433,
-  "elapsed_seconds": 941.97,
+  "prediction_min": 1472.4148491796598,
+  "prediction_max": 5402.2095451613595,
+  "elapsed_seconds": 155.44,
   "submission": "submissions\\final_submission.csv",
   "model_paths": [
     "artifacts\\final_model_seed_42.cbm",

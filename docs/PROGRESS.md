@@ -17,24 +17,24 @@ is mostly later than training. Subsequent model selection uses chronological
 rolling validation.
 
 <!-- CURRENT_RESULTS_START -->
-## Current validated pipeline (18 September 2026)
+## Current validated pipeline (21 September 2026)
 
 Three expanding chronological folds are used, with every validation month
 strictly later than its training months. Linear Regression, Ridge, Decision
 Tree, Random Forest, HistGradientBoosting, and CatBoost share a common latest
-comparison window. Historical rent statistics use only strictly earlier months;
-spatial features never use the target.
+comparison window. Historical comparable-rent statistics use only strictly
+earlier months; spatial features never use the target.
 
-Best latest-window candidate: **catboost_seed_ensemble with all_spatial_history**,
-RMSE **449.20 SGD**, MAE **319.29 SGD**, signed bias
-**18.57 SGD**.
+Best latest-window candidate: **catboost_seed_ensemble with all_spatial_detailed_history**,
+RMSE **448.06 SGD**, MAE **318.82 SGD**, signed bias
+**21.15 SGD**.
 
 ### Latest-window comparison (January-March 2025)
 
 | model | feature_set | rmse | mae | r2 | bias | runtime_seconds |
 | --- | --- | --- | --- | --- | --- | --- |
-| catboost_seed_ensemble | all_spatial_history | 449.20 | 319.29 | 0.52 | 18.57 | 957.19 |
-| catboost | all_spatial_history | 450.04 | 320.03 | 0.52 | 18.69 | 441.37 |
+| catboost_seed_ensemble | all_spatial_detailed_history | 448.06 | 318.82 | 0.52 | 21.15 | 97.02 |
+| catboost | all_spatial_detailed_history | 448.16 | 318.93 | 0.52 | 21.74 | 55.83 |
 | catboost | all_spatial | 452.62 | 334.22 | 0.51 | -44.98 | 182.97 |
 | catboost | block_mrt | 452.89 | 334.84 | 0.51 | -48.09 | 174.78 |
 | catboost | block_school | 453.71 | 335.49 | 0.51 | -48.81 | 192.83 |
@@ -53,8 +53,8 @@ RMSE **449.20 SGD**, MAE **319.29 SGD**, signed bias
 
 | pipeline | runs | mean_rmse | std_rmse | mean_mae | mean_bias |
 | --- | --- | --- | --- | --- | --- |
-| all_spatial_history_2seed_ensemble | 3 | 455.70 | 15.50 | 328.06 | 0.15 |
-| all_spatial_history_seed42 | 3 | 456.44 | 15.37 | 328.28 | 3.54 |
+| detailed_comparables_2seed_ensemble | 3 | 454.31 | 15.54 | 326.55 | 7.00 |
+| detailed_comparables_seed42 | 3 | 454.67 | 15.92 | 326.75 | 8.83 |
 | all_spatial | 2 | 460.41 | 22.35 | 337.36 | -32.36 |
 | core | 2 | 462.89 | 20.25 | 340.99 | -37.13 |
 
@@ -62,37 +62,51 @@ RMSE **449.20 SGD**, MAE **319.29 SGD**, signed bias
 
 | group_value | rows | rmse | mae | bias |
 | --- | --- | --- | --- | --- |
-| <=2500 | 1458 | 822.01 | 656.98 | 629.55 |
-| 2501-3000 | 2525 | 299.26 | 226.18 | 70.29 |
-| 3001-3500 | 2823 | 263.01 | 206.16 | -96.72 |
-| 3501-4000 | 1541 | 356.64 | 295.86 | -246.27 |
-| >4000 | 577 | 585.91 | 489.55 | -480.25 |
+| 2501-3000 | 2525 | 308.93 | 234.08 | 65.37 |
+| 3001-3500 | 2823 | 269.10 | 210.20 | -94.35 |
+| 3501-4000 | 1541 | 350.42 | 289.46 | -228.16 |
+| <=2500 | 1458 | 817.88 | 649.67 | 618.13 |
+| >4000 | 577 | 561.01 | 463.44 | -449.86 |
 
 ### Seen versus unseen addresses
 
 | group_value | rows | rmse | mae | bias |
 | --- | --- | --- | --- | --- |
-| seen | 8901 | 448.75 | 318.87 | 19.23 |
-| unseen | 23 | 596.64 | 482.98 | -235.68 |
+| seen | 8901 | 447.55 | 318.31 | 21.84 |
+| unseen | 23 | 613.71 | 515.17 | -244.96 |
+
+### Twelve-month robustness
+
+| model | feature_set | fold | rmse | mae | bias |
+| --- | --- | --- | --- | --- | --- |
+| catboost | all_spatial_detailed_history | 2023-04_to_2024-03 | 578.71 | 459.44 | -31.60 |
+| catboost_seed_ensemble | all_spatial_detailed_history | 2023-04_to_2024-03 | 578.30 | 459.01 | -30.99 |
+| catboost | all_spatial_detailed_history | 2024-04_to_2025-03 | 470.85 | 343.01 | 2.04 |
+| catboost_seed_ensemble | all_spatial_detailed_history | 2024-04_to_2025-03 | 470.41 | 342.84 | 0.06 |
 
 ### Findings
 
-- Past-only address, town/flat-type, town, flat-type, and flat-model rent
-  statistics improve the selected pipeline without using same-month targets.
-- Equal-weight averaging of seeds 42 and 2026 improves the retained single
-  CatBoost on all three short folds and both 12-month robustness folds.
-- The selected ensemble reaches a three-fold mean RMSE of 455.70 versus 456.44
-  for the seed-42 history model; the gain is small but consistent.
+- Category strings are canonicalized before modeling, including `3 room` versus
+  `3-room`, which were year-dependent aliases in the raw data.
+- Past-only comparables now separate address by flat type and floor area, and
+  add street/flat-type and town/flat-type/model groups. They improve every
+  three-month, 12-month, and 16-month window tested.
+- The selected GPU ensemble reaches latest-window RMSE 448.06 and three-fold
+  mean 454.31, versus 449.20 and 455.70 for the previous CPU ensemble.
+- Unconstrained recent/market-trend features reached 445.49 on the latest
+  window but were rejected because they degraded some long-horizon windows.
+- XGBoost reached 470.13 and worsened every tested blend; CatBoost remains the
+  retained model because of validation evidence, not by assumption.
 - Error is concentrated at the lowest and highest rent bands. The unseen-address
   slice contains only 23 rows, so its estimate is informative but uncertain.
 - The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
   confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
   permits additional data collection.
 - The current Kaggle score 438.94488 belongs to the earlier seed-42 submission;
-  the new ensemble submission has not yet been uploaded.
+  the new detailed-comparable ensemble has not yet been uploaded.
 <!-- CURRENT_RESULTS_END -->
 
-## Robustness and first Kaggle result (18 September 2026)
+## Prior robustness and first Kaggle result (18 September 2026)
 
 The selected spatial/history pipeline was compared with the spatial-only model
 on two consecutive 12-month validation windows. It improved RMSE from 595.21 to
@@ -112,7 +126,8 @@ lagged COE/stock indicators (452.68 RMSE), recent-12-month group statistics
 
 ## Current next steps
 
-1. Add errors by rent band, seen/unseen address, and sample density.
-2. Investigate the remaining long-horizon underprediction in the earlier window.
-3. Test residual blending only if a genuinely complementary model is identified.
-4. Review robustness and leaderboard evidence with the team before another submission.
+1. Have each member reproduce the ten tests and the selected GPU result.
+2. Submit the detailed-comparable candidate and record its public score.
+3. Revisit market trend only with bounded, horizon-aware extrapolation.
+4. Test optional economic features through isolated chronological ablations.
+5. Freeze the strongest stable pipeline before preparing the final report.

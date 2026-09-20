@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=1600)
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 2026])
+    parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
     parser.add_argument(
         "--submission",
         type=Path,
@@ -50,8 +51,12 @@ def main() -> None:
     raw_train = train.drop(columns=[TARGET])
     X_train = add_spatial_features(make_core_features(raw_train), lookup, "all_spatial")
     X_test = add_spatial_features(make_core_features(test), lookup, "all_spatial")
-    history_train = add_past_rent_features(raw_train, y, raw_train)
-    history_test = add_past_rent_features(raw_train, y, test)
+    history_train = add_past_rent_features(
+        raw_train, y, raw_train, detailed=True, market_features=False
+    )
+    history_test = add_past_rent_features(
+        raw_train, y, test, detailed=True, market_features=False
+    )
     history_columns = [
         column for column in history_train if column.startswith("HIST_")
     ]
@@ -71,6 +76,8 @@ def main() -> None:
             l2_leaf_reg=6.0,
             random_seed=seed,
             thread_count=-1,
+            task_type=args.task_type,
+            devices="0" if args.task_type == "GPU" else None,
             allow_writing_files=False,
             verbose=200,
         )
@@ -106,12 +113,15 @@ def main() -> None:
 
     metadata = {
         "model": "CatBoostRegressor equal-weight seed ensemble",
-        "feature_set": "all_spatial_history",
+        "feature_set": "all_spatial_detailed_history",
         "history_features": history_columns,
         "iterations": args.iterations,
         "learning_rate": 0.04,
         "depth": 8,
         "l2_leaf_reg": 6.0,
+        "task_type": args.task_type,
+        "category_normalization": True,
+        "recent_or_market_adjusted_features": False,
         "seeds": args.seeds,
         "weights": [1.0 / len(args.seeds)] * len(args.seeds),
         "train_rows": len(train),
