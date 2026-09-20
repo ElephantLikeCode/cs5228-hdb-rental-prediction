@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from catboost import CatBoostRegressor
+from modeling import (DEFAULT_CONFIG, CANDIDATES, load_config, build_features,
+                      fit_model, predict_model)
 
 from features import (
-    add_past_rent_features,
-    add_spatial_features,
     build_block_lookup,
-    make_core_features,
-    prepare_for_catboost,
+    suspected_low_rent_mask,
 )
 
 
@@ -27,9 +26,24 @@ TARGET = "MONTHLY_RENT"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iterations", type=int, default=1600)
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 2026])
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--candidate", choices=list(CANDIDATES))
+    parser.add_argument("--iterations", type=int)
+    parser.add_argument("--seeds", type=int, nargs="+")
     parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
+    parser.add_argument(
+        "--outlier-policy",
+        choices=["keep", "remove"],
+        default=None,
+        help="Keep all labels, or remove only reproducibly flagged low-rent labels.",
+    )
+    parser.add_argument("--outlier-ratio", type=float, default=0.5)
+    parser.add_argument("--model-prefix", default="final_model")
+    parser.add_argument(
+        "--metadata",
+        type=Path,
+        default=ROOT / "reports" / "final_model_metadata.json",
+    )
     parser.add_argument(
         "--submission",
         type=Path,
@@ -40,6 +54,25 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    config = dict(CANDIDATES[args.candidate]) if args.candidate else load_config(args.config)
+    args.seeds = args.seeds if args.seeds is not None else config["seeds"]
+    args.outlier_policy = args.outlier_policy or config["outlier_policy"]
+    config["seeds"] = args.seeds
+    config["outlier_policy"] = args.outlier_policy
+    if args.iterations is not None:
+        config["iterations"] = args.iterations
+    args.iterations = config["iterations"]
+    target_modes = config.get("target_modes", [config["residual_target"]])
+    if not target_modes or len(set(target_modes)) != len(target_modes):
+        raise ValueError("target_modes must contain unique prediction modes")
+    if any(mode not in (False, True) for mode in target_modes):
+        raise ValueError("target_modes must be booleans")
+    if any(target_modes) and config["history"] != "hierarchical":
+        raise ValueError("Residual components require hierarchical features")
+    if not args.submission.is_absolute():
+        args.submission = (ROOT / args.submission).resolve()
+    if not args.metadata.is_absolute():
+        args.metadata = (ROOT / args.metadata).resolve()
     if not args.seeds or len(set(args.seeds)) != len(args.seeds):
         raise ValueError("--seeds must contain unique seed values")
     started = time.perf_counter()
@@ -47,45 +80,45 @@ def main() -> None:
     test = pd.read_csv(RAW / "test.csv")
     sample = pd.read_csv(RAW / "example-submission.csv")
     lookup = build_block_lookup(RAW / "auxiliary")
-    y = train[TARGET].astype(float)
+    raw_y = train[TARGET].astype(float)
     raw_train = train.drop(columns=[TARGET])
-    X_train = add_spatial_features(make_core_features(raw_train), lookup, "all_spatial")
-    X_test = add_spatial_features(make_core_features(test), lookup, "all_spatial")
-    history_train = add_past_rent_features(
-        raw_train, y, raw_train, detailed=True, market_features=False
+    suspected = suspected_low_rent_mask(
+        raw_train, raw_y, ratio_threshold=args.outlier_ratio
     )
-    history_test = add_past_rent_features(
-        raw_train, y, test, detailed=True, market_features=False
-    )
-    history_columns = [
-        column for column in history_train if column.startswith("HIST_")
-    ]
-    X_train[history_columns] = history_train[history_columns]
-    X_test[history_columns] = history_test[history_columns]
-    X_train = prepare_for_catboost(X_train)
-    X_test = prepare_for_catboost(X_test)
-    categorical = X_train.select_dtypes(include=["object"]).columns.tolist()
+    if args.outlier_policy == "remove":
+        model_raw_train = raw_train.loc[~suspected].reset_index(drop=True)
+        model_y = raw_y.loc[~suspected].reset_index(drop=True)
+    else:
+        model_raw_train = raw_train.reset_index(drop=True)
+        model_y = raw_y.reset_index(drop=True)
+    X_train = build_features(model_raw_train, model_y, model_raw_train, lookup, config["history"])
+    X_test = build_features(model_raw_train, model_y, test, lookup, config["history"])
+    history_columns = [c for c in X_train if c.startswith(("HIST_", "ADAPT_"))]
     predictions: list[np.ndarray] = []
     model_paths: list[Path] = []
+    components: list[dict] = []
     for seed in args.seeds:
-        model = CatBoostRegressor(
-            loss_function="RMSE",
-            iterations=args.iterations,
-            learning_rate=0.04,
-            depth=8,
-            l2_leaf_reg=6.0,
-            random_seed=seed,
-            thread_count=-1,
-            task_type=args.task_type,
-            devices="0" if args.task_type == "GPU" else None,
-            allow_writing_files=False,
-            verbose=200,
-        )
-        model.fit(X_train, y, cat_features=categorical)
-        predictions.append(model.predict(X_test))
-        model_path = ROOT / "artifacts" / f"final_model_seed_{seed}.cbm"
-        model.save_model(model_path)
-        model_paths.append(model_path)
+        for residual_mode in target_modes:
+            component_config = dict(config, residual_target=residual_mode)
+            component_started = time.perf_counter()
+            model = fit_model(X_train, model_y, component_config, seed, args.task_type, verbose=200)
+            predictions.append(predict_model(model, X_test, component_config))
+            suffix = "_residual" if residual_mode else ""
+            model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
+            model_path.parent.mkdir(parents=True, exist_ok=True)
+            model.save_model(model_path)
+            restored = model.__class__()
+            restored.load_model(model_path)
+            restored_prediction = predict_model(restored, X_test.iloc[:100], component_config)
+            if not np.allclose(restored_prediction, predictions[-1][:100], rtol=1e-12, atol=1e-9):
+                raise ValueError("Saved model does not reproduce rent-unit predictions")
+            del restored
+            model_paths.append(model_path)
+            components.append(dict(seed=seed, residual_target=residual_mode,
+                                   model_path=str(model_path.relative_to(ROOT)),
+                                   actual_trees=model.tree_count_,
+                                   elapsed_seconds=round(time.perf_counter() - component_started, 2),
+                                   sha256=hashlib.sha256(model_path.read_bytes()).hexdigest()))
     prediction = np.mean(predictions, axis=0)
     if sample.columns.tolist() != ["Id", "Predicted"]:
         raise ValueError("Unexpected sample-submission schema")
@@ -112,29 +145,41 @@ def main() -> None:
         raise ValueError("Reloaded predictions differ beyond CSV precision")
 
     metadata = {
-        "model": "CatBoostRegressor equal-weight seed ensemble",
-        "feature_set": "all_spatial_detailed_history",
+        "model": "CatBoostRegressor equal-weight component ensemble",
+        "feature_set": "all_spatial_" + config["history"],
+        "config": config,
+        "feature_count": X_train.shape[1],
+        "code_sha256": {name: hashlib.sha256((ROOT / "src" / name).read_bytes()).hexdigest()
+                        for name in ["features.py", "modeling.py", "train_final_model.py"]},
         "history_features": history_columns,
         "iterations": args.iterations,
-        "learning_rate": 0.04,
-        "depth": 8,
-        "l2_leaf_reg": 6.0,
+        "learning_rate": config["learning_rate"],
+        "depth": config["depth"],
+        "l2_leaf_reg": config["l2_leaf_reg"],
         "task_type": args.task_type,
+        "outlier_policy": args.outlier_policy,
+        "outlier_ratio": args.outlier_ratio,
+        "suspected_low_rent_rows": int(suspected.sum()),
+        "suspected_low_rent_fraction": float(suspected.mean()),
         "category_normalization": True,
-        "recent_or_market_adjusted_features": False,
+        "recent_or_market_adjusted_features": config["history"] != "legacy",
         "seeds": args.seeds,
-        "weights": [1.0 / len(args.seeds)] * len(args.seeds),
-        "train_rows": len(train),
+        "weights": [1.0 / len(predictions)] * len(predictions),
+        "components": components,
+        "raw_train_rows": len(train),
+        "train_rows": len(model_raw_train),
         "test_rows": len(test),
+        "raw_sha256": {name: hashlib.sha256((RAW / name).read_bytes()).hexdigest()
+                       for name in ["train.csv", "test.csv"]},
+        "submission_sha256": hashlib.sha256(args.submission.read_bytes()).hexdigest(),
         "prediction_min": float(prediction.min()),
         "prediction_max": float(prediction.max()),
         "elapsed_seconds": round(time.perf_counter() - started, 2),
         "submission": str(args.submission.relative_to(ROOT)),
         "model_paths": [str(path.relative_to(ROOT)) for path in model_paths],
     }
-    (ROOT / "reports" / "final_model_metadata.json").write_text(
-        json.dumps(metadata, indent=2), encoding="utf-8"
-    )
+    args.metadata.parent.mkdir(parents=True, exist_ok=True)
+    args.metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(json.dumps(metadata, indent=2))
 
 

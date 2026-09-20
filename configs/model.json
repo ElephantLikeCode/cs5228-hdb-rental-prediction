@@ -1,0 +1,12 @@
+{
+  "name": "hierarchical_market_blend",
+  "history": "hierarchical",
+  "residual_target": false,
+  "target_modes": [false, true],
+  "iterations": 1600,
+  "learning_rate": 0.04,
+  "depth": 8,
+  "l2_leaf_reg": 6.0,
+  "seeds": [42, 2026],
+  "outlier_policy": "keep"
+}

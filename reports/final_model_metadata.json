@@ -1,6 +1,30 @@
 {
-  "model": "CatBoostRegressor equal-weight seed ensemble",
-  "feature_set": "all_spatial_detailed_history",
+  "model": "CatBoostRegressor equal-weight component ensemble",
+  "feature_set": "all_spatial_hierarchical",
+  "config": {
+    "history": "hierarchical",
+    "residual_target": false,
+    "iterations": 1600,
+    "learning_rate": 0.04,
+    "depth": 8,
+    "l2_leaf_reg": 6.0,
+    "seeds": [
+      42,
+      2026
+    ],
+    "outlier_policy": "keep",
+    "name": "hierarchical_market_blend",
+    "target_modes": [
+      false,
+      true
+    ]
+  },
+  "feature_count": 74,
+  "code_sha256": {
+    "features.py": "b435948c0bb755a544b752e73d1c06e1487350590344a86611a2191cf6137895",
+    "modeling.py": "9881c18a0740f52c6e3dae2186178f98da5ef7203a0b7b9c854383ba970c500b",
+    "train_final_model.py": "4627f4b5736367fc178c0a2d490d365e60ad028d8e4ee2518ebb7d5a488d7f48"
+  },
   "history_features": [
     "HIST_GLOBAL_MEAN",
     "HIST_GLOBAL_TREND",
@@ -21,31 +45,97 @@
     "HIST_STREET_FLAT_MEAN",
     "HIST_STREET_FLAT_LOG_COUNT",
     "HIST_TOWN_FLAT_MODEL_MEAN",
-    "HIST_TOWN_FLAT_MODEL_LOG_COUNT"
+    "HIST_TOWN_FLAT_MODEL_LOG_COUNT",
+    "ADAPT_MARKET_LEVEL",
+    "ADAPT_HORIZON",
+    "ADAPT_TOWN_FLAT_LEVEL",
+    "ADAPT_TOWN_FLAT_PREMIUM",
+    "ADAPT_TOWN_FLAT_LOG_MASS",
+    "ADAPT_TOWN_FLAT_AGE",
+    "ADAPT_STREET_FLAT_LEVEL",
+    "ADAPT_STREET_FLAT_PREMIUM",
+    "ADAPT_STREET_FLAT_LOG_MASS",
+    "ADAPT_STREET_FLAT_AGE",
+    "ADAPT_ADDRESS_FLAT_LEVEL",
+    "ADAPT_ADDRESS_FLAT_PREMIUM",
+    "ADAPT_ADDRESS_FLAT_LOG_MASS",
+    "ADAPT_ADDRESS_FLAT_AGE",
+    "ADAPT_ADDRESS_FLAT_AREA_LEVEL",
+    "ADAPT_ADDRESS_FLAT_AREA_PREMIUM",
+    "ADAPT_ADDRESS_FLAT_AREA_LOG_MASS",
+    "ADAPT_ADDRESS_FLAT_AREA_AGE"
   ],
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,
   "l2_leaf_reg": 6.0,
   "task_type": "GPU",
+  "outlier_policy": "keep",
+  "outlier_ratio": 0.5,
+  "suspected_low_rent_rows": 954,
+  "suspected_low_rent_fraction": 0.00636,
   "category_normalization": true,
-  "recent_or_market_adjusted_features": false,
+  "recent_or_market_adjusted_features": true,
   "seeds": [
     42,
     2026
   ],
   "weights": [
-    0.5,
-    0.5
+    0.25,
+    0.25,
+    0.25,
+    0.25
   ],
+  "components": [
+    {
+      "seed": 42,
+      "residual_target": false,
+      "model_path": "artifacts\\final_model_seed_42.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 71.22,
+      "sha256": "d264ff89a4eb7c2d063a62c67047420b86e5eeecde7d87af17b2e6a949a67f43"
+    },
+    {
+      "seed": 42,
+      "residual_target": true,
+      "model_path": "artifacts\\final_model_residual_seed_42.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 74.86,
+      "sha256": "bf8ae665627afffd55c6d953b686b0758c06f1d05c4fc7766ce18e9f79235fdb"
+    },
+    {
+      "seed": 2026,
+      "residual_target": false,
+      "model_path": "artifacts\\final_model_seed_2026.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 75.96,
+      "sha256": "83039820bb7ee08e3314183c9e2167a8a6fb6566d536dd64e4dad33d819426a9"
+    },
+    {
+      "seed": 2026,
+      "residual_target": true,
+      "model_path": "artifacts\\final_model_residual_seed_2026.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 75.44,
+      "sha256": "2a65a71ce48d7e47b2e537c708a7862697b28d310b06f9317f43b5529d1a70aa"
+    }
+  ],
+  "raw_train_rows": 150000,
   "train_rows": 150000,
   "test_rows": 50000,
-  "prediction_min": 1472.4148491796598,
-  "prediction_max": 5402.2095451613595,
-  "elapsed_seconds": 155.44,
+  "raw_sha256": {
+    "train.csv": "6d7a417de72112361f8353659ba6fe44a442b07465b488aff1b03f7ec1ea3ba6",
+    "test.csv": "dfc407406d957bbf7c2f005e5d9852b1bfc6546cd4186f07e6824d8e03e64cfc"
+  },
+  "submission_sha256": "cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3",
+  "prediction_min": 1493.173498998384,
+  "prediction_max": 5428.014935717018,
+  "elapsed_seconds": 336.92,
   "submission": "submissions\\final_submission.csv",
   "model_paths": [
     "artifacts\\final_model_seed_42.cbm",
-    "artifacts\\final_model_seed_2026.cbm"
+    "artifacts\\final_model_residual_seed_42.cbm",
+    "artifacts\\final_model_seed_2026.cbm",
+    "artifacts\\final_model_residual_seed_2026.cbm"
   ]
 }

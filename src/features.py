@@ -84,6 +84,46 @@ def make_core_features(
     return result
 
 
+def suspected_low_rent_mask(
+    frame: pd.DataFrame,
+    target: pd.Series,
+    ratio_threshold: float = 0.5,
+) -> np.ndarray:
+    """Flag implausibly low labels without changing the source tables.
+
+    A row is flagged only when it represents a 3-room-or-larger flat (or an
+    executive flat) and its rent is below ``ratio_threshold`` times the median
+    for the same approval month, town, and canonical flat type.  The function
+    deliberately uses no future information outside the supplied frame; it is
+    intended for an explicit training-label sensitivity analysis, not for
+    altering the unlabeled competition test set.
+    """
+    if not 0.0 < ratio_threshold < 1.0:
+        raise ValueError("ratio_threshold must be between zero and one")
+    if len(frame) != len(target):
+        raise ValueError("Features and target have different lengths")
+
+    comparison = pd.DataFrame(
+        {
+            "month": frame[DATE_COLUMN].astype("string").reset_index(drop=True),
+            "town": normalize_text(frame["TOWN"]).reset_index(drop=True),
+            "flat_type": normalize_text(frame["FLAT_TYPE"]).reset_index(drop=True),
+            "target": pd.Series(target, dtype="float64").reset_index(drop=True),
+        }
+    )
+    group_median = comparison.groupby(
+        ["month", "town", "flat_type"], dropna=False
+    )["target"].transform("median")
+    room_count = comparison["flat_type"].str.extract(r"(\d+)", expand=False)
+    room_count = pd.to_numeric(room_count, errors="coerce")
+    eligible = room_count.ge(3) | comparison["flat_type"].str.contains(
+        "executive", na=False
+    )
+    return (
+        eligible & comparison["target"].lt(ratio_threshold * group_median)
+    ).to_numpy(dtype=bool)
+
+
 def _history_keys(frame: pd.DataFrame) -> pd.DataFrame:
     """Return normalized grouping keys used by past-only target statistics."""
     result = pd.DataFrame(index=frame.index)
@@ -255,6 +295,81 @@ def add_past_rent_features(
                 )
 
     return pd.concat([query.copy(), output], axis=1)
+
+
+def add_adaptive_rent_features(reference, target, query, half_life=12.0):
+    """Past-only decayed comparables with hierarchical fallbacks and damped trend.
+
+    Weights are anchored to the last available reference month, not the query
+    month: forecasts 16 months ahead do not lose all their comparables. Ratios
+    remove the historical flat-type market level before pooling local premiums.
+    No query-month label contributes to either its market index or premium.
+    """
+    if len(reference) != len(target) or half_life <= 0:
+        raise ValueError("Invalid reference target length or half life")
+    reference = reference.reset_index(drop=True)
+    query = query.reset_index(drop=True)
+    keys = _history_keys(reference)
+    qkeys = _history_keys(query)
+    dates = pd.to_datetime(reference[DATE_COLUMN])
+    qdates = pd.to_datetime(query[DATE_COLUMN])
+    keys["_MONTH"] = dates.dt.year * 12 + dates.dt.month
+    keys["_Y"] = np.asarray(target, dtype=float)
+    groups = [
+        ("TOWN_FLAT", ["_TOWN_KEY", "_FLAT_TYPE_KEY"], None, 30.0),
+        ("STREET_FLAT", ["_TOWN_KEY", "_STREET_KEY", "_FLAT_TYPE_KEY"], "TOWN_FLAT", 12.0),
+        ("ADDRESS_FLAT", ["_ADDRESS_KEY", "_FLAT_TYPE_KEY"], "STREET_FLAT", 8.0),
+        ("ADDRESS_FLAT_AREA", ["_ADDRESS_KEY", "_FLAT_TYPE_KEY", "_AREA_KEY"], "ADDRESS_FLAT", 5.0),
+    ]
+    out = pd.DataFrame(index=query.index, dtype=float)
+    out["ADAPT_MARKET_LEVEL"] = 2000.0  # Fixed cold-start prior, not fitted globally.
+    out["ADAPT_HORIZON"] = 0.0
+    for name, _, _, _ in groups:
+        out[f"ADAPT_{name}_LEVEL"] = 2000.0
+        out[f"ADAPT_{name}_PREMIUM"] = 1.0
+        out[f"ADAPT_{name}_LOG_MASS"] = 0.0
+        out[f"ADAPT_{name}_AGE"] = 60.0
+    for month in sorted(qdates.unique()):
+        mask = qdates.eq(month).to_numpy()
+        prior = keys.loc[dates.lt(month)].copy()
+        if prior.empty:
+            continue
+        query_month = month.year * 12 + month.month
+        anchor = int(prior["_MONTH"].max())
+        horizon = query_month - anchor
+        out.loc[mask, "ADAPT_HORIZON"] = horizon
+        monthly = prior.groupby(["_FLAT_TYPE_KEY", "_MONTH"])["_Y"].agg(["mean", "count"])
+        level = {}
+        for flat, table in monthly.groupby(level=0):
+            table = table.droplevel(0).tail(12)
+            last = table.tail(3)
+            anchor_level = float(np.average(last["mean"], weights=last["count"]))
+            slope = 0.0
+            if len(table) >= 6:
+                slope = float(np.polyfit(table.index.to_numpy(float), np.log(table["mean"]), 1)[0])
+            # Forecast saturation limits extrapolation; no validation-tuned coefficients.
+            slope = np.clip(slope, -0.01, 0.01)
+            damped_horizon = 6.0 * (1.0 - np.exp(-horizon / 6.0))
+            level[flat] = anchor_level * np.exp(slope * damped_horizon)
+        flat_level = qkeys.loc[mask, "_FLAT_TYPE_KEY"].map(level).fillna(prior["_Y"].mean()).to_numpy()
+        out.loc[mask, "ADAPT_MARKET_LEVEL"] = flat_level
+        denom = prior.groupby(["_FLAT_TYPE_KEY", "_MONTH"])["_Y"].transform("mean")
+        prior["_W"] = np.exp2((prior["_MONTH"] - anchor) / half_life)
+        prior["_WR"] = prior["_W"] * prior["_Y"] / denom
+        estimates = {}
+        for name, cols, parent, strength in groups:
+            stats = prior.groupby(cols).agg(mass=("_W", "sum"), total=("_WR", "sum"), last=("_MONTH", "max"))
+            matched = stats.reindex(pd.MultiIndex.from_frame(qkeys.loc[mask, cols]))
+            mass = matched["mass"].fillna(0).to_numpy()
+            total = matched["total"].fillna(0).to_numpy()
+            parent_ratio = estimates[parent] if parent else np.ones(mask.sum())
+            ratio = (total + strength * parent_ratio) / (mass + strength)
+            estimates[name] = ratio
+            out.loc[mask, f"ADAPT_{name}_PREMIUM"] = ratio
+            out.loc[mask, f"ADAPT_{name}_LEVEL"] = flat_level * ratio
+            out.loc[mask, f"ADAPT_{name}_LOG_MASS"] = np.log1p(mass)
+            out.loc[mask, f"ADAPT_{name}_AGE"] = query_month - matched["last"].fillna(query_month - 60).to_numpy()
+    return out
 
 
 def _haversine_matrix(

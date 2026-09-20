@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 from pathlib import Path
@@ -27,6 +28,7 @@ from features import (
     prepare_for_catboost,
 )
 from validation import regression_metrics, rolling_time_folds, subgroup_metrics
+from modeling import CANDIDATES, build_features, fit_model, predict_model
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -187,6 +189,15 @@ def record(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--compare-candidates", action="store_true",
+                        help="Fixed-budget temporal comparison; no scoring-label early stopping.")
+    parser.add_argument("--candidates", nargs="+", choices=list(CANDIDATES),
+                        default=["legacy", "recent", "hierarchical", "market_residual"])
+    parser.add_argument("--windows", nargs="+", default=["short_recent", "long_recent", "long_older"],
+                        choices=["short_recent", "short_middle", "long_recent", "long_older", "horizon16"])
+    parser.add_argument("--comparison-seeds", nargs="+", type=int, default=[42])
+    parser.add_argument("--trial-iterations", type=int, default=1600)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--validation-months", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=1200)
@@ -321,8 +332,97 @@ def run_long_horizon(
     print(results.to_string(index=False))
 
 
+def run_candidate_comparison(args):
+    """Append auditable paired predictions and metrics without replacing old reports.
+
+    Windows overlap and are development evidence, not independent test sets.
+    Tree counts are set BEFORE evaluation, with no eval_set/early stopping.
+    """
+    windows = {
+        "short_recent": ("2025-01", "2025-03"),
+        "short_middle": ("2024-10", "2024-12"),
+        "long_recent": ("2024-04", "2025-03"),
+        "long_older": ("2023-04", "2024-03"),
+        "horizon16": ("2023-12", "2025-03"),
+    }
+    from features import suspected_low_rent_mask
+    source = RAW / "train.csv"
+    data_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    code_hash = hashlib.sha256(b"".join(
+        (ROOT / "src" / file).read_bytes()
+        for file in ["features.py", "modeling.py", "run_experiments.py"]
+    )).hexdigest()
+    raw = pd.read_csv(source)
+    target = raw.pop(TARGET)
+    lookup = build_block_lookup(RAW / "auxiliary")
+    ledger = ROOT / "reports" / "temporal_comparison.csv"
+    cache_dir = ROOT / "artifacts" / "temporal_comparison"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    rows = pd.read_csv(ledger).to_dict("records") if ledger.exists() else []
+    for window in args.windows:
+        start, end = windows[window]
+        train_mask = raw.RENT_APPROVAL_DATE.lt(start)
+        valid_mask = raw.RENT_APPROVAL_DATE.between(start, end)
+        train = raw.loc[train_mask].reset_index(drop=True)
+        valid = raw.loc[valid_mask].reset_index(drop=True)
+        y_train = target.loc[train_mask].reset_index(drop=True)
+        y_valid = target.loc[valid_mask].reset_index(drop=True)
+        flagged = suspected_low_rent_mask(valid, y_valid)
+        feature_cache = {}
+        for name in args.candidates:
+            config = dict(CANDIDATES[name], iterations=args.trial_iterations)
+            recipe = config["history"]
+            for seed in args.comparison_seeds:
+                identity = json.dumps(dict(config=config, seed=seed, window=window,
+                                           device=args.task_type, data=data_hash,
+                                           code=code_hash), sort_keys=True)
+                run_id = hashlib.sha256(identity.encode()).hexdigest()[:16]
+                prediction_path = cache_dir / f"{run_id}.npz"
+                if args.resume and prediction_path.exists() and any(r["run_id"] == run_id for r in rows):
+                    print(f"REUSE {name} {window} seed={seed}", flush=True)
+                    continue
+                if recipe not in feature_cache:
+                    feature_started = time.perf_counter()
+                    X_train = build_features(train, y_train, train, lookup, recipe)
+                    X_valid = build_features(train, y_train, valid, lookup, recipe)
+                    feature_cache[recipe] = (X_train, X_valid, time.perf_counter() - feature_started)
+                X_train, X_valid, feature_seconds = feature_cache[recipe]
+                print(f"FIT {name} {window} seed={seed} rows={len(train)} trees={config['iterations']}", flush=True)
+                started = time.perf_counter()
+                model = fit_model(X_train, y_train, config, seed, args.task_type)
+                prediction = predict_model(model, X_valid, config)
+                elapsed = time.perf_counter() - started
+                np.savez_compressed(prediction_path, row_id=raw.index[valid_mask].to_numpy(),
+                                    y=y_valid.to_numpy(), prediction=prediction,
+                                    month=valid.RENT_APPROVAL_DATE.to_numpy(dtype=str))
+                metrics = regression_metrics(y_valid, prediction)
+                row = dict(run_id=run_id, candidate=name, window=window, train_end=train.RENT_APPROVAL_DATE.max(),
+                           validation_start=start, validation_end=end, train_rows=len(train),
+                           validation_rows=len(valid), task_type=args.task_type, seed=seed,
+                           iterations=config["iterations"], actual_trees=model.tree_count_,
+                           features=recipe, residual_target=config["residual_target"],
+                           depth=config["depth"], feature_count=X_train.shape[1],
+                           **metrics, mse=metrics["rmse"] ** 2,
+                           flagged_validation_rows=int(flagged.sum()),
+                           retained_slice_rmse=regression_metrics(y_valid[~flagged], prediction[~flagged])["rmse"],
+                           flagged_slice_rmse=regression_metrics(y_valid[flagged], prediction[flagged])["rmse"] if flagged.any() else np.nan,
+                           feature_seconds=round(feature_seconds, 3), model_seconds=round(elapsed, 3),
+                           data_sha256=data_hash, code_sha256=code_hash,
+                           config_json=json.dumps(config, sort_keys=True),
+                           prediction_file=str(prediction_path.relative_to(ROOT)),
+                           protocol="fixed_budget_no_outer_early_stopping")
+                rows = [r for r in rows if r["run_id"] != run_id] + [row]
+                pd.DataFrame(rows).to_csv(ledger, index=False)
+                print(f"DONE {name} {window} seed={seed} RMSE={metrics['rmse']:.4f} MAE={metrics['mae']:.4f} seconds={elapsed:.1f}", flush=True)
+                del model
+    print(f"Results: {ledger}", flush=True)
+
+
 def main() -> None:
     args = parse_args()
+    if args.compare_candidates:
+        run_candidate_comparison(args)
+        return
     if not args.ensemble_seeds or len(set(args.ensemble_seeds)) != len(
         args.ensemble_seeds
     ):

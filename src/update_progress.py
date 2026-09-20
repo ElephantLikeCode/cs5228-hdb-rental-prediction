@@ -75,8 +75,10 @@ def current_results_text() -> str:
         long_horizon["feature_set"].str.contains("history")
     ]
     best = latest.iloc[0]
+    submissions = pd.read_csv(REPORTS / "kaggle_submissions.csv")
+    submission_table = markdown_table(submissions, ["submitted_at", "submission_file", "public_rmse"])
     return f"""{START}
-## Current validated pipeline (21 September 2026)
+## Reference evaluation (historical early-stopping protocol)
 
 Three expanding chronological folds are used, with every validation month
 strictly later than its training months. Linear Regression, Ridge, Decision
@@ -108,26 +110,13 @@ RMSE **{best['rmse']:.2f} SGD**, MAE **{best['mae']:.2f} SGD**, signed bias
 
 {markdown_table(long_selected, ['model', 'feature_set', 'fold', 'rmse', 'mae', 'bias'])}
 
-### Findings
+### Recorded public submissions
 
-- Category strings are canonicalized before modeling, including `3 room` versus
-  `3-room`, which were year-dependent aliases in the raw data.
-- Past-only comparables now separate address by flat type and floor area, and
-  add street/flat-type and town/flat-type/model groups. They improve every
-  three-month, 12-month, and 16-month window tested.
-- The selected GPU ensemble reaches latest-window RMSE 448.06 and three-fold
-  mean 454.31, versus 449.20 and 455.70 for the previous CPU ensemble.
-- Unconstrained recent/market-trend features reached 445.49 on the latest
-  window but were rejected because they degraded some long-horizon windows.
-- XGBoost reached 470.13 and worsened every tested blend; CatBoost remains the
-  retained model because of validation evidence, not by assumption.
-- Error is concentrated at the lowest and highest rent bands. The unseen-address
-  slice contains only 23 rows, so its estimate is informative but uncertain.
-- The official Kaggle ZIP matches the existing raw files byte-for-byte. Kaggle
-  confirms RMSE, `Id,Predicted`, a roughly 50/50 public/private test split, and
-  permits additional data collection.
-- The current Kaggle score 438.94488 belongs to the earlier seed-42 submission;
-  the new detailed-comparable ensemble has not yet been uploaded.
+{submission_table}
+
+These reference metrics use validation-driven early stopping. Fixed-budget
+comparisons and adoption decisions are recorded in the cumulative entries below
+and in `reports/temporal_comparison.csv`. Do not mix the two protocols.
 <!-- CURRENT_RESULTS_END -->"""
 
 
@@ -136,7 +125,12 @@ def main() -> None:
     if START not in text or END not in text:
         raise ValueError("Current-results markers are missing")
     before, remainder = text.split(START, maxsplit=1)
-    _, after = remainder.split(END, maxsplit=1)
+    previous, after = remainder.split(END, maxsplit=1)
+    # One-time migration: preserve manually written findings outside the
+    # generated section, so future refreshes cannot erase the project history.
+    if "### Findings" in previous:
+        findings = previous.split("### Findings", maxsplit=1)[1].strip()
+        after = "\n\n## Recorded findings before fixed-budget evaluation\n\n" + findings + "\n" + after
     PROGRESS.write_text(before + current_results_text() + after, encoding="utf-8")
     print(PROGRESS)
 

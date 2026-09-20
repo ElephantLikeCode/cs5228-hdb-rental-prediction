@@ -1,2 +1,4 @@
 submitted_at,submission_file,public_rmse,rank_at_submission,teams_at_submission,notes
 2026-09-18,final_submission.csv,438.94488,9,14,First submission; public leaderboard uses approximately 50 percent of test rows
+2026-09-21,submission_keep_all_labels.csv,436.75718,,,Detailed-comparable two-seed GPU ensemble retaining all training labels
+2026-09-21,submission_remove_suspected_low_rents.csv,436.58736,,,Same ensemble after removing 954 fixed-rule suspected low-rent training labels
