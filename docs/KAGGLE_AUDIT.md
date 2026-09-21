@@ -41,3 +41,30 @@ Checked on 18 September 2026 using the signed-in competition pages for
 4. Record source, retrieval date, license, transformation, and prediction-time
    availability for every external feature used in the report.
 5. Keep all code and private data sharing within the registered Kaggle team.
+
+## Closeout verification — 21 September 2026
+
+Read-only browser checks confirmed:
+- `submission_history_diversity.csv` scored 432.47187, rank 3 of 16 at the time
+  checked; previous best was 436.05684.
+- The Submissions page allows up to two final submissions. If fewer than two
+  are chosen, Kaggle automatically fills from best-scoring submissions.
+  No selection or upload was performed by the agent.
+- The displayed selection notice does not explicitly state how the two scores
+  determine the final result; do not claim averaging from this notice.
+- Public/private test proportions remain approximately 50/50. Their exact
+  temporal/random allocation was not verified.
+
+Canvas project page was also reread:
+https://canvas.nus.edu.sg/courses/93866/pages/project
+Progress slides: approximately 10-15 pages as PDF, target Sunday 4 October
+(not a hard deadline), with next steps in the last 1-2 slides.
+Final report: at most eight main-text pages, excluding references/appendix,
+plus code or GitHub link and member workload attribution.
+The final deadline is still `Nov XX, 11.59 pm`, not a confirmed 6 November.
+Grading: methodology 60%, report quality 30%, reproducibility 10%.
+
+Auxiliary timing caveat: current spatial features use supplied facility snapshots
+and MRT status `open`, not opening dates as of each historical rental month.
+Past-only target histories are tested separately; they do not eliminate this
+snapshot-availability limitation.

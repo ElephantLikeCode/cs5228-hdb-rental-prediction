@@ -1,8 +1,9 @@
 {
-  "name": "hierarchical_market_blend",
+  "name": "history_diversity_blend",
   "history": "hierarchical",
   "residual_target": false,
   "target_modes": [false, true],
+  "augmentation_lags": [0, 6],
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,

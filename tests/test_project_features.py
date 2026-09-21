@@ -264,3 +264,71 @@ def test_relative_rent_weighting_keeps_the_squared_rent_objective():
     y = np.array([2300., 2800., 4500.])
     f = np.array([100., -100., 200.])
     np.testing.assert_allclose(scale**2 * ((y-offset)/scale-f)**2, (y-(f*scale+offset))**2)
+
+
+def test_final_training_overrides_require_isolated_outputs(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "src"))
+    import train_final_model as final
+    monkeypatch.setattr("sys.argv", ["train_final_model.py"])
+    args = final.parse_args()
+    final.validate_output_paths(args)
+    for field, value in [("iterations", 5), ("candidate", "legacy"),
+                         ("augmentation_lags", [0]), ("seeds", [42]),
+                         ("outlier_policy", "remove"), ("outlier_ratio", 0.4)]:
+        changed = final.argparse.Namespace(**vars(args))
+        setattr(changed, field, value)
+        with pytest.raises(ValueError, match="Experimental overrides"):
+            final.validate_output_paths(changed)
+    args.iterations = 5
+    args.submission = ROOT / "submissions/probe.csv"
+    args.metadata = ROOT / "artifacts/probe/metadata.json"
+    args.model_prefix = "probe/model"
+    final.validate_output_paths(args)
+    args.model_prefix = "../data/raw/model"
+    with pytest.raises(ValueError, match="model-prefix"):
+        final.validate_output_paths(args)
+    args.model_prefix = "probe/model"
+    args.submission = ROOT / "data/raw/train.csv"
+    with pytest.raises(ValueError, match="submission"):
+        final.validate_output_paths(args)
+
+
+def test_previous_run_backup_is_complete_and_checks_hashes(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    monkeypatch.syspath_prepend(str(ROOT / "src"))
+    import train_final_model as final
+    monkeypatch.setattr(final, "ROOT", tmp_path)
+    model = tmp_path / "artifacts/model.cbm"
+    submission = tmp_path / "submissions/final_submission.csv"
+    metadata = tmp_path / "reports/metadata.json"
+    for path in [model, submission, metadata]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    model.write_bytes(b"original model")
+    submission.write_bytes(b"Id,Predicted\n0,3000\n")
+    digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    metadata.write_text(json.dumps(dict(submission_sha256=digest(submission),
+        components=[dict(model_path="artifacts/model.cbm", sha256=digest(model))])))
+    archive = final.archive_previous_run(metadata, submission)
+    for path in [model, submission, metadata]:
+        assert (archive / path.relative_to(tmp_path)).read_bytes() == path.read_bytes()
+    assert final.archive_previous_run(metadata, submission) == archive
+    saved_model = archive / "artifacts/model.cbm"
+    saved_model.write_bytes(b"unexpected content")
+    with pytest.raises(ValueError, match="Archive collision"):
+        final.archive_previous_run(metadata, submission)
+    saved_model.write_bytes(model.read_bytes())
+    model.write_bytes(b"changed model")
+    with pytest.raises(ValueError, match="hash mismatch"):
+        final.archive_previous_run(metadata, submission)
+    assert saved_model.read_bytes() == b"original model"
+    with pytest.raises(ValueError, match="Incomplete previous run"):
+        final.archive_previous_run(tmp_path / "absent.json", submission)
+
+
+def test_mainline_config_selects_eight_history_diversity_components():
+    from src.modeling import load_config
+    config = load_config()
+    assert config["name"] == "history_diversity_blend"
+    assert config["augmentation_lags"] == [0, 6]
+    assert len(config["seeds"]) * len(config["target_modes"]) * len(config["augmentation_lags"]) == 8

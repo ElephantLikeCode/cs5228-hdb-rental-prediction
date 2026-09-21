@@ -36,7 +36,7 @@ discussion page were checked on 18 September 2026; see `docs/KAGGLE_AUDIT.md`.
 Deliverables:
 
 - confirmed Canvas requirements;
-- confirmed report dates and Kaggle rules;
+- documented report-date status and confirmed Kaggle rules (final date still pending);
 - isolated, shareable folder;
 - data-sharing and leakage rules.
 
@@ -237,33 +237,53 @@ Everyone should contribute code or analysis and review at least one other workst
 | Report becomes an afterthought | Draft figures and findings throughout the project |
 | Public data reveals hidden test labels | Do not reconstruct targets from post-release sources |
 
-## 8. Calendar
+## 8. Course requirements and calendar
 
-| Dates | Main target |
+Rechecked read-only on 21 September 2026 against
+https://canvas.nus.edu.sg/courses/93866/pages/project.
+Methodological quality is 60%, report quality 30%, reproducibility 10%.
+The progress report is approximately 10-15 PDF slides, ending with 1-2 slides of
+next steps. It is not explicitly graded, but omission negatively affects the
+final grade. The final paper has at most eight main-text pages (references and
+appendix excluded), includes workload attribution, and is submitted with code
+or a GitHub link. Ranking alone is not the course objective.
+
+The former 8 October / 6 November dates below were unverified planning entries;
+they are superseded, not official deadlines.
+
+| Timing | Main target / status |
 | --- | --- |
-| 16-20 Sep | Finish audit, chronological split utilities and core EDA |
-| 21-27 Sep | Global/group baselines, kNN, linear regression and regression tree |
-| 28 Sep-4 Oct | Bagging/boosting baseline, initial block/spatial features and ablations |
-| 5-7 Oct | Freeze results and finish progress-report slides |
-| 8 Oct | Submit progress report by 11:59 pm |
-| 9-18 Oct | Refine spatial features and evaluate optional historical summaries |
-| 19-25 Oct | Bounded tuning and model comparison; optional advanced model only if justified |
-| 26-30 Oct | Error analysis, final figures and report draft |
-| 31 Oct-3 Nov | Freeze model and complete final report |
-| 4-5 Nov | Clean-environment reproduction and packaging |
-| 6 Nov | Submit final report/code by 11:59 pm |
+| Completed through 21 Sep | Audit, EDA, baselines, spatial ablations, chronological comparisons, 432.47187 mainline |
+| Before / around 4 Oct | Prepare 10-15 slide progress-report PDF from existing evidence |
+| Sun 4 Oct | Canvas progress-report target; explicitly not a hard deadline |
+| After progress feedback | Resume stability/model experiments when requested; maintain one mainline and justified alternative |
+| Final report deadline | Canvas still says `Nov XX, 11.59 pm`; exact date unconfirmed |
+| Before confirmed final deadline | Reserve time for freezing, clean reproduction, report review and packaging |
 
-## 9. Immediate implementation queue
+## 9. Current checkpoint and deferred queue
 
-Completed checkpoint: official Kaggle audit and data verification, data-contract
-tests, three rolling folds, EDA, course-aligned model comparison, strict spatial
-ablations, past-only rent statistics, segmented errors, and a validated submission generator.
+Mainline: eight-component history-diversity ensemble, public RMSE 432.47187,
+browser-verified rank 3/16 on 21 September. Default config, final submission,
+eight CBMs and metadata now agree. The exact 436.05684 reference and the original
+432.47187 candidate are retained locally, alongside the unchanged Keep/Remove
+submissions. Promotion is a decision based on current evidence, not a claim of
+uniform temporal improvement: the older 12-month window worsens by 10.55 RMSE.
 
-1. Have every member reproduce `check_setup.py`, ten tests, and the current experiment results.
-2. Review the first public score (438.94488) and long-horizon results as a team.
-3. Submit the detailed-comparable candidate and record its public score.
-4. Investigate the strong regression-to-the-mean pattern in low/high rent bands.
-5. Revisit market trend only with bounded, horizon-aware extrapolation; the
-   unconstrained candidate was rejected despite a strong latest-window score.
-6. Test COE and stock features through isolated chronological ablations.
-7. Freeze the strongest stable pipeline before preparing the final report.
+Closeout only: no new fitting or model experiments. Twenty-one tests cover the
+existing features/validation and new output-isolation/backup safeguards.
+
+When the user resumes work:
+1. Reproduce setup/tests as a team and confirm member ownership.
+2. Investigate the old-window regression, separating shorter history from
+   changing rent dynamics; inspect monthly/town/flat-type errors.
+3. Keep one mainline and consider one genuinely complementary final candidate,
+   without tuning repeatedly against the public leaderboard.
+4. Prepare the progress slides from EDA, cleaning, baselines, ablations,
+   quantitative gains, negative results and unresolved limitations.
+5. Audit auxiliary snapshot timing: MRT `open` status is not historical
+   opening-date filtering. Record this limitation rather than claiming full
+   point-in-time availability.
+6. Reconfirm the final report deadline and reproduce/package the chosen pipeline.
+
+The single cumulative technical record remains `docs/PROGRESS.md`; README keeps
+one main comparison table. Historical reports are evidence, not active recipes.

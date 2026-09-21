@@ -55,8 +55,66 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def validate_output_paths(args) -> None:
+    """Keep experimental runs away from the mainline and raw data."""
+    root = ROOT.resolve()
+    for field, folder in [("submission", "submissions"), ("metadata", None)]:
+        path = Path(getattr(args, field))
+        path = (root / path).resolve() if not path.is_absolute() else path.resolve()
+        allowed = [root / folder] if folder else [root / "reports", root / "artifacts"]
+        if not any(path.is_relative_to(base) and path != base for base in allowed):
+            raise ValueError(f"{field} must stay inside its project output directory")
+        setattr(args, field, path)
+    prefix = (root / "artifacts" / args.model_prefix).resolve()
+    if not prefix.is_relative_to(root / "artifacts") or prefix == root / "artifacts":
+        raise ValueError("model-prefix must stay inside artifacts")
+    custom = (args.candidate is not None or args.config.resolve() != DEFAULT_CONFIG.resolve()
+              or args.augmentation_lags is not None or args.seeds is not None
+              or args.iterations is not None or args.outlier_policy is not None
+              or args.outlier_ratio != 0.5)
+    if custom and (args.submission == root / "submissions/final_submission.csv"
+                   or args.metadata == root / "reports/final_model_metadata.json"
+                   or (prefix.parent == root / "artifacts" and prefix.name.startswith("final_model"))):
+        raise ValueError("Experimental overrides require separate --submission, --metadata and --model-prefix")
+
+
+def archive_previous_run(metadata_path: Path, submission_path: Path) -> Path | None:
+    """Snapshot an existing complete run before writing any replacement models.
+
+    The snapshot mirrors repository-relative paths; metadata remains byte-exact.
+    Treat the snapshot directory as its root when resolving the saved paths.
+    """
+    if not metadata_path.exists() and not submission_path.exists():
+        return None
+    if not metadata_path.exists() or not submission_path.exists():
+        raise ValueError("Incomplete previous run; use fresh output paths instead of overwriting")
+    previous = json.loads(metadata_path.read_text(encoding="utf-8"))
+    digest = previous["submission_sha256"]
+    archive = ROOT / "artifacts" / "submitted" / digest
+    files = [(submission_path, digest), (metadata_path, None)]
+    files.extend((ROOT / c["model_path"], c["sha256"]) for c in previous["components"])
+    for path, expected in files:
+        path = path.resolve()
+        path.relative_to(ROOT.resolve())
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if expected is not None and actual != expected:
+            raise ValueError(f"Previous artifact hash mismatch: {path}")
+        destination = archive / path.relative_to(ROOT.resolve())
+        if destination.exists() and hashlib.sha256(destination.read_bytes()).hexdigest() != actual:
+            raise ValueError(f"Archive collision: {destination}")
+    for path, _ in files:
+        destination = archive / path.resolve().relative_to(ROOT.resolve())
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.exists():
+            shutil.copy2(path, destination)
+        if destination.read_bytes() != path.read_bytes():
+            raise ValueError(f"Archive verification failed: {destination}")
+    return archive
+
+
 def main() -> None:
     args = parse_args()
+    validate_output_paths(args)
     config = dict(CANDIDATES[args.candidate]) if args.candidate else load_config(args.config)
     if args.augmentation_lags is not None:
         config.update(augmentation_lags=args.augmentation_lags, name="custom_history_views")
@@ -85,6 +143,7 @@ def main() -> None:
         args.metadata = (ROOT / args.metadata).resolve()
     if not args.seeds or len(set(args.seeds)) != len(args.seeds):
         raise ValueError("--seeds must contain unique seed values")
+    archive_previous_run(args.metadata, args.submission)
     started = time.perf_counter()
     train = pd.read_csv(RAW / "train.csv")
     test = pd.read_csv(RAW / "test.csv")
@@ -146,15 +205,6 @@ def main() -> None:
     if not np.isfinite(prediction).all():
         raise ValueError("Submission contains non-finite predictions")
     args.submission.parent.mkdir(parents=True, exist_ok=True)
-    # Retain exact previously submitted predictions, not obsolete model copies.
-    if args.submission.exists():
-        old_hash = hashlib.sha256(args.submission.read_bytes()).hexdigest()
-        recorded = (ROOT / "reports" / "kaggle_submissions.csv").read_text(encoding="utf-8")
-        if old_hash in recorded:
-            archive = ROOT / "artifacts" / "submitted" / f"{old_hash}.csv"
-            archive.parent.mkdir(parents=True, exist_ok=True)
-            if not archive.exists():
-                shutil.copy2(args.submission, archive)
     sample.to_csv(args.submission, index=False, lineterminator="\n")
     reloaded = pd.read_csv(args.submission)
     if reloaded.columns.tolist() != sample.columns.tolist():

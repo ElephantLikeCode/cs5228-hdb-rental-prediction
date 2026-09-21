@@ -92,6 +92,7 @@ RMSE **448.06 SGD**, MAE **318.82 SGD**, signed bias
 | 2026-09-21 | submission_keep_all_labels.csv | 436.76 |
 | 2026-09-21 | submission_remove_suspected_low_rents.csv | 436.59 |
 | 2026-09-21 | final_submission.csv | 436.06 |
+| 2026-09-21 | submission_history_diversity.csv | 432.47 |
 
 These reference metrics use validation-driven early stopping. Fixed-budget
 comparisons and adoption decisions are recorded in the cumulative entries below
@@ -385,3 +386,67 @@ tradeoff before promotion. Do not overwrite the default or claim leaderboard
 improvement before that result. If it does not transfer, retain the 436.05684
 pipeline and move to a different learner or local-comparable representation,
 rather than repeatedly tuning this blend against the public leaderboard.
+
+## Mainline promotion and maintenance closeout — 21 September 2026
+
+### Decision and evidence
+
+The user submitted `submission_history_diversity.csv`. Read-only browser
+verification showed public RMSE **432.47187**, rank **3/16**, compared with
+436.05684 for the retained reference: a gain of **3.58497**. This is new evidence
+on the public half, not a guarantee for the private half. The April 2023-March
+2024 validation regression (+10.55 RMSE; all 12 months worse) remains unresolved.
+The local multi-window results above were not rerun or changed.
+
+Following the user's closeout request, the history-diversity ensemble becomes
+the one current mainline. `configs/model.json` selects both history views [0, 6],
+both targets and seeds 42/2026. Eight already-verified CBMs and the exact uploaded
+CSV were copied to the standard final paths, with no retraining or new experiment.
+The final CSV hash is
+`b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7`.
+Metadata retains original training hashes/timings and records promotion separately.
+
+The previous 436.05684 run is fully backed up at
+`artifacts/submitted/cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3/`,
+including its four models, exact CSV and metadata with repository-relative paths.
+Use that snapshot directory as the root when reading those paths.
+The original eight-model candidate and both Keep/Remove submissions remain
+unchanged. No user files or raw data were deleted.
+
+### Architecture and safeguards
+
+Keep the existing ten Python modules and directories. Current recipes belong
+in config/modeling; historical experiments remain evidence rather than parallel
+active pipelines. No new Python files, stage folders or separate summary reports.
+README keeps one primary results table; this file remains the cumulative log.
+
+Experimental training overrides now require isolated submission, metadata and
+model-prefix destinations. Output path checks exclude raw data and paths outside
+the project output folders. Before overwriting a complete run, the generator
+verifies and snapshots its CSV, metadata and every CBM. Incomplete/hash-mismatched
+runs are refused. This enables recovery but is not an atomic multi-file deployment:
+interrupted fitting may leave partial working outputs, so use the snapshot.
+
+Maintenance verification covers 21 tests, setup checks of nine raw files, hash
+and schema checks of mainline/reference artifacts, 50,000 ordered prediction rows,
+and availability of all 53 uniquely keyed experiment prediction files. The three
+added tests cover output isolation, backup integrity and eight-component config.
+Data, CBMs, submission CSVs, generated figures and local AI notes remain Git-ignored.
+
+### Course deliverables and deferred work
+
+Canvas was checked read-only. Methodology contributes 60%, report quality 30%,
+reproducibility 10%. The progress report is 10-15 PDF slides with final 1-2 slides
+for next steps; the stated target is Sunday 4 October (not a hard deadline).
+The final report has at most eight main-text pages plus references/appendix,
+code or GitHub link and workload attribution. Its date still reads
+`Nov XX, 11.59 pm`. Earlier local 8 October / 6 November entries are superseded.
+
+Document the auxiliary snapshot limitation: MRT status is not filtered by its
+opening date at each historical observation. Do not conflate past-only rent
+history checks with a complete point-in-time auxiliary-data audit.
+
+No further model training is part of this closeout. When work resumes, prioritize
+the older-window stability investigation and progress-report evidence. One
+complementary final submission can be retained alongside the mainline; two
+selection slots do not require two codebases. Browser selections remain unchanged.

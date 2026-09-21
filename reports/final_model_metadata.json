@@ -7,23 +7,27 @@
     "iterations": 1600,
     "learning_rate": 0.04,
     "depth": 8,
-    "l2_leaf_reg": 6.0,
+    "l2_leaf_reg": 6,
     "seeds": [
       42,
       2026
     ],
     "outlier_policy": "keep",
-    "name": "hierarchical_market_blend",
+    "name": "history_diversity_blend",
     "target_modes": [
       false,
       true
+    ],
+    "augmentation_lags": [
+      0,
+      6
     ]
   },
   "feature_count": 74,
   "code_sha256": {
-    "features.py": "b435948c0bb755a544b752e73d1c06e1487350590344a86611a2191cf6137895",
-    "modeling.py": "9881c18a0740f52c6e3dae2186178f98da5ef7203a0b7b9c854383ba970c500b",
-    "train_final_model.py": "4627f4b5736367fc178c0a2d490d365e60ad028d8e4ee2518ebb7d5a488d7f48"
+    "features.py": "33aec3112da7d27c95b600584997610236d98d88d0eb85534abd28a1e0c40c59",
+    "modeling.py": "e228024472122ed8f7db5a61e0d13b2eae78326d241a469d7bab54c52c4ea29a",
+    "train_final_model.py": "7ee9ff050b26d79f663bfec3317c9e4227d53c0a60c2dbc208a561abb93fbc56"
   },
   "history_features": [
     "HIST_GLOBAL_MEAN",
@@ -68,7 +72,7 @@
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,
-  "l2_leaf_reg": 6.0,
+  "l2_leaf_reg": 6,
   "task_type": "GPU",
   "outlier_policy": "keep",
   "outlier_ratio": 0.5,
@@ -81,61 +85,131 @@
     2026
   ],
   "weights": [
-    0.25,
-    0.25,
-    0.25,
-    0.25
+    0.125,
+    0.125,
+    0.125,
+    0.125,
+    0.125,
+    0.125,
+    0.125,
+    0.125
   ],
   "components": [
     {
       "seed": 42,
       "residual_target": false,
-      "model_path": "artifacts\\final_model_seed_42.cbm",
+      "augmentation_lag": 0,
+      "model_path": "artifacts/final_model_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 71.22,
-      "sha256": "d264ff89a4eb7c2d063a62c67047420b86e5eeecde7d87af17b2e6a949a67f43"
+      "elapsed_seconds": 69.58,
+      "sha256": "dfc191a9d622630b52626d0214a6d66bdb22f21de42d3d3922f467d9e7cbdf58"
     },
     {
       "seed": 42,
       "residual_target": true,
-      "model_path": "artifacts\\final_model_residual_seed_42.cbm",
+      "augmentation_lag": 0,
+      "model_path": "artifacts/final_model_residual_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 74.86,
-      "sha256": "bf8ae665627afffd55c6d953b686b0758c06f1d05c4fc7766ce18e9f79235fdb"
+      "elapsed_seconds": 73.07,
+      "sha256": "5dab519a2e949ce3f69108009bdd7bb09a5d1cb754026f5dfe96422b87c87499"
     },
     {
       "seed": 2026,
       "residual_target": false,
-      "model_path": "artifacts\\final_model_seed_2026.cbm",
+      "augmentation_lag": 0,
+      "model_path": "artifacts/final_model_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 75.96,
-      "sha256": "83039820bb7ee08e3314183c9e2167a8a6fb6566d536dd64e4dad33d819426a9"
+      "elapsed_seconds": 71.93,
+      "sha256": "45f95e049167c2d953c45966f019e62b871fd1422c8b3d083b0d1ee1d9e4e580"
     },
     {
       "seed": 2026,
       "residual_target": true,
-      "model_path": "artifacts\\final_model_residual_seed_2026.cbm",
+      "augmentation_lag": 0,
+      "model_path": "artifacts/final_model_residual_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 75.44,
-      "sha256": "2a65a71ce48d7e47b2e537c708a7862697b28d310b06f9317f43b5529d1a70aa"
+      "elapsed_seconds": 69.51,
+      "sha256": "b3f0f0883ecd01a8005f582fb212eaea4a6dbdbcdbd012f6719cf98cae582ac6"
+    },
+    {
+      "seed": 42,
+      "residual_target": false,
+      "augmentation_lag": 6,
+      "model_path": "artifacts/final_model_lag6_seed_42.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 79.89,
+      "sha256": "16107df5270d7cc009e3d0fdba9142ab0966e695aa4c4acc43bc7b02a8e6bb06"
+    },
+    {
+      "seed": 42,
+      "residual_target": true,
+      "augmentation_lag": 6,
+      "model_path": "artifacts/final_model_lag6_residual_seed_42.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 89.25,
+      "sha256": "58929d2785265bb66fbee30cff494a4d6e1942cc87c7b95bd7c70d9387d0c77d"
+    },
+    {
+      "seed": 2026,
+      "residual_target": false,
+      "augmentation_lag": 6,
+      "model_path": "artifacts/final_model_lag6_seed_2026.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 91.18,
+      "sha256": "8df36fd4a1c497b3f165c920a869f2a35bb05d267befad666ffc31c5570dcad2"
+    },
+    {
+      "seed": 2026,
+      "residual_target": true,
+      "augmentation_lag": 6,
+      "model_path": "artifacts/final_model_lag6_residual_seed_2026.cbm",
+      "actual_trees": 1600,
+      "elapsed_seconds": 84.33,
+      "sha256": "4ab7c87933df83ccb864b3d220606f7862449ae9f9faf28b33b3b4d389b364e1"
     }
   ],
   "raw_train_rows": 150000,
   "train_rows": 150000,
+  "training_views": {
+    "0": {
+      "fit_rows": 150000,
+      "weight_sum": 150000
+    },
+    "6": {
+      "fit_rows": 262381,
+      "weight_sum": 150000
+    }
+  },
   "test_rows": 50000,
   "raw_sha256": {
     "train.csv": "6d7a417de72112361f8353659ba6fe44a442b07465b488aff1b03f7ec1ea3ba6",
     "test.csv": "dfc407406d957bbf7c2f005e5d9852b1bfc6546cd4186f07e6824d8e03e64cfc"
   },
-  "submission_sha256": "cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3",
-  "prediction_min": 1493.173498998384,
-  "prediction_max": 5428.014935717018,
-  "elapsed_seconds": 336.92,
-  "submission": "submissions\\final_submission.csv",
+  "submission_sha256": "b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7",
+  "prediction_min": 1448.98202209246,
+  "prediction_max": 5487.4653946728295,
+  "elapsed_seconds": 709.32,
+  "submission": "submissions/final_submission.csv",
   "model_paths": [
-    "artifacts\\final_model_seed_42.cbm",
-    "artifacts\\final_model_residual_seed_42.cbm",
-    "artifacts\\final_model_seed_2026.cbm",
-    "artifacts\\final_model_residual_seed_2026.cbm"
-  ]
+    "artifacts/final_model_seed_42.cbm",
+    "artifacts/final_model_residual_seed_42.cbm",
+    "artifacts/final_model_seed_2026.cbm",
+    "artifacts/final_model_residual_seed_2026.cbm",
+    "artifacts/final_model_lag6_seed_42.cbm",
+    "artifacts/final_model_lag6_residual_seed_42.cbm",
+    "artifacts/final_model_lag6_seed_2026.cbm",
+    "artifacts/final_model_lag6_residual_seed_2026.cbm"
+  ],
+  "promotion": {
+    "date": "2026-09-21",
+    "public_rmse": 432.47187,
+    "rank_at_verification": 3,
+    "teams_at_verification": 16,
+    "source_metadata": "artifacts/candidates/history_diversity/metadata.json",
+    "source_submission": "submissions/submission_history_diversity.csv",
+    "source_config_name": "custom_history_views",
+    "retrained": false,
+    "retained_reference_root": "artifacts/submitted/cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3",
+    "note": "Exact submitted CSV and CBMs copied to mainline paths. Original training hashes/timings retained; config name is a descriptive alias. Older 12-month RMSE regression remains unresolved."
+  }
 }

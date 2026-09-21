@@ -3,3 +3,4 @@ submitted_at,submission_file,public_rmse,rank_at_submission,teams_at_submission,
 2026-09-21,submission_keep_all_labels.csv,436.75718,,,Detailed-comparable two-seed GPU ensemble retaining all training labels
 2026-09-21,submission_remove_suspected_low_rents.csv,436.58736,,,Same ensemble after removing 954 fixed-rule suspected low-rent training labels
 2026-09-21,final_submission.csv,436.05684,7,16,Adaptive-market four-component ensemble; browser verified; SHA256 cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3
+2026-09-21,submission_history_diversity.csv,432.47187,3,16,History-diversity eight-component ensemble; browser verified; promoted byte-exact to final_submission.csv; SHA256 b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7
