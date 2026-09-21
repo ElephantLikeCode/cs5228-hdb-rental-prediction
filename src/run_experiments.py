@@ -28,7 +28,7 @@ from features import (
     prepare_for_catboost,
 )
 from validation import regression_metrics, rolling_time_folds, subgroup_metrics
-from modeling import CANDIDATES, build_features, fit_model, predict_model
+from modeling import CANDIDATES, build_features, build_training_features, fit_model, predict_model
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -372,6 +372,7 @@ def run_candidate_comparison(args):
         for name in args.candidates:
             config = dict(CANDIDATES[name], iterations=args.trial_iterations)
             recipe = config["history"]
+            cache_key = (recipe, config.get("augmentation_lag", 0), config.get("weight_half_life"))
             for seed in args.comparison_seeds:
                 identity = json.dumps(dict(config=config, seed=seed, window=window,
                                            device=args.task_type, data=data_hash,
@@ -381,15 +382,16 @@ def run_candidate_comparison(args):
                 if args.resume and prediction_path.exists() and any(r["run_id"] == run_id for r in rows):
                     print(f"REUSE {name} {window} seed={seed}", flush=True)
                     continue
-                if recipe not in feature_cache:
+                if cache_key not in feature_cache:
                     feature_started = time.perf_counter()
-                    X_train = build_features(train, y_train, train, lookup, recipe)
+                    X_train, fit_y, fit_weight = build_training_features(train, y_train, lookup, config)
                     X_valid = build_features(train, y_train, valid, lookup, recipe)
-                    feature_cache[recipe] = (X_train, X_valid, time.perf_counter() - feature_started)
-                X_train, X_valid, feature_seconds = feature_cache[recipe]
+                    feature_cache[cache_key] = (X_train, X_valid, fit_y, fit_weight,
+                                               time.perf_counter() - feature_started)
+                X_train, X_valid, fit_y, fit_weight, feature_seconds = feature_cache[cache_key]
                 print(f"FIT {name} {window} seed={seed} rows={len(train)} trees={config['iterations']}", flush=True)
                 started = time.perf_counter()
-                model = fit_model(X_train, y_train, config, seed, args.task_type)
+                model = fit_model(X_train, fit_y, config, seed, args.task_type, sample_weight=fit_weight)
                 prediction = predict_model(model, X_valid, config)
                 elapsed = time.perf_counter() - started
                 np.savez_compressed(prediction_path, row_id=raw.index[valid_mask].to_numpy(),
@@ -397,7 +399,8 @@ def run_candidate_comparison(args):
                                     month=valid.RENT_APPROVAL_DATE.to_numpy(dtype=str))
                 metrics = regression_metrics(y_valid, prediction)
                 row = dict(run_id=run_id, candidate=name, window=window, train_end=train.RENT_APPROVAL_DATE.max(),
-                           validation_start=start, validation_end=end, train_rows=len(train),
+                         validation_start=start, validation_end=end, train_rows=len(train),
+                         fit_rows=len(fit_y), training_weight_sum=float(fit_weight.sum()),
                            validation_rows=len(valid), task_type=args.task_type, seed=seed,
                            iterations=config["iterations"], actual_trees=model.tree_count_,
                            features=recipe, residual_target=config["residual_target"],

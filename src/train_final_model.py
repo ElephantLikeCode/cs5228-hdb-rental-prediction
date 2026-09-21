@@ -5,13 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from modeling import (DEFAULT_CONFIG, CANDIDATES, load_config, build_features,
-                      fit_model, predict_model)
+                      build_training_features, fit_model, predict_model)
 
 from features import (
     build_block_lookup,
@@ -30,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--candidate", choices=list(CANDIDATES))
     parser.add_argument("--iterations", type=int)
     parser.add_argument("--seeds", type=int, nargs="+")
+    parser.add_argument("--augmentation-lags", type=int, nargs="+",
+                        help="Optional experimental training views; does not modify configs/model.json.")
     parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
     parser.add_argument(
         "--outlier-policy",
@@ -55,6 +58,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = dict(CANDIDATES[args.candidate]) if args.candidate else load_config(args.config)
+    if args.augmentation_lags is not None:
+        config.update(augmentation_lags=args.augmentation_lags, name="custom_history_views")
     args.seeds = args.seeds if args.seeds is not None else config["seeds"]
     args.outlier_policy = args.outlier_policy or config["outlier_policy"]
     config["seeds"] = args.seeds
@@ -69,6 +74,11 @@ def main() -> None:
         raise ValueError("target_modes must be booleans")
     if any(target_modes) and config["history"] != "hierarchical":
         raise ValueError("Residual components require hierarchical features")
+    history_lags = config.get("augmentation_lags", [config.get("augmentation_lag", 0)])
+    if not history_lags or len(set(history_lags)) != len(history_lags):
+        raise ValueError("augmentation_lags must contain unique history views")
+    if any(not isinstance(lag, int) or lag < 0 for lag in history_lags):
+        raise ValueError("augmentation_lags must be nonnegative integers")
     if not args.submission.is_absolute():
         args.submission = (ROOT / args.submission).resolve()
     if not args.metadata.is_absolute():
@@ -91,34 +101,40 @@ def main() -> None:
     else:
         model_raw_train = raw_train.reset_index(drop=True)
         model_y = raw_y.reset_index(drop=True)
-    X_train = build_features(model_raw_train, model_y, model_raw_train, lookup, config["history"])
     X_test = build_features(model_raw_train, model_y, test, lookup, config["history"])
-    history_columns = [c for c in X_train if c.startswith(("HIST_", "ADAPT_"))]
+    history_columns = [c for c in X_test if c.startswith(("HIST_", "ADAPT_"))]
     predictions: list[np.ndarray] = []
     model_paths: list[Path] = []
     components: list[dict] = []
-    for seed in args.seeds:
-        for residual_mode in target_modes:
-            component_config = dict(config, residual_target=residual_mode)
-            component_started = time.perf_counter()
-            model = fit_model(X_train, model_y, component_config, seed, args.task_type, verbose=200)
-            predictions.append(predict_model(model, X_test, component_config))
-            suffix = "_residual" if residual_mode else ""
-            model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
-            model_path.parent.mkdir(parents=True, exist_ok=True)
-            model.save_model(model_path)
-            restored = model.__class__()
-            restored.load_model(model_path)
-            restored_prediction = predict_model(restored, X_test.iloc[:100], component_config)
-            if not np.allclose(restored_prediction, predictions[-1][:100], rtol=1e-12, atol=1e-9):
-                raise ValueError("Saved model does not reproduce rent-unit predictions")
-            del restored
-            model_paths.append(model_path)
-            components.append(dict(seed=seed, residual_target=residual_mode,
-                                   model_path=str(model_path.relative_to(ROOT)),
-                                   actual_trees=model.tree_count_,
-                                   elapsed_seconds=round(time.perf_counter() - component_started, 2),
-                                   sha256=hashlib.sha256(model_path.read_bytes()).hexdigest()))
+    training_views = {}
+    for lag in history_lags:
+        view_config = dict(config, augmentation_lag=lag)
+        X_train, fit_y, fit_weight = build_training_features(model_raw_train, model_y, lookup, view_config)
+        training_views[str(lag)] = dict(fit_rows=len(fit_y), weight_sum=float(fit_weight.sum()))
+        for seed in args.seeds:
+            for residual_mode in target_modes:
+                component_config = dict(view_config, residual_target=residual_mode)
+                component_started = time.perf_counter()
+                print(f"FINAL FIT history_lag={lag} residual={residual_mode} seed={seed}", flush=True)
+                model = fit_model(X_train, fit_y, component_config, seed, args.task_type,
+                                  verbose=200, sample_weight=fit_weight)
+                predictions.append(predict_model(model, X_test, component_config))
+                suffix = (f"_lag{lag}" if lag else "") + ("_residual" if residual_mode else "")
+                model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                model.save_model(model_path)
+                restored = model.__class__()
+                restored.load_model(model_path)
+                restored_prediction = predict_model(restored, X_test.iloc[:100], component_config)
+                if not np.allclose(restored_prediction, predictions[-1][:100], rtol=1e-12, atol=1e-9):
+                    raise ValueError("Saved model does not reproduce rent-unit predictions")
+                del restored
+                model_paths.append(model_path)
+                components.append(dict(seed=seed, residual_target=residual_mode, augmentation_lag=lag,
+                                       model_path=str(model_path.relative_to(ROOT)),
+                                       actual_trees=model.tree_count_,
+                                       elapsed_seconds=round(time.perf_counter() - component_started, 2),
+                                       sha256=hashlib.sha256(model_path.read_bytes()).hexdigest()))
     prediction = np.mean(predictions, axis=0)
     if sample.columns.tolist() != ["Id", "Predicted"]:
         raise ValueError("Unexpected sample-submission schema")
@@ -130,6 +146,15 @@ def main() -> None:
     if not np.isfinite(prediction).all():
         raise ValueError("Submission contains non-finite predictions")
     args.submission.parent.mkdir(parents=True, exist_ok=True)
+    # Retain exact previously submitted predictions, not obsolete model copies.
+    if args.submission.exists():
+        old_hash = hashlib.sha256(args.submission.read_bytes()).hexdigest()
+        recorded = (ROOT / "reports" / "kaggle_submissions.csv").read_text(encoding="utf-8")
+        if old_hash in recorded:
+            archive = ROOT / "artifacts" / "submitted" / f"{old_hash}.csv"
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            if not archive.exists():
+                shutil.copy2(args.submission, archive)
     sample.to_csv(args.submission, index=False, lineterminator="\n")
     reloaded = pd.read_csv(args.submission)
     if reloaded.columns.tolist() != sample.columns.tolist():
@@ -148,7 +173,7 @@ def main() -> None:
         "model": "CatBoostRegressor equal-weight component ensemble",
         "feature_set": "all_spatial_" + config["history"],
         "config": config,
-        "feature_count": X_train.shape[1],
+        "feature_count": X_test.shape[1],
         "code_sha256": {name: hashlib.sha256((ROOT / "src" / name).read_bytes()).hexdigest()
                         for name in ["features.py", "modeling.py", "train_final_model.py"]},
         "history_features": history_columns,
@@ -168,6 +193,7 @@ def main() -> None:
         "components": components,
         "raw_train_rows": len(train),
         "train_rows": len(model_raw_train),
+        "training_views": training_views,
         "test_rows": len(test),
         "raw_sha256": {name: hashlib.sha256((RAW / name).read_bytes()).hexdigest()
                        for name in ["train.csv", "test.csv"]},

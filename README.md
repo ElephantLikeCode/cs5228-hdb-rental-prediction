@@ -9,7 +9,7 @@ local evaluation method.
 The repository currently provides:
 
 - a reproducible data audit;
-- fourteen automated data-contract and feature/validation tests;
+- eighteen automated data-contract and feature/validation tests;
 - a January-March 2025 chronological holdout;
 - global-median and town/flat-type median baselines;
 - Linear, Ridge, Decision Tree, Random Forest, HistGradientBoosting, and CatBoost comparisons;
@@ -37,15 +37,16 @@ competing README results table.
 | HistGradientBoosting | 463.36 | Historical reference |
 | CatBoost core | 455.71 | Historical reference |
 | CatBoost + spatial and past-rent features (seed 42) | 450.04 | Historical reference |
-| Detailed-comparable GPU CatBoost ensemble (two seeds; re-evaluated reference) | 447.57 | Fixed 1,600 trees/component |
-| **Current: adaptive-market direct/residual CatBoost ensemble (four components)** | **445.52** | **Fixed 1,600 trees/component** |
+| **Current retained: adaptive-market direct/residual ensemble (four components)** | **445.52** | **Fixed 1,600 trees/component** |
+| Experimental: normal/stale-history ensemble (eight components; not adopted) | 440.89 | Fixed 1,600 trees/component; stability limitation below |
 
-The final two rows are the matched comparison for this update: identical
-validation rows and seeds, giving a **2.05 RMSE improvement**. Neither uses the
-scoring labels for early stopping, so validation uses the same tree budget as
-final training. Historical model results have not been rerun under this new
-protocol; their original experiments allowed validation-driven early stopping
-where applicable. Do not use them to calculate this update's improvement.
+The final two rows use identical validation rows and seeds. The experimental
+combination improves this short window by **4.63 RMSE**, but worsens the older
+12-month window by **10.55 RMSE**, with systematic overprediction. It is therefore
+not the default model. Neither uses scoring labels for early stopping, and tree
+budgets match deployment; the candidate uses twice as many components. Historical
+baseline experiments allowed validation-driven early stopping where applicable
+and are not used to calculate this update's improvement.
 
 The current pipeline also improves both 12-month windows and the 16-month
 stress window. Full multi-window results, previous iteration scores, and the
@@ -55,12 +56,18 @@ The new model keeps all labels. Latest-window MAE rises from 318.67 to 319.29,
 and recent-12-month MAE rises from 343.39 to 347.69; four components also cost
 more than the former two.
 
-The new `final_submission.csv` has not been submitted. The best recorded public
-score remains **436.58736**, from the preserved low-rent-removal candidate;
-the preserved keep-all-labels candidate scored **436.75718**. These public
-scores belong to the previous model, not the current pipeline. Their small
-0.16982 difference is supporting evidence, not a replacement for chronological
-validation. All submitted scores remain in `reports/kaggle_submissions.csv`.
+The current `final_submission.csv` scored **436.05684** on Kaggle, browser-verified
+on 21 September 2026 at rank **7 of 16**. This improves the previous best
+436.58736 by 0.53052. The preserved removal and keep-all-labels candidates scored
+436.58736 and 436.75718 respectively. Public scores cover approximately half the
+test set, so they support rather than replace chronological validation. Exact
+submitted scores and the latest CSV hash are in `reports/kaggle_submissions.csv`.
+
+For one optional platform test, use `submissions/submission_history_diversity.csv`.
+It is an unsubmitted experimental candidate, not a replacement for
+`submissions/final_submission.csv`. The four-component submitted model, both
+Keep/Remove alternatives and their exact CSVs remain unchanged. Candidate CBMs
+and metadata are isolated in ignored `artifacts/candidates/history_diversity/`.
 
 The official Kaggle ZIP was downloaded and checked on 18 September 2026. All
 eight CSVs match the existing raw files byte-for-byte. See
@@ -128,8 +135,8 @@ Run from the repository root:
 python src/data_audit.py
 python -m pytest -q
 python src/generate_eda.py
-python src/run_experiments.py --compare-candidates --candidates legacy hierarchical market_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --task-type GPU --resume
-python src/generate_figures.py --temporal-only --bootstrap
+python src/run_experiments.py --compare-candidates --candidates hierarchical market_residual horizon_direct horizon_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --task-type GPU --resume
+python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
 python src/update_progress.py
 python src/train_final_model.py --task-type GPU
 ```
@@ -149,11 +156,23 @@ For a second-seed confirmation, add `--comparison-seeds 42 2026 --resume`.
 | `hierarchical` | Adds 12-month half-life comparables, flat-type market normalization, address-to-street-to-town fallbacks and history age |
 | `market_residual` | Uses hierarchical features and learns rent minus the estimated local market baseline |
 | `legacy_depth6`, `hierarchical_depth6` | Same respective features with depth 6 instead of 8 |
+| `weighted_direct`, `weighted_residual` | Hierarchical features; 18-month half-life training weights |
+| `horizon_direct`, `horizon_residual` | Hierarchical features; add a six-month stale-history training view, preserving each observation's total weight |
+| `relative_rent` | Learn a market-normalized residual; squared-scale weights preserve the rent-MSE objective |
 
 The selected `hierarchical_market_blend` in `configs/model.json` averages the
 hierarchical and market-residual predictions 50:50, then averages seeds. These
 weights were fixed, not fitted to validation labels. It adds 18 adaptive features
 to the existing 56, rather than replacing the raw data or categorical cleanup.
+
+The experimental `history_diversity_blend` averages that existing ensemble and
+the stale-history ensemble 50:50 (eight equal-weight components in total).
+Its weights were fixed after initial screening, then checked with the second
+seed and two additional windows; they were not optimized over a weight grid.
+At inference every component receives all available permitted training history;
+the latest six months are hidden only in the extra training view.
+The old-year regression prevents automatic adoption. Recent-sample weighting
+and the relative-rent learner also failed their stability screens.
 
 Adaptive market forecasts use only prior months, cap monthly log-growth at
 plus/minus 1%, and damp the extrapolation horizon toward six months. This is a
@@ -165,10 +184,16 @@ Every comparison is appended to `reports/temporal_comparison.csv`, including
 RMSE, MSE, MAE, bias, diagnostic rent slices, timing, exact configuration, and
 data/code hashes. Local paired predictions live under ignored
 `artifacts/temporal_comparison/`. Resume skips only identical recorded runs.
-`python src/generate_figures.py --temporal-only --bootstrap` reconstructs matched-seed
+`python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups` reconstructs matched-seed
 ensemble comparisons, including the fixed 50:50 direct/residual combination,
 in `reports/temporal_summary.csv`. Complete-window RMSE is the selection metric;
 the label-defined low-rent slices are diagnostics only.
+The reference option explicitly compares candidates with the submitted
+four-component pipeline. Frozen reference predictions can come from an earlier
+source revision; matching row IDs, labels, training cutoff and data hashes are
+checked, and both source hashes are recorded. `--error-groups` writes regenerable
+month/town/flat-type/area diagnostics locally to
+`artifacts/temporal_comparison/error_groups.csv`, not another GitHub report.
 The optional 1,000-resample address-cluster bootstrap measures paired uncertainty
 within these development samples; it does not establish future-market accuracy.
 `--trial-iterations 5 --candidates legacy --windows short_recent` is a quick
@@ -192,7 +217,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `14 passed` from pytest;
+- `18 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
@@ -206,6 +231,20 @@ its metadata component's `residual_target` flag: a raw CBM prediction is a rent
 difference and must have the market baseline added back. The training command
 automatically reloads every saved model and checks 100 predictions before
 writing and round-trip-checking the submission CSV.
+
+To reproduce the optional candidate without changing the default configuration
+or its artifacts:
+
+```bash
+python src/train_final_model.py --task-type GPU --augmentation-lags 0 6 --submission submissions/submission_history_diversity.csv --model-prefix candidates/history_diversity/model --metadata artifacts/candidates/history_diversity/metadata.json
+```
+
+The candidate directory contains its eight model components, not old model
+versions. Successful generation reloads each CBM and validates the 50,000-row
+CSV. The main configuration and `final_submission.csv` still select the retained
+four-component model.
+The verified eight-component candidate run took 709.32 seconds (about 11.8
+minutes) on the RTX 4060; its file hash is recorded in `docs/PROGRESS.md`.
 
 Use `--task-type CPU` on machines without a compatible NVIDIA GPU. GPU and CPU
 CatBoost are not bit-identical, and GPU reductions can differ between reruns even
@@ -263,10 +302,10 @@ models, or generated submissions.
 ## Next work
 
 1. Give every member repository and Kaggle-team access and reproduce the fixed-budget comparison.
-2. Preserve both outlier policies; use 436.58736 as the public reference, not as
+2. Preserve both outlier policies; use 436.05684 as the public reference, not as
    evidence that hidden labels have fewer anomalies.
-3. Check the new temporal ensemble once on Kaggle, recording its exact CSV hash;
-   do not tune repeatedly against public-leaderboard scores.
+3. Optionally test the history-diversity candidate once on Kaggle. Keep the current
+   model unless further evidence justifies the market-regime tradeoff.
 4. Test COE and stock features only through isolated chronological ablations.
 5. Freeze the final pipeline, reproduce it cleanly, and prepare the reports.
 

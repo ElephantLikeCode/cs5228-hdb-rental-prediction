@@ -158,6 +158,7 @@ def add_past_rent_features(
     market_features: bool | None = None,
     include_recent: bool | None = None,
     include_market_adjusted: bool | None = None,
+    history_lag: int = 0,
 ) -> pd.DataFrame:
     """Create target statistics using only reference rows before each query month.
 
@@ -165,6 +166,8 @@ def add_past_rent_features(
     ``reference`` and ``query`` contain the same rows, observations from the
     query month (including the row's own target) are excluded.
     """
+    if history_lag < 0:
+        raise ValueError("history_lag must be nonnegative")
     if len(reference) != len(reference_target):
         raise ValueError("Reference features and target have different lengths")
     reference = reference.reset_index(drop=True)
@@ -203,7 +206,8 @@ def add_past_rent_features(
 
     for month in sorted(query_dates.unique()):
         query_mask = query_dates.eq(month).to_numpy()
-        prior_mask = reference_dates.lt(month).to_numpy()
+        cutoff = month - pd.DateOffset(months=history_lag)
+        prior_mask = reference_dates.lt(cutoff).to_numpy()
         if not prior_mask.any():
             for name in groups:
                 output.loc[query_mask, f"HIST_{name}_LOG_COUNT"] = 0.0
@@ -297,7 +301,7 @@ def add_past_rent_features(
     return pd.concat([query.copy(), output], axis=1)
 
 
-def add_adaptive_rent_features(reference, target, query, half_life=12.0):
+def add_adaptive_rent_features(reference, target, query, half_life=12.0, history_lag=0):
     """Past-only decayed comparables with hierarchical fallbacks and damped trend.
 
     Weights are anchored to the last available reference month, not the query
@@ -305,7 +309,7 @@ def add_adaptive_rent_features(reference, target, query, half_life=12.0):
     remove the historical flat-type market level before pooling local premiums.
     No query-month label contributes to either its market index or premium.
     """
-    if len(reference) != len(target) or half_life <= 0:
+    if len(reference) != len(target) or half_life <= 0 or history_lag < 0:
         raise ValueError("Invalid reference target length or half life")
     reference = reference.reset_index(drop=True)
     query = query.reset_index(drop=True)
@@ -331,7 +335,7 @@ def add_adaptive_rent_features(reference, target, query, half_life=12.0):
         out[f"ADAPT_{name}_AGE"] = 60.0
     for month in sorted(qdates.unique()):
         mask = qdates.eq(month).to_numpy()
-        prior = keys.loc[dates.lt(month)].copy()
+        prior = keys.loc[dates.lt(month - pd.DateOffset(months=history_lag))].copy()
         if prior.empty:
             continue
         query_month = month.year * 12 + month.month

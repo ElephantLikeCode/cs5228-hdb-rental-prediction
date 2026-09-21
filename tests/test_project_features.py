@@ -168,11 +168,11 @@ def test_saved_direct_and_residual_models_predict_in_rent_units(tmp_path):
                           "ADAPT_ADDRESS_FLAT_AREA_LEVEL": np.arange(16) * 10. + 2000.})
     target = frame["ADAPT_ADDRESS_FLAT_AREA_LEVEL"].to_numpy() + 200. + np.arange(16) * 3.
     original = target.copy()
-    for residual in [False, True]:
+    for residual, normalize in [(False, False), (True, False), (True, True)]:
         config = dict(BASE_CONFIG, iterations=4, depth=2, history="hierarchical",
-                      residual_target=residual)
+                      residual_target=residual, normalize_target=normalize)
         model = fit_model(frame, target, config, 42, task_type="CPU")
-        path = tmp_path / f"model_{residual}.cbm"
+        path = tmp_path / f"model_{residual}_{normalize}.cbm"
         model.save_model(path)
         loaded = CatBoostRegressor()
         loaded.load_model(path)
@@ -180,3 +180,87 @@ def test_saved_direct_and_residual_models_predict_in_rent_units(tmp_path):
         np.testing.assert_allclose(prediction, predict_model(model, frame, config))
         assert np.isfinite(prediction).all() and prediction.min() > 1800
     np.testing.assert_array_equal(target, original)
+
+
+def test_lagged_histories_exclude_hidden_recent_labels():
+    frame = pd.DataFrame({
+        "RENT_APPROVAL_DATE": pd.date_range("2024-01-01", periods=9, freq="MS").strftime("%Y-%m"),
+        "TOWN": "a", "BLOCK": "1", "STREET": "road", "FLAT_TYPE": "4 room",
+        "FLAT_MODEL": "model", "FLOOR_AREA_SQM": 90.,
+    })
+    y = pd.Series(np.arange(9) * 100. + 3000.)
+    query = frame.iloc[[-1]]
+    changed = y.copy()
+    changed.iloc[2:] = 100000.
+    for builder in [add_adaptive_rent_features, add_past_rent_features]:
+        expected = builder(frame, y, query, history_lag=6)
+        pd.testing.assert_frame_equal(expected, builder(frame, changed, query, history_lag=6))
+    adaptive = add_adaptive_rent_features(frame, y, query, history_lag=6)
+    assert adaptive.loc[0, "ADAPT_HORIZON"] == 7
+
+
+def test_horizon_augmentation_preserves_each_observations_weight(monkeypatch):
+    import src.modeling as modeling
+
+    def fake_features(reference, target, query, lookup, recipe, history_lag=0):
+        return pd.DataFrame({"row": query["row"].to_numpy(), "lag": history_lag})
+
+    monkeypatch.setattr(modeling, "build_features", fake_features)
+    raw = pd.DataFrame({"RENT_APPROVAL_DATE": pd.date_range("2022-01-01", periods=24, freq="MS").strftime("%Y-%m"),
+                        "row": np.arange(24)})
+    y = pd.Series(np.arange(24) + 2000.)
+    config = dict(modeling.BASE_CONFIG, augmentation_lag=6, weight_half_life=18.)
+    features, targets, weights = modeling.build_training_features(raw, y, None, config)
+    totals = pd.Series(weights).groupby(features.row).sum().to_numpy()
+    np.testing.assert_allclose(totals, np.exp2((np.arange(24)-23)/18.))
+    assert len(features) == 36 and features.lag.eq(6).sum() == 12
+    np.testing.assert_array_equal(targets, y.iloc[features.row])
+
+
+def test_summary_matches_rows_and_counts_all_history_components(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "src"))
+    import generate_figures as figures
+
+    reports = tmp_path / "reports"
+    cache = tmp_path / "artifacts" / "temporal_comparison"
+    reports.mkdir()
+    cache.mkdir(parents=True)
+    rows = []
+    for name, error, code in [("hierarchical", 10., "old"), ("market_residual", -10., "old"),
+                               ("horizon_direct", 30., "new"), ("horizon_residual", 10., "new")]:
+        for seed in [42, 2026]:
+            run = f"{name}_{seed}"
+            path = cache / f"{run}.npz"
+            y = np.array([1000., 2000.])
+            np.savez(path, row_id=np.array([1, 2]), y=y, prediction=y+error,
+                     month=np.array(["2025-01", "2025-01"]))
+            rows.append(dict(candidate=name, seed=seed, code_sha256=code, data_sha256="same",
+                             window="short_recent", iterations=1600, task_type="GPU",
+                             train_end="2024-12", run_id=run,
+                             prediction_file=str(path.relative_to(tmp_path))))
+    pd.DataFrame(rows).to_csv(reports / "temporal_comparison.csv", index=False)
+    monkeypatch.setattr(figures, "ROOT", tmp_path)
+    monkeypatch.setattr(figures, "REPORTS", reports)
+    monkeypatch.setattr(figures, "save", lambda name: figures.plt.close())
+    figures.summarize_temporal(reference_candidate="hierarchical_market_blend")
+    summary = pd.read_csv(reports / "temporal_summary.csv")
+    result = summary.loc[summary.candidate.eq("history_diversity_blend")].iloc[0]
+    assert result.model_count == 8 and result.rmse == pytest.approx(10.)
+    assert result.baseline_rmse == 0. and result.baseline_code_sha256 == "old"
+    # Corrupt one saved row ID: comparisons must fail instead of pairing by position.
+    bad = cache / "horizon_direct_42.npz"
+    np.savez(bad, row_id=np.array([1, 3]), y=y, prediction=y+30.,
+             month=np.array(["2025-01", "2025-01"]))
+    with pytest.raises(ValueError, match="different validation rows"):
+        figures.summarize_temporal(reference_candidate="hierarchical_market_blend")
+
+
+def test_relative_rent_weighting_keeps_the_squared_rent_objective():
+    from src.modeling import target_scale, target_offset, CANDIDATES
+
+    frame = pd.DataFrame({"ADAPT_ADDRESS_FLAT_AREA_LEVEL": [2000., 3000., 4000.]})
+    config = CANDIDATES["relative_rent"]
+    scale, offset = target_scale(frame, config), target_offset(frame, config)
+    y = np.array([2300., 2800., 4500.])
+    f = np.array([100., -100., 200.])
+    np.testing.assert_allclose(scale**2 * ((y-offset)/scale-f)**2, (y-(f*scale+offset))**2)

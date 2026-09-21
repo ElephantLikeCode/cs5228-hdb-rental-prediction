@@ -24,40 +24,62 @@ def save(name: str) -> None:
     plt.close()
 
 
-def summarize_temporal(bootstrap=False):
+def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_groups=False):
     """Compare exact same rows and seeds using saved out-of-fold predictions."""
     results = pd.read_csv(REPORTS / "temporal_comparison.csv")
     results = results.loc[results["iterations"] >= 1600].copy()
     # Keep the latest execution per configuration identity, not smoke results.
     identity = ["candidate", "window", "seed", "iterations", "task_type", "code_sha256", "data_sha256"]
     results = results.drop_duplicates(identity, keep="last")
+    results["components_per_seed"] = 1
     # A pre-specified 50:50 combination, never an optimized validation weight.
-    blended = []
-    for _, direct in results.loc[results.candidate == "hierarchical"].iterrows():
-        matched = results.loc[results.candidate == "market_residual"]
-        for key in identity[1:]:
-            matched = matched.loc[matched[key] == direct[key]]
-        if matched.empty:
-            continue
-        residual = matched.iloc[-1]
-        with np.load(ROOT / direct.prediction_file) as left, np.load(ROOT / residual.prediction_file) as right:
-            if not (np.array_equal(left["row_id"], right["row_id"]) and np.array_equal(left["y"], right["y"])):
-                raise ValueError("Cannot average components from different validation rows")
-            blend_path = ROOT / "artifacts" / "temporal_comparison" / f"{direct.run_id}_{residual.run_id}_equal_heads.npz"
-            np.savez_compressed(blend_path, row_id=left["row_id"], y=left["y"], month=left["month"],
-                                prediction=(left["prediction"] + right["prediction"]) / 2)
-        row = direct.to_dict()
-        row.update(candidate="hierarchical_market_blend", prediction_file=str(blend_path.relative_to(ROOT)))
-        blended.append(row)
-    if blended:
-        results = pd.concat([results, pd.DataFrame(blended)], ignore_index=True)
-    summaries = []
+    pairs = [("hierarchical", "market_residual", "hierarchical_market_blend", 2),
+             ("weighted_direct", "weighted_residual", "weighted_blend", 2),
+             ("horizon_direct", "horizon_residual", "horizon_blend", 2),
+             ("horizon_blend", "hierarchical_market_blend", "history_diversity_blend", 4)]
+    for direct_name, residual_name, blend_name, component_count in pairs:
+        blended = []
+        for _, direct in results.loc[results.candidate == direct_name].iterrows():
+            matched = results.loc[results.candidate == residual_name]
+            for key in identity[1:]:
+                if key != "code_sha256" or component_count == 2:
+                    matched = matched.loc[matched[key] == direct[key]]
+            if matched.empty:
+                continue
+            residual = matched.iloc[-1]
+            if direct.train_end != residual.train_end:
+                raise ValueError("Cannot average different training cutoffs")
+            with np.load(ROOT / direct.prediction_file) as left, np.load(ROOT / residual.prediction_file) as right:
+                if not (np.array_equal(left["row_id"], right["row_id"]) and np.array_equal(left["y"], right["y"])):
+                    raise ValueError("Cannot average components from different validation rows")
+                blend_path = ROOT / "artifacts" / "temporal_comparison" / f"{direct.run_id}_{residual.run_id}_equal_heads.npz"
+                np.savez_compressed(blend_path, row_id=left["row_id"], y=left["y"], month=left["month"],
+                                    prediction=(left["prediction"] + right["prediction"]) / 2)
+            row = direct.to_dict()
+            row.update(candidate=blend_name, prediction_file=str(blend_path.relative_to(ROOT)),
+                       components_per_seed=component_count)
+            if direct.code_sha256 != residual.code_sha256:
+                row["code_sha256"] = direct.code_sha256 + "+" + residual.code_sha256
+            blended.append(row)
+        if blended:
+            results = pd.concat([results, pd.DataFrame(blended)], ignore_index=True)
+    summaries, diagnostics = [], []
+    raw = pd.read_csv(ROOT / "data" / "raw" / "train.csv") if error_groups else None
     for (candidate, window, iterations, device, code, data), group in results.groupby(
         ["candidate", "window", "iterations", "task_type", "code_sha256", "data_sha256"], sort=False
     ):
-        base = results.loc[(results.candidate == "legacy") & (results.window == window)
+        base = results.loc[(results.candidate == reference_candidate) & (results.window == window)
                            & (results.iterations == iterations) & (results.task_type == device)
-                           & (results.code_sha256 == code) & (results.data_sha256 == data)]
+                           & (results.data_sha256 == data)]
+        if base.empty:
+            continue
+        # Reuse immutable paired predictions from the submitted reference when
+        # additive experimental code changes its source hash. Record provenance;
+        # row IDs, labels and training cutoff must still match exactly.
+        reference_code = code if base.code_sha256.eq(code).any() else base.iloc[-1].code_sha256
+        base = base.loc[base.code_sha256.eq(reference_code)]
+        if not set(group.train_end).issubset(set(base.train_end)):
+            raise ValueError("Cannot compare different training cutoffs")
         seeds = sorted(set(group.seed) & set(base.seed))
         if not seeds:
             continue
@@ -82,7 +104,7 @@ def summarize_temporal(bootstrap=False):
             monthly_gains.append(float(np.sqrt(np.mean((ref[mask] - target[mask]) ** 2))
                                        - np.sqrt(np.mean((pred[mask] - target[mask]) ** 2))))
         uncertainty = {}
-        if bootstrap and candidate == "hierarchical_market_blend" and len(seeds) == 2:
+        if bootstrap and candidate.endswith("blend") and len(seeds) == 2 and candidate != reference_candidate:
             # Resample whole addresses to retain within-building dependence.
             # This diagnoses this development sample, not future-market uncertainty.
             raw_keys = pd.read_csv(ROOT / "data" / "raw" / "train.csv",
@@ -99,24 +121,52 @@ def summarize_temporal(bootstrap=False):
                                gain_ci_lower=float(np.quantile(gains, .025)),
                                gain_ci_upper=float(np.quantile(gains, .975)))
         summaries.append(dict(candidate=candidate, window=window, seeds="+".join(map(str, seeds)),
-                              model_count=len(seeds) * (2 if candidate == "hierarchical_market_blend" else 1),
+                              model_count=len(seeds) * int(group.components_per_seed.fillna(1).iloc[0]),
                               iterations=iterations, task_type=device, rows=len(target),
                               rmse=rmse, mse=rmse ** 2, baseline_rmse=baseline_rmse,
                               rmse_improvement=baseline_rmse-rmse,
                               mae=float(np.mean(np.abs(pred-target))), bias=float(np.mean(pred-target)),
                               months_improved=sum(g > 0 for g in monthly_gains), months=len(monthly_gains),
                               worst_month_improvement=min(monthly_gains),
-                              code_sha256=code, data_sha256=data, **uncertainty))
+                              code_sha256=code, data_sha256=data,
+                              baseline_candidate=reference_candidate, baseline_code_sha256=reference_code,
+                              **uncertainty))
+        if error_groups and candidate.endswith("blend"):
+            from features import normalize_text
+            frame = raw.iloc[row_ids].reset_index(drop=True)
+            frame["MONTH"] = months
+            for field in ["TOWN", "FLAT_TYPE"]:
+                frame[field] = normalize_text(frame[field])
+            frame["AREA_BAND"] = pd.cut(frame.FLOOR_AREA_SQM, [0, 60, 90, 110, 130, np.inf]).astype(str)
+            frame["error"], frame["squared_error"] = pred-target, (pred-target)**2
+            frame["baseline_squared_error"] = (ref-target)**2
+            for field in ["MONTH", "TOWN", "FLAT_TYPE", "AREA_BAND"]:
+                grouped = frame.groupby(field).agg(rows=("error", "size"), bias=("error", "mean"),
+                                                   mse=("squared_error", "mean"),
+                                                   baseline_mse=("baseline_squared_error", "mean"),
+                                                   sse=("squared_error", "sum")).reset_index()
+                grouped = grouped.rename(columns={field: "group_value"})
+                grouped["rmse"] = np.sqrt(grouped.mse)
+                grouped["rmse_improvement"] = np.sqrt(grouped.baseline_mse)-grouped.rmse
+                grouped["sse_fraction"] = grouped.sse / frame.squared_error.sum()
+                diagnostics.append(grouped.assign(candidate=candidate, window=window,
+                                                   seeds="+".join(map(str, seeds)), group_column=field,
+                                                   code_sha256=code, baseline_code_sha256=reference_code))
     summary = pd.DataFrame(summaries)
+    if summary.empty:
+        raise ValueError("No paired runs match the requested reference candidate")
     summary.to_csv(REPORTS / "temporal_summary.csv", index=False)
+    if diagnostics:
+        pd.concat(diagnostics, ignore_index=True).to_csv(
+            ROOT / "artifacts" / "temporal_comparison" / "error_groups.csv", index=False)
     print(summary[["candidate", "window", "seeds", "rmse", "rmse_improvement", "months_improved", "months"]].round(3).to_string(index=False))
     if not summary.empty:
-        chart = summary.loc[summary.candidate != "legacy"].copy()
+        chart = summary.loc[summary.candidate != reference_candidate].copy()
         if not chart.empty:
             plt.figure(figsize=(10, 6))
             sns.barplot(data=chart, x="rmse_improvement", y="candidate", hue="window", errorbar=None)
             plt.axvline(0, color="black", linewidth=1)
-            plt.xlabel("RMSE improvement over matched legacy model (positive is better)")
+            plt.xlabel(f"RMSE improvement over {reference_candidate} (positive is better)")
             plt.ylabel("")
             plt.title("Fixed-budget temporal comparison; identical rows and seeds")
             save("temporal_comparison.png")
@@ -125,13 +175,17 @@ def summarize_temporal(bootstrap=False):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--temporal-only", action="store_true")
+    parser.add_argument("--reference-candidate", default="legacy")
+    parser.add_argument("--error-groups", action="store_true",
+                        help="Write local paired errors by month, town, flat type and area.")
     parser.add_argument("--bootstrap", action="store_true",
                         help="Add paired address-bootstrap intervals for the two-seed head blend.")
     args = parser.parse_args()
     FIGURES.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", context="notebook")
     if args.temporal_only:
-        summarize_temporal(bootstrap=args.bootstrap)
+        summarize_temporal(bootstrap=args.bootstrap, reference_candidate=args.reference_candidate,
+                           error_groups=args.error_groups)
         return
     results = pd.read_csv(REPORTS / "experiment_results.csv")
 

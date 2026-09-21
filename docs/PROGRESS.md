@@ -91,6 +91,7 @@ RMSE **448.06 SGD**, MAE **318.82 SGD**, signed bias
 | 2026-09-18 | final_submission.csv | 438.94 |
 | 2026-09-21 | submission_keep_all_labels.csv | 436.76 |
 | 2026-09-21 | submission_remove_suspected_low_rents.csv | 436.59 |
+| 2026-09-21 | final_submission.csv | 436.06 |
 
 These reference metrics use validation-driven early stopping. Fixed-budget
 comparisons and adoption decisions are recorded in the cumulative entries below
@@ -265,3 +266,122 @@ public score, comparing it with 436.58736 without assuming the local improvement
 will transfer one-for-one. Preserve both anomaly-policy candidates. If the new
 pipeline transfers, investigate the remaining long-window bias and property
 segments; do not start by repeatedly tweaking leaderboard-facing weights.
+
+## Forecast-horizon training checks (21 September 2026)
+
+Read-only browser verification confirms the adaptive-market submission scored
+436.05684, rank 7 of 16: 0.53052 better than the removal candidate and 0.70034
+better than the old keep-all-labels candidate. Sixth place is 433.60708 and first
+place is 430.68326 at this observation. The submitted file matches the SHA-256
+recorded above. No submissions or other website mutations were performed.
+
+The current four-component predictions have latest-window bias +8.94 SGD, but
+recent-12-month bias -34.95; that window's March 2025 bias reaches -80.48. The
+same town does not have a stable correction across cutoffs (e.g. Jurong West
+is +70.90 on the short window and -97.09 on the recent 12-month window). Therefore
+do not fit a town/month correction on these scoring labels or add a global
+constant chosen from the validation errors.
+
+Two pre-specified hypotheses are being checked with unchanged scoring rows:
+18-month half-life training weights, and six-month stale-history augmentation.
+Augmentation retains true query dates but hides the latest six months of prior
+labels; original/augmented observations share their original total weight.
+Only rows with at least six remaining months of reference history are augmented.
+Both direct and residual prediction modes use identical rules. No raw rows or
+competition test rows are deleted, and the current submitted artifacts remain
+unchanged until a candidate is accepted.
+
+### Completed comparisons and decision
+
+Completed 22 GPU validation fits: four recent-weighting fits, sixteen stale-history
+fits (two prediction modes, two seeds, four windows), and two relative-rent fits.
+Recorded model fitting/prediction time totals 1,637.16 seconds, excluding feature
+construction. The extra relative-rent hypothesis divides residuals by the
+past-only market level and multiplies loss weights by its square, preserving
+the squared-error objective in SGD. It neither deletes labels nor changes RMSE
+into a relative-error objective.
+
+Recent weighting worsened matched seed-42 RMSE by 0.23 on the short window and
+0.46 on the 16-month window. Relative-rent normalization improved the short
+window by only 0.15 but worsened the 16-month window by 1.57. Neither is adopted.
+Stale-history training alone improved the short window but degraded long
+horizons. A fixed 50:50 blend with the original ensemble was then checked:
+
+| Window | Submitted four-model RMSE | Experimental eight-model RMSE | RMSE gain | Months improved |
+|---|---:|---:|---:|---:|
+| Jan-Mar 2025 | 445.5185 | 440.8896 | +4.6288 | 3/3 |
+| Apr 2024-Mar 2025 | 469.5399 | 466.8866 | +2.6533 | 11/12 |
+| Apr 2023-Mar 2024 | 580.5366 | 591.0835 | -10.5469 | 0/12 |
+| Dec 2023-Mar 2025 | 486.6420 | 483.8323 | +2.8097 | 15/16 |
+
+All rows use seeds 42 and 2026, fixed 1,600-tree budgets per component and
+identical scoring rows. This is not an equal-compute comparison: the candidate
+doubles the component count. The blend was selected after the first-seed short
+and 16-month screen; subsequent seeds are variation checks, not independent
+test sets. Address-cluster bootstrap 95% gain intervals are [3.55, 5.69],
+[2.03, 3.23], [-11.80, -9.33] and [2.22, 3.43], respectively. They describe
+these development samples, not future-market uncertainty or selection bias.
+
+Latest-window MAE improves 319.29 -> 316.69 and bias +8.94 -> +0.71. However,
+older-year bias rises +8.89 -> +83.62 and every month in that window worsens.
+Recent-12-month bias also worsens -34.95 -> -41.47 despite the lower overall
+RMSE. These are systematic regime sensitivities, not justification for claiming
+the method always improves or adding a validation-derived price correction.
+
+Decision: keep `configs/model.json`, the submitted four CBMs and
+`submissions/final_submission.csv` unchanged. Retain the new combination as an
+explicit experimental candidate for one optional platform test, not as a proven
+replacement. Its CSV is `submissions/submission_history_diversity.csv`; its eight
+CBMs and metadata are isolated under ignored `artifacts/candidates/history_diversity/`.
+The previous Keep/Remove files are also unchanged. No new source files, stage
+directories or patch files were created for this round.
+
+### Reproduction and checks
+
+Use the existing comparison command with `--candidates horizon_direct horizon_residual`
+and `--windows short_recent horizon16 long_recent long_older --comparison-seeds 42 2026`.
+The two rejected additional probes use `--candidates weighted_direct weighted_residual relative_rent`
+with `--windows short_recent horizon16 --comparison-seeds 42`. Both use
+`--compare-candidates --task-type GPU --resume`.
+
+`python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups`
+reconstructs paired comparisons. Reference predictions from the earlier submitted
+revision are reused with explicit data/source hashes; raw row IDs, labels and
+training cutoffs must match. The default features were also checked against the
+submitted implementation across sampled months and matched exactly. Grouped
+month/town/flat/area diagnostics are regenerable local evidence at
+`artifacts/temporal_comparison/error_groups.csv`, not another GitHub report.
+
+Eighteen tests pass, including hidden-history exclusion, preservation of each
+augmented observation's total weight, residual/relative CBM prediction round trips,
+eight-component aggregation, mismatched-row rejection and SGD-loss equivalence.
+The optional candidate generation command is:
+
+```bash
+python src/train_final_model.py --task-type GPU --augmentation-lags 0 6 --submission submissions/submission_history_diversity.csv --model-prefix candidates/history_diversity/model --metadata artifacts/candidates/history_diversity/metadata.json
+```
+
+Candidate generation completed end-to-end on the RTX 4060 in 709.32 seconds.
+The normal training view has 150,000 rows; the augmented view has 262,381 rows,
+but both have total observation weight 150,000. At prediction time all eight
+components receive the full permitted history; recent data is not discarded.
+The eight component CBMs passed generation-time reload checks, and an independent
+128-row prediction check reproduced the final ensemble within 4.55e-13 SGD.
+The CSV has exactly 50,000 ordered `Id,Predicted` rows and finite positive values
+between 1448.98 and 5487.47. Compared with the retained submission, the mean
+prediction change is -2.92 SGD, with standard deviation 40.92; this is a scale
+sanity check, not evidence of hidden-label accuracy.
+
+Candidate SHA-256:
+`b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7`.
+All eight candidate model hashes were verified. The original four submitted
+model hashes, original final CSV, both Keep/Remove CSVs and the default config
+remain unchanged. Setup checks confirm the original nine data checksums, and
+18 tests pass. Automatic progress refresh also preserves the cumulative notes.
+
+Next action: optionally submit only `submission_history_diversity.csv` once,
+record the returned public score against this hash, and discuss the old-regime
+tradeoff before promotion. Do not overwrite the default or claim leaderboard
+improvement before that result. If it does not transfer, retain the 436.05684
+pipeline and move to a different learner or local-comparable representation,
+rather than repeatedly tuning this blend against the public leaderboard.
