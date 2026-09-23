@@ -301,7 +301,10 @@ def add_past_rent_features(
     return pd.concat([query.copy(), output], axis=1)
 
 
-def add_adaptive_rent_features(reference, target, query, half_life=12.0, history_lag=0):
+def add_adaptive_rent_features(
+    reference, target, query, half_life=12.0, history_lag=0,
+    include_local_trend=False,
+):
     """Past-only decayed comparables with hierarchical fallbacks and damped trend.
 
     Weights are anchored to the last available reference month, not the query
@@ -328,6 +331,11 @@ def add_adaptive_rent_features(reference, target, query, half_life=12.0, history
     out = pd.DataFrame(index=query.index, dtype=float)
     out["ADAPT_MARKET_LEVEL"] = 2000.0  # Fixed cold-start prior, not fitted globally.
     out["ADAPT_HORIZON"] = 0.0
+    if include_local_trend:
+        out["ADAPT_TOWN_FLAT_PREMIUM_RECENT"] = 1.0
+        out["ADAPT_TOWN_FLAT_PREMIUM_PREVIOUS"] = 1.0
+        out["ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] = 0.0
+        out["ADAPT_TOWN_FLAT_TREND_LOG_SUPPORT"] = 0.0
     for name, _, _, _ in groups:
         out[f"ADAPT_{name}_LEVEL"] = 2000.0
         out[f"ADAPT_{name}_PREMIUM"] = 1.0
@@ -358,8 +366,36 @@ def add_adaptive_rent_features(reference, target, query, half_life=12.0, history
         flat_level = qkeys.loc[mask, "_FLAT_TYPE_KEY"].map(level).fillna(prior["_Y"].mean()).to_numpy()
         out.loc[mask, "ADAPT_MARKET_LEVEL"] = flat_level
         denom = prior.groupby(["_FLAT_TYPE_KEY", "_MONTH"])["_Y"].transform("mean")
+        prior["_RATIO"] = prior["_Y"] / denom
         prior["_W"] = np.exp2((prior["_MONTH"] - anchor) / half_life)
-        prior["_WR"] = prior["_W"] * prior["_Y"] / denom
+        prior["_WR"] = prior["_W"] * prior["_RATIO"]
+        if include_local_trend:
+            # Compare the latest six months with the preceding six months after
+            # removing each flat type's contemporaneous market level. Counts
+            # shrink sparse town/flat cells toward no local premium (ratio 1).
+            trend_cols = ["_TOWN_KEY", "_FLAT_TYPE_KEY"]
+            current = qkeys.loc[mask, trend_cols]
+            lookup_key = pd.MultiIndex.from_frame(current)
+
+            def period_ratio(start, stop):
+                period = prior.loc[prior["_MONTH"].between(start, stop)]
+                stats = period.groupby(trend_cols)["_RATIO"].agg(["sum", "count"])
+                count = stats["count"].reindex(lookup_key).fillna(0).to_numpy(float)
+                total = stats["sum"].reindex(lookup_key).fillna(0).to_numpy(float)
+                ratio = (total + 20.0) / (count + 20.0)
+                return ratio, count
+
+            recent_ratio, recent_count = period_ratio(anchor - 5, anchor)
+            previous_ratio, previous_count = period_ratio(anchor - 11, anchor - 6)
+            premium_change = np.log(
+                np.maximum(recent_ratio, 1e-6) / np.maximum(previous_ratio, 1e-6)
+            ).clip(-0.15, 0.15)
+            out.loc[mask, "ADAPT_TOWN_FLAT_PREMIUM_RECENT"] = recent_ratio
+            out.loc[mask, "ADAPT_TOWN_FLAT_PREMIUM_PREVIOUS"] = previous_ratio
+            out.loc[mask, "ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] = premium_change
+            out.loc[mask, "ADAPT_TOWN_FLAT_TREND_LOG_SUPPORT"] = np.log1p(
+                np.minimum(recent_count, previous_count)
+            )
         estimates = {}
         for name, cols, parent, strength in groups:
             stats = prior.groupby(cols).agg(mass=("_W", "sum"), total=("_WR", "sum"), last=("_MONTH", "max"))

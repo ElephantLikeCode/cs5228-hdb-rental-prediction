@@ -194,7 +194,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--candidates", nargs="+", choices=list(CANDIDATES),
                         default=["legacy", "recent", "hierarchical", "market_residual"])
     parser.add_argument("--windows", nargs="+", default=["short_recent", "long_recent", "long_older"],
-                        choices=["short_recent", "short_middle", "long_recent", "long_older", "horizon16"])
+                        choices=["short_recent", "short_middle", "bridge_2024", "bridge_2023",
+                                 "long_recent", "long_older", "horizon16"])
     parser.add_argument("--comparison-seeds", nargs="+", type=int, default=[42])
     parser.add_argument("--trial-iterations", type=int, default=1600)
     parser.add_argument("--resume", action="store_true")
@@ -341,6 +342,8 @@ def run_candidate_comparison(args):
     windows = {
         "short_recent": ("2025-01", "2025-03"),
         "short_middle": ("2024-10", "2024-12"),
+        "bridge_2024": ("2024-07", "2024-09"),
+        "bridge_2023": ("2023-09", "2023-11"),
         "long_recent": ("2024-04", "2025-03"),
         "long_older": ("2023-04", "2024-03"),
         "horizon16": ("2023-12", "2025-03"),

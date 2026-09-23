@@ -33,6 +33,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seeds", type=int, nargs="+")
     parser.add_argument("--augmentation-lags", type=int, nargs="+",
                         help="Optional experimental training views; does not modify configs/model.json.")
+    parser.add_argument(
+        "--history-views", nargs="+", metavar="RECIPE:LAG",
+        help="Per-view history recipes, for example local_trend:0 hierarchical:6.",
+    )
     parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
     parser.add_argument(
         "--outlier-policy",
@@ -69,7 +73,8 @@ def validate_output_paths(args) -> None:
     if not prefix.is_relative_to(root / "artifacts") or prefix == root / "artifacts":
         raise ValueError("model-prefix must stay inside artifacts")
     custom = (args.candidate is not None or args.config.resolve() != DEFAULT_CONFIG.resolve()
-              or args.augmentation_lags is not None or args.seeds is not None
+              or args.augmentation_lags is not None or args.history_views is not None
+              or args.seeds is not None
               or args.iterations is not None or args.outlier_policy is not None
               or args.outlier_ratio != 0.5)
     if custom and (args.submission == root / "submissions/final_submission.csv"
@@ -118,6 +123,21 @@ def main() -> None:
     config = dict(CANDIDATES[args.candidate]) if args.candidate else load_config(args.config)
     if args.augmentation_lags is not None:
         config.update(augmentation_lags=args.augmentation_lags, name="custom_history_views")
+    if args.history_views is not None:
+        parsed_views = []
+        for value in args.history_views:
+            try:
+                recipe, lag_text = value.rsplit(":", 1)
+                lag = int(lag_text)
+            except ValueError as exc:
+                raise ValueError("history views must use RECIPE:LAG") from exc
+            if recipe not in {"legacy", "recent", "hierarchical", "local_trend"} or lag < 0:
+                raise ValueError(f"Invalid history view: {value}")
+            parsed_views.append({"history": recipe, "lag": lag})
+        if len({(v["history"], v["lag"]) for v in parsed_views}) != len(parsed_views):
+            raise ValueError("history views must be unique")
+        config.pop("augmentation_lags", None)
+        config.update(history_views=parsed_views, name="custom_mixed_history_views")
     args.seeds = args.seeds if args.seeds is not None else config["seeds"]
     args.outlier_policy = args.outlier_policy or config["outlier_policy"]
     config["seeds"] = args.seeds
@@ -130,13 +150,17 @@ def main() -> None:
         raise ValueError("target_modes must contain unique prediction modes")
     if any(mode not in (False, True) for mode in target_modes):
         raise ValueError("target_modes must be booleans")
-    if any(target_modes) and config["history"] != "hierarchical":
+    if any(target_modes) and config["history"] not in {"hierarchical", "local_trend"}:
         raise ValueError("Residual components require hierarchical features")
-    history_lags = config.get("augmentation_lags", [config.get("augmentation_lag", 0)])
-    if not history_lags or len(set(history_lags)) != len(history_lags):
-        raise ValueError("augmentation_lags must contain unique history views")
-    if any(not isinstance(lag, int) or lag < 0 for lag in history_lags):
-        raise ValueError("augmentation_lags must be nonnegative integers")
+    if "history_views" in config:
+        history_views = config["history_views"]
+    else:
+        history_lags = config.get("augmentation_lags", [config.get("augmentation_lag", 0)])
+        if not history_lags or len(set(history_lags)) != len(history_lags):
+            raise ValueError("augmentation_lags must contain unique history views")
+        if any(not isinstance(lag, int) or lag < 0 for lag in history_lags):
+            raise ValueError("augmentation_lags must be nonnegative integers")
+        history_views = [{"history": config["history"], "lag": lag} for lag in history_lags]
     if not args.submission.is_absolute():
         args.submission = (ROOT / args.submission).resolve()
     if not args.metadata.is_absolute():
@@ -160,25 +184,34 @@ def main() -> None:
     else:
         model_raw_train = raw_train.reset_index(drop=True)
         model_y = raw_y.reset_index(drop=True)
-    X_test = build_features(model_raw_train, model_y, test, lookup, config["history"])
-    history_columns = [c for c in X_test if c.startswith(("HIST_", "ADAPT_"))]
+    history_columns: set[str] = set()
     predictions: list[np.ndarray] = []
     model_paths: list[Path] = []
     components: list[dict] = []
     training_views = {}
-    for lag in history_lags:
-        view_config = dict(config, augmentation_lag=lag)
+    feature_counts = {}
+    for view in history_views:
+        lag, recipe = view["lag"], view["history"]
+        view_config = dict(config, history=recipe, augmentation_lag=lag)
+        X_test = build_features(model_raw_train, model_y, test, lookup, recipe)
+        history_columns.update(c for c in X_test if c.startswith(("HIST_", "ADAPT_")))
         X_train, fit_y, fit_weight = build_training_features(model_raw_train, model_y, lookup, view_config)
-        training_views[str(lag)] = dict(fit_rows=len(fit_y), weight_sum=float(fit_weight.sum()))
+        view_key = f"{recipe}:{lag}"
+        feature_counts[view_key] = X_test.shape[1]
+        training_views[view_key] = dict(
+            fit_rows=len(fit_y), weight_sum=float(fit_weight.sum()),
+            feature_count=X_test.shape[1],
+        )
         for seed in args.seeds:
             for residual_mode in target_modes:
                 component_config = dict(view_config, residual_target=residual_mode)
                 component_started = time.perf_counter()
-                print(f"FINAL FIT history_lag={lag} residual={residual_mode} seed={seed}", flush=True)
+                print(f"FINAL FIT history={recipe} lag={lag} residual={residual_mode} seed={seed}", flush=True)
                 model = fit_model(X_train, fit_y, component_config, seed, args.task_type,
                                   verbose=200, sample_weight=fit_weight)
                 predictions.append(predict_model(model, X_test, component_config))
-                suffix = (f"_lag{lag}" if lag else "") + ("_residual" if residual_mode else "")
+                recipe_suffix = "_trend" if recipe == "local_trend" else ""
+                suffix = recipe_suffix + (f"_lag{lag}" if lag else "") + ("_residual" if residual_mode else "")
                 model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 model.save_model(model_path)
@@ -189,7 +222,8 @@ def main() -> None:
                     raise ValueError("Saved model does not reproduce rent-unit predictions")
                 del restored
                 model_paths.append(model_path)
-                components.append(dict(seed=seed, residual_target=residual_mode, augmentation_lag=lag,
+                components.append(dict(seed=seed, residual_target=residual_mode,
+                                       history=recipe, augmentation_lag=lag,
                                        model_path=str(model_path.relative_to(ROOT)),
                                        actual_trees=model.tree_count_,
                                        elapsed_seconds=round(time.perf_counter() - component_started, 2),
@@ -221,12 +255,15 @@ def main() -> None:
 
     metadata = {
         "model": "CatBoostRegressor equal-weight component ensemble",
-        "feature_set": "all_spatial_" + config["history"],
+        "feature_set": "all_spatial_" + "+".join(
+            f"{view['history']}:{view['lag']}" for view in history_views
+        ),
         "config": config,
-        "feature_count": X_test.shape[1],
+        "feature_count": max(feature_counts.values()),
+        "feature_counts": feature_counts,
         "code_sha256": {name: hashlib.sha256((ROOT / "src" / name).read_bytes()).hexdigest()
                         for name in ["features.py", "modeling.py", "train_final_model.py"]},
-        "history_features": history_columns,
+        "history_features": sorted(history_columns),
         "iterations": args.iterations,
         "learning_rate": config["learning_rate"],
         "depth": config["depth"],

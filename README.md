@@ -14,7 +14,7 @@ components receive the full permitted training history. It retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-one automated tests cover data contracts,
+50,000-row submission generator. Twenty-two automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -31,6 +31,7 @@ changes; retain previous iteration results in `docs/PROGRESS.md`.
 | CatBoost + spatial and past-rent features (seed 42) | 450.04 | Historical reference |
 | Retained reference: adaptive-market direct/residual ensemble (four components) | 445.52 | Fixed 1,600 trees/component |
 | **Current mainline: normal/stale-history ensemble (eight components)** | **440.89** | **Fixed 1,600 trees/component; temporal limitations below** |
+| Candidate: local-trend/stale-history ensemble (eight components) | 440.76 | Fixed 1,600 trees/component; awaiting platform test |
 
 The final two rows use identical validation rows and seeds, with no scoring-label
 early stopping. Historical baselines used a different early-stopping protocol
@@ -41,6 +42,13 @@ windows by 4.63, 2.65 and 2.81 RMSE, but **worsens Apr 2023-Mar 2024 by 10.55**,
 with all 12 months worsening and systematic overprediction. The windows overlap;
 they are development evidence, not independent tests or a private-score guarantee.
 Full results remain in `reports/temporal_summary.csv` and `docs/PROGRESS.md`.
+
+The new candidate replaces only the normal-history half with four extra
+town/flat-type momentum features. Relative to the current mainline it improves
+the same four windows by 0.13, 0.13, 0.74 and 0.40 RMSE. Two additional
+three-month cutoffs improve the trend head by 0.17 and 1.47 over its matched
+reference. The older-year deficit is reduced but remains 9.81 RMSE, so the
+candidate is generated for one platform test rather than treated as proven.
 
 The browser-verified public score on 21 September 2026 is **432.47187, rank 3 of
 16**, improved from 436.05684 by 3.58497. The uploaded filename was
@@ -149,6 +157,7 @@ For a second-seed confirmation, add `--comparison-seeds 42 2026 --resume`.
 | `weighted_direct`, `weighted_residual` | Hierarchical features; 18-month half-life training weights |
 | `horizon_direct`, `horizon_residual` | Hierarchical features; add a six-month stale-history training view, preserving each observation's total weight |
 | `relative_rent` | Learn a market-normalized residual; squared-scale weights preserve the rent-MSE objective |
+| `local_trend_direct`, `local_trend_residual` | Add smoothed town/flat-type relative-rent changes between the latest and preceding six months |
 
 The retained `hierarchical_market_blend` reference averages hierarchical and
 market-residual predictions 50:50, then averages seeds. It adds 18 adaptive
@@ -188,6 +197,16 @@ The optional 1,000-resample address-cluster bootstrap measures paired uncertaint
 within these development samples; it does not establish future-market accuracy.
 `--trial-iterations 5 --candidates legacy --windows short_recent` is a quick
 GPU smoke run; its scores are not suitable for model selection.
+
+Generate the current local-trend candidate without changing the mainline:
+
+```bash
+python src/train_final_model.py --task-type GPU --history-views local_trend:0 hierarchical:6 --submission submissions/submission_local_trend_diversity.csv --model-prefix candidates/local_trend_diversity/model --metadata artifacts/candidates/local_trend_diversity/metadata.json
+```
+
+This uses local-trend features only for the normal-history view and the proven
+hierarchical recipe for the six-month stale-history view. Mixed views are
+recorded explicitly in metadata; experimental output paths remain isolated.
 
 The original classroom baseline/ablation study remains reproducible with
 `python src/run_experiments.py --task-type GPU` and its `--long-horizon` option.

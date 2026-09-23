@@ -450,3 +450,66 @@ No further model training is part of this closeout. When work resumes, prioritiz
 the older-window stability investigation and progress-report evidence. One
 complementary final submission can be retained alongside the mainline; two
 selection slots do not require two codebases. Browser selections remain unchanged.
+
+## Town/flat-type momentum experiment — 23 September 2026
+
+### Hypothesis and implementation
+
+The 432.47187 mainline improves recent periods but overpredicts the older
+April 2023-March 2024 window. Error grouping showed that the regression grew
+over time and varied materially by town. A new leakage-safe feature group tests
+whether each town/flat-type segment's premium over its contemporaneous flat-type
+market changed recently. It compares the latest six prior months with the
+preceding six, shrinks both ratios toward one with strength 20, clips the log
+change to plus/minus 0.15, and records the smaller period's support. Same-month
+and future labels are excluded. Four features are added only to the normal
+history view; the lag-six view keeps the submitted hierarchical recipe.
+
+The existing XGBoost experiment was not repeated: it scored 470.13 on the
+January-March 2025 window and every tested CatBoost/XGBoost blend was worse than
+CatBoost alone. Cached component predictions were first used to test stale-view
+weights. A 25% stale weight was more stable but weaker than the submitted 50%
+weight on recent windows; it remains a possible conservative final-selection
+alternative, not the performance candidate.
+
+### Fixed-budget evidence
+
+All comparisons use 1,600 trees, identical validation rows, seeds 42 and 2026
+where available, and no validation-label early stopping.
+
+| Window | Current mainline RMSE | Local-trend candidate RMSE | Gain |
+|---|---:|---:|---:|
+| Jan-Mar 2025 | 440.8896 | 440.7629 | +0.1268 |
+| Apr 2024-Mar 2025 | 466.8866 | 466.7566 | +0.1300 |
+| Apr 2023-Mar 2024 | 591.0835 | 590.3473 | +0.7361 |
+| Dec 2023-Mar 2025 | 483.8323 | 483.4345 | +0.3979 |
+
+Two extra single-seed cutoffs, introduced before the second-seed confirmation,
+also favored the local-trend head: July-September 2024 improved by 0.17 RMSE and
+September-November 2023 by 1.47. The feature head alone improves all six checked
+windows after the two-seed results are used where available. The complete mixed
+candidate improves all four core windows, but still loses 9.81 RMSE to the
+four-component reference in the oldest 12-month regime. This is a reduction of
+the known risk, not its resolution.
+
+### Generated candidate and decision
+
+The full eight-model GPU run completed in 669.44 seconds. It uses 78 features
+for `local_trend:0` and 74 for `hierarchical:6`; each view preserves total
+training weight 150,000. All CBMs passed save/reload checks. The submission has
+50,000 ordered finite positive predictions from 1461.83 to 5437.83 SGD.
+
+Candidate file: `submissions/submission_local_trend_diversity.csv`
+SHA-256: `a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`
+
+Compared with the 432.47187 mainline, prediction changes average +2.66 SGD with
+standard deviation 12.69 and correlation 0.99964. The change is bounded rather
+than a broad market-level shift. Keep the submitted 432.47187 artifact as the
+mainline until this candidate receives a platform score; one small public test
+is justified by consistent local improvements. No Kaggle upload or final-slot
+selection was performed automatically.
+
+Twenty-two tests pass, including future/same-month exclusion for the new feature,
+mixed-history output isolation and existing artifact safeguards. Setup checks
+still verify all nine raw files. No new Python module, stage directory or report
+file was created.

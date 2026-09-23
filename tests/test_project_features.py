@@ -142,6 +142,29 @@ def test_adaptive_features_ignore_same_month_and_future_labels():
     pd.testing.assert_frame_equal(expected, add_adaptive_rent_features(frame.iloc[:2], original.iloc[:2], query))
 
 
+def test_local_trend_features_separate_town_flat_momentum_without_leakage():
+    months = pd.date_range("2023-01-01", periods=14, freq="MS").strftime("%Y-%m")
+    rows = []
+    target = []
+    for i, month in enumerate(months):
+        for town, premium in [("rising", 1.0 + 0.01 * i), ("flat", 1.0)]:
+            rows.append(dict(RENT_APPROVAL_DATE=month, TOWN=town, BLOCK="1",
+                             STREET="road", FLAT_TYPE="4 room", FLAT_MODEL="model",
+                             FLOOR_AREA_SQM=90.0))
+            target.append(3000.0 * premium)
+    frame = pd.DataFrame(rows)
+    y = pd.Series(target)
+    query = frame.loc[frame.RENT_APPROVAL_DATE.eq("2024-01")].reset_index(drop=True)
+    base = add_adaptive_rent_features(frame, y, query, include_local_trend=True)
+    assert base.loc[0, "ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] > 0
+    assert base.loc[1, "ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] < 0
+    changed = y.copy()
+    changed.loc[frame.RENT_APPROVAL_DATE.ge("2024-01")] = 100000.0
+    pd.testing.assert_frame_equal(
+        base, add_adaptive_rent_features(frame, changed, query, include_local_trend=True)
+    )
+
+
 def test_adaptive_fallbacks_and_long_horizon_keep_comparable_mass():
     frame = pd.DataFrame({
         "RENT_APPROVAL_DATE": ["2024-01", "2024-02"],
@@ -273,7 +296,8 @@ def test_final_training_overrides_require_isolated_outputs(monkeypatch):
     args = final.parse_args()
     final.validate_output_paths(args)
     for field, value in [("iterations", 5), ("candidate", "legacy"),
-                         ("augmentation_lags", [0]), ("seeds", [42]),
+                         ("augmentation_lags", [0]), ("history_views", ["local_trend:0"]),
+                         ("seeds", [42]),
                          ("outlier_policy", "remove"), ("outlier_ratio", 0.4)]:
         changed = final.argparse.Namespace(**vars(args))
         setattr(changed, field, value)

@@ -41,13 +41,17 @@ for family, extra in [("horizon", {"augmentation_lag": 6}),
                                 residual_target=(mode == "residual"), **extra)
 CANDIDATES["relative_rent"] = dict(BASE_CONFIG, name="relative_rent", history="hierarchical",
                                    residual_target=True, normalize_target=True)
+for mode in ("direct", "residual"):
+    name = f"local_trend_{mode}"
+    CANDIDATES[name] = dict(BASE_CONFIG, name=name, history="local_trend",
+                            residual_target=(mode == "residual"))
 
 
 def load_config(path: Path = DEFAULT_CONFIG) -> dict:
     config = dict(BASE_CONFIG, **json.loads(path.read_text(encoding="utf-8")))
-    if config["history"] not in {"legacy", "recent", "hierarchical"}:
+    if config["history"] not in {"legacy", "recent", "hierarchical", "local_trend"}:
         raise ValueError("Unknown history recipe")
-    if (config["residual_target"] or config.get("normalize_target")) and config["history"] != "hierarchical":
+    if (config["residual_target"] or config.get("normalize_target")) and config["history"] not in {"hierarchical", "local_trend"}:
         raise ValueError("Residual target requires the adaptive market baseline")
     return config
 
@@ -65,8 +69,11 @@ def build_features(reference, target, query, lookup, recipe, history_lag=0):
     )
     columns = [c for c in history if c.startswith("HIST_")]
     result[columns] = history[columns]
-    if recipe == "hierarchical":
-        adaptive = add_adaptive_rent_features(reference, target, query, history_lag=history_lag)
+    if recipe in {"hierarchical", "local_trend"}:
+        adaptive = add_adaptive_rent_features(
+            reference, target, query, history_lag=history_lag,
+            include_local_trend=(recipe == "local_trend"),
+        )
         result[adaptive.columns] = adaptive
     return prepare_for_catboost(result)
 
