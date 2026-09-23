@@ -513,3 +513,62 @@ Twenty-two tests pass, including future/same-month exclusion for the new feature
 mixed-history output isolation and existing artifact safeguards. Setup checks
 still verify all nine raw files. No new Python module, stage directory or report
 file was created.
+
+## Review fixes and composition-controlled trend — 23 September 2026
+
+### Review corrections
+
+A direct review of the mixed-history training entry point found two boundary
+bugs that did not affect the generated local-trend candidate: some other accepted
+recipe combinations could resolve to the same CBM filename, and residual mode
+was checked against the top-level recipe rather than every history view. Model
+suffixes are now recipe-specific where needed, and every residual or normalized
+view must provide adaptive market features. Two tests cover these cases. The
+existing candidate remains valid: all eight model paths are unique and their
+recorded hashes match.
+
+The earlier statement that the local-trend candidate consistently improves the
+current mainline needs qualification. A 2,000-replicate address-cluster paired
+bootstrap gives mainline-to-candidate gain intervals of -0.13 to 0.36 RMSE for
+January-March 2025 and -0.04 to 0.30 for April 2024-March 2025. Those two small
+gains are directionally useful but not statistically stable within these
+development samples. The older-year and 16-month gains are stronger at 0.51 to
+0.96 and 0.24 to 0.58 respectively. Overlapping windows remain non-independent.
+
+### Composition-control experiment
+
+The follow-up hypothesis was that changing area and lease-age composition within
+a town/flat-type segment could masquerade as local rent momentum. A new
+past-only recipe estimates each historical row relative to a smoothed
+flat-type/month/10-square-metre/10-year-age cell before comparing the latest six
+months with the preceding six. The same fixed 1,600-tree budget, validation rows,
+seeds 42/2026 and no validation-label early stopping were used.
+
+| Window | Current mainline | Prior local-trend candidate | Composition candidate | Versus mainline |
+|---|---:|---:|---:|---:|
+| Jan-Mar 2025 | 440.8896 | 440.7629 | 440.8613 | +0.0284 |
+| Apr 2024-Mar 2025 | 466.8866 | 466.7566 | 466.5409 | +0.3457 |
+| Apr 2023-Mar 2024 | 591.0835 | 590.3473 | 591.2047 | -0.1213 |
+| Dec 2023-Mar 2025 | 483.8323 | 483.4345 | 483.5960 | +0.2363 |
+
+The composition candidate is rejected: it improves the recent 12-month window
+but is worse than the prior local-trend candidate on three of four windows and
+slightly worse than the current mainline on the oldest window. No submission or
+final models were generated for it. Its per-fit evidence remains in the existing
+temporal reports, without a new stage directory or report file.
+
+### Time-bias diagnostic and decision
+
+The current mainline's mean error changes sign across consecutive rolling
+windows: +83.62 SGD in April 2023-March 2024 and -41.47 SGD in
+April 2024-March 2025. Applying the older window's month-ahead bias corrections
+to the next 12-month window worsens RMSE from 466.89 to 489.67. A fixed horizon
+offset is therefore rejected as a regime-dependent correction, not promoted as
+a leaderboard candidate.
+
+Twenty-four tests and all nine setup/data checks pass. The public-verified
+432.47187 history-diversity artifact remains the mainline, and
+`submission_local_trend_diversity.csv` remains the only unsubmitted candidate
+supported for one platform comparison. The next model experiment should learn
+regime adjustment from predictors available at forecast time and prove transfer
+from earlier cutoffs to later cutoffs before final training.

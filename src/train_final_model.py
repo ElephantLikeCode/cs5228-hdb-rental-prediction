@@ -25,6 +25,28 @@ RAW = ROOT / "data" / "raw"
 TARGET = "MONTHLY_RENT"
 
 
+def component_suffix(recipe: str, lag: int, residual_mode: bool) -> str:
+    """Return a stable, collision-free suffix for every accepted history recipe."""
+    recipe_suffix = {
+        "legacy": "_legacy",
+        "recent": "_recent",
+        "local_trend": "_trend",
+        "composition_trend": "_composition",
+    }.get(recipe, "")
+    return recipe_suffix + (f"_lag{lag}" if lag else "") + (
+        "_residual" if residual_mode else ""
+    )
+
+
+def validate_component_recipes(history_views, target_modes, normalize_target=False) -> None:
+    """Reject target modes that require adaptive features missing from a view."""
+    adaptive = {"hierarchical", "local_trend", "composition_trend"}
+    if (any(target_modes) or normalize_target) and any(
+        view["history"] not in adaptive for view in history_views
+    ):
+        raise ValueError("Residual or normalized components require adaptive features in every view")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -131,7 +153,9 @@ def main() -> None:
                 lag = int(lag_text)
             except ValueError as exc:
                 raise ValueError("history views must use RECIPE:LAG") from exc
-            if recipe not in {"legacy", "recent", "hierarchical", "local_trend"} or lag < 0:
+            if recipe not in {
+                "legacy", "recent", "hierarchical", "local_trend", "composition_trend"
+            } or lag < 0:
                 raise ValueError(f"Invalid history view: {value}")
             parsed_views.append({"history": recipe, "lag": lag})
         if len({(v["history"], v["lag"]) for v in parsed_views}) != len(parsed_views):
@@ -150,8 +174,6 @@ def main() -> None:
         raise ValueError("target_modes must contain unique prediction modes")
     if any(mode not in (False, True) for mode in target_modes):
         raise ValueError("target_modes must be booleans")
-    if any(target_modes) and config["history"] not in {"hierarchical", "local_trend"}:
-        raise ValueError("Residual components require hierarchical features")
     if "history_views" in config:
         history_views = config["history_views"]
     else:
@@ -161,6 +183,7 @@ def main() -> None:
         if any(not isinstance(lag, int) or lag < 0 for lag in history_lags):
             raise ValueError("augmentation_lags must be nonnegative integers")
         history_views = [{"history": config["history"], "lag": lag} for lag in history_lags]
+    validate_component_recipes(history_views, target_modes, config.get("normalize_target", False))
     if not args.submission.is_absolute():
         args.submission = (ROOT / args.submission).resolve()
     if not args.metadata.is_absolute():
@@ -210,8 +233,7 @@ def main() -> None:
                 model = fit_model(X_train, fit_y, component_config, seed, args.task_type,
                                   verbose=200, sample_weight=fit_weight)
                 predictions.append(predict_model(model, X_test, component_config))
-                recipe_suffix = "_trend" if recipe == "local_trend" else ""
-                suffix = recipe_suffix + (f"_lag{lag}" if lag else "") + ("_residual" if residual_mode else "")
+                suffix = component_suffix(recipe, lag, residual_mode)
                 model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 model.save_model(model_path)

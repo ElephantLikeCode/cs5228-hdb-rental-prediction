@@ -271,16 +271,20 @@ uniform temporal improvement: the older 12-month window worsens by 10.55 RMSE.
 
 The 23 September momentum experiment added four past-only town/flat-type trend
 features and produced a locally stronger candidate while retaining the
-432.47187 submission as the public-verified mainline. Twenty-two tests cover the
-features, validation, mixed-history training and output safeguards.
+432.47187 submission as the public-verified mainline. A follow-up composition
+control using area and lease-age cells was rejected because it was less stable
+than that candidate. Twenty-four tests cover the features, validation,
+mixed-history training, unique model outputs and recipe compatibility.
 
 When the user resumes work:
-1. Reproduce setup/tests as a team and confirm member ownership.
-2. Submit `submission_local_trend_diversity.csv` once if a platform comparison
+1. Submit `submission_local_trend_diversity.csv` once if a platform comparison
    is desired, then record the score before deciding on promotion.
-3. Keep one mainline and consider one genuinely complementary final candidate,
+2. Keep one mainline and consider one genuinely complementary final candidate,
    without tuning repeatedly against the public leaderboard.
-4. Prepare the progress slides from EDA, cleaning, baselines, ablations,
+3. Investigate a model-based, past-only correction for market regime change;
+   do not apply a fixed horizon correction because its bias reversed sign.
+4. Reproduce setup/tests as a team, confirm member ownership, and prepare the
+   progress slides from EDA, cleaning, baselines, ablations,
    quantitative gains, negative results and unresolved limitations.
 5. Audit auxiliary snapshot timing: MRT `open` status is not historical
    opening-date filtering. Record this limitation rather than claiming full

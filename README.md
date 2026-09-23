@@ -14,7 +14,7 @@ components receive the full permitted training history. It retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-two automated tests cover data contracts,
+50,000-row submission generator. Twenty-four automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -158,6 +158,7 @@ For a second-seed confirmation, add `--comparison-seeds 42 2026 --resume`.
 | `horizon_direct`, `horizon_residual` | Hierarchical features; add a six-month stale-history training view, preserving each observation's total weight |
 | `relative_rent` | Learn a market-normalized residual; squared-scale weights preserve the rent-MSE objective |
 | `local_trend_direct`, `local_trend_residual` | Add smoothed town/flat-type relative-rent changes between the latest and preceding six months |
+| `composition_trend_direct`, `composition_trend_residual` | Test the same local trend after shrinking area/lease-age composition cells; retained as negative evidence |
 
 The retained `hierarchical_market_blend` reference averages hierarchical and
 market-residual predictions 50:50, then averages seeds. It adds 18 adaptive
@@ -201,12 +202,16 @@ GPU smoke run; its scores are not suitable for model selection.
 Generate the current local-trend candidate without changing the mainline:
 
 ```bash
+python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
+python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
 python src/train_final_model.py --task-type GPU --history-views local_trend:0 hierarchical:6 --submission submissions/submission_local_trend_diversity.csv --model-prefix candidates/local_trend_diversity/model --metadata artifacts/candidates/local_trend_diversity/metadata.json
 ```
 
 This uses local-trend features only for the normal-history view and the proven
 hierarchical recipe for the six-month stale-history view. Mixed views are
 recorded explicitly in metadata; experimental output paths remain isolated.
+Each accepted recipe has a distinct model suffix, and residual/normalized
+targets are rejected unless every view supplies the required adaptive baseline.
 
 The original classroom baseline/ablation study remains reproducible with
 `python src/run_experiments.py --task-type GPU` and its `--long-horizon` option.
@@ -226,7 +231,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `21 passed` from pytest;
+- `24 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;

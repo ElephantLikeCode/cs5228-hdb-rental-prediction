@@ -303,7 +303,7 @@ def add_past_rent_features(
 
 def add_adaptive_rent_features(
     reference, target, query, half_life=12.0, history_lag=0,
-    include_local_trend=False,
+    include_local_trend=False, composition_control=False,
 ):
     """Past-only decayed comparables with hierarchical fallbacks and damped trend.
 
@@ -365,7 +365,22 @@ def add_adaptive_rent_features(
             level[flat] = anchor_level * np.exp(slope * damped_horizon)
         flat_level = qkeys.loc[mask, "_FLAT_TYPE_KEY"].map(level).fillna(prior["_Y"].mean()).to_numpy()
         out.loc[mask, "ADAPT_MARKET_LEVEL"] = flat_level
-        denom = prior.groupby(["_FLAT_TYPE_KEY", "_MONTH"])["_Y"].transform("mean")
+        flat_month = prior.groupby(["_FLAT_TYPE_KEY", "_MONTH"])["_Y"].transform("mean")
+        denom = flat_month
+        if composition_control:
+            source = reference.loc[prior.index]
+            area = pd.to_numeric(source["FLOOR_AREA_SQM"], errors="coerce")
+            lease = pd.to_numeric(source["LEASE_COMMENCE_DATE"], errors="coerce")
+            transaction_year = dates.loc[prior.index].dt.year
+            prior["_COMP_AREA"] = (np.floor(area / 10.0) * 10.0).fillna(-1)
+            prior["_COMP_AGE"] = (
+                np.floor((transaction_year - lease).clip(lower=0) / 10.0) * 10.0
+            ).fillna(-1)
+            comp_cols = ["_FLAT_TYPE_KEY", "_MONTH", "_COMP_AREA", "_COMP_AGE"]
+            composition_groups = prior.groupby(comp_cols)["_Y"]
+            comp_sum = composition_groups.transform("sum")
+            comp_count = composition_groups.transform("count")
+            denom = (comp_sum + 8.0 * flat_month) / (comp_count + 8.0)
         prior["_RATIO"] = prior["_Y"] / denom
         prior["_W"] = np.exp2((prior["_MONTH"] - anchor) / half_life)
         prior["_WR"] = prior["_W"] * prior["_RATIO"]

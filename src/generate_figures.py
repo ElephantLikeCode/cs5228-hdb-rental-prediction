@@ -37,9 +37,13 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
              ("weighted_direct", "weighted_residual", "weighted_blend", 2),
              ("horizon_direct", "horizon_residual", "horizon_blend", 2),
              ("local_trend_direct", "local_trend_residual", "local_trend_blend", 2),
+             ("composition_trend_direct", "composition_trend_residual",
+              "composition_trend_blend", 2),
              ("horizon_blend", "hierarchical_market_blend", "history_diversity_blend", 4),
              ("horizon_blend", "local_trend_blend",
-              "local_trend_history_diversity_blend", 4)]
+              "local_trend_history_diversity_blend", 4),
+             ("horizon_blend", "composition_trend_blend",
+              "composition_trend_history_diversity_blend", 4)]
     for direct_name, residual_name, blend_name, component_count in pairs:
         blended = []
         for _, direct in results.loc[results.candidate == direct_name].iterrows():

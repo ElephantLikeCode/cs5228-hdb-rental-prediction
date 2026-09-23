@@ -165,6 +165,32 @@ def test_local_trend_features_separate_town_flat_momentum_without_leakage():
     )
 
 
+def test_composition_trend_controls_area_and_lease_mix_without_leakage():
+    months = pd.date_range("2023-01-01", periods=14, freq="MS").strftime("%Y-%m")
+    rows, target = [], []
+    for i, month in enumerate(months):
+        for town, change in [("rising", 1.0 + 0.01 * i), ("flat", 1.0)]:
+            for area, lease in [(70.0, 1980), (110.0, 2010)]:
+                rows.append(dict(RENT_APPROVAL_DATE=month, TOWN=town, BLOCK="1",
+                                 STREET="road", FLAT_TYPE="4 room", FLAT_MODEL="model",
+                                 FLOOR_AREA_SQM=area, LEASE_COMMENCE_DATE=lease))
+                target.append((2000.0 + 12.0 * area + 3.0 * (lease - 1980)) * change)
+    frame, y = pd.DataFrame(rows), pd.Series(target)
+    query = frame.loc[frame.RENT_APPROVAL_DATE.eq("2024-01")].reset_index(drop=True)
+    base = add_adaptive_rent_features(
+        frame, y, query, include_local_trend=True, composition_control=True
+    )
+    assert base.loc[0, "ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] > 0
+    assert base.loc[2, "ADAPT_TOWN_FLAT_PREMIUM_CHANGE"] < 0
+    changed = y.copy()
+    changed.loc[frame.RENT_APPROVAL_DATE.ge("2024-01")] = 100000.0
+    pd.testing.assert_frame_equal(
+        base, add_adaptive_rent_features(
+            frame, changed, query, include_local_trend=True, composition_control=True
+        )
+    )
+
+
 def test_adaptive_fallbacks_and_long_horizon_keep_comparable_mass():
     frame = pd.DataFrame({
         "RENT_APPROVAL_DATE": ["2024-01", "2024-02"],
@@ -356,3 +382,20 @@ def test_mainline_config_selects_eight_history_diversity_components():
     assert config["name"] == "history_diversity_blend"
     assert config["augmentation_lags"] == [0, 6]
     assert len(config["seeds"]) * len(config["target_modes"]) * len(config["augmentation_lags"]) == 8
+
+
+def test_mixed_history_model_names_are_unique_and_residual_views_are_validated():
+    import sys
+    sys.path.insert(0, str(ROOT / "src"))
+    import train_final_model as final
+
+    names = {
+        final.component_suffix(recipe, 0, False)
+        for recipe in ["legacy", "recent", "hierarchical", "local_trend"]
+    }
+    assert len(names) == 4
+    with pytest.raises(ValueError, match="every view"):
+        final.validate_component_recipes(
+            [{"history": "hierarchical", "lag": 0}, {"history": "legacy", "lag": 0}],
+            [False, True],
+        )
