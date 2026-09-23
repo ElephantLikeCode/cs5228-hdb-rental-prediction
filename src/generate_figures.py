@@ -32,19 +32,30 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
     identity = ["candidate", "window", "seed", "iterations", "task_type", "code_sha256", "data_sha256"]
     results = results.drop_duplicates(identity, keep="last")
     results["components_per_seed"] = 1
-    # A pre-specified 50:50 combination, never an optimized validation weight.
+    # Fixed head weights and one pre-specified cross-learner weight; no grid search.
     pairs = [("hierarchical", "market_residual", "hierarchical_market_blend", 2),
              ("weighted_direct", "weighted_residual", "weighted_blend", 2),
              ("horizon_direct", "horizon_residual", "horizon_blend", 2),
              ("local_trend_direct", "local_trend_residual", "local_trend_blend", 2),
              ("composition_trend_direct", "composition_trend_residual",
               "composition_trend_blend", 2),
+             ("composition_trend_only_direct", "composition_trend_only_residual",
+              "composition_trend_only_blend", 2),
+             ("xgb_trend_depth6_direct", "xgb_trend_depth6_residual", "xgb_trend_depth6_blend", 2),
+             ("xgb_trend_depth8_direct", "xgb_trend_depth8_residual", "xgb_trend_depth8_blend", 2),
              ("horizon_blend", "hierarchical_market_blend", "history_diversity_blend", 4),
              ("horizon_blend", "local_trend_blend",
               "local_trend_history_diversity_blend", 4),
              ("horizon_blend", "composition_trend_blend",
-              "composition_trend_history_diversity_blend", 4)]
+              "composition_trend_history_diversity_blend", 4),
+             ("horizon_blend", "composition_trend_only_blend",
+              "composition_trend_only_history_diversity_blend", 4),
+             ("xgb_trend_depth6_blend", "history_diversity_blend",
+              "xgb_depth6_quarter_mainline_blend", 6),
+             ("xgb_trend_depth8_blend", "history_diversity_blend",
+              "xgb_depth8_quarter_mainline_blend", 6)]
     for direct_name, residual_name, blend_name, component_count in pairs:
+        left_weight = 0.25 if "quarter_mainline" in blend_name else 0.5
         blended = []
         for _, direct in results.loc[results.candidate == direct_name].iterrows():
             matched = results.loc[results.candidate == residual_name]
@@ -59,9 +70,10 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
             with np.load(ROOT / direct.prediction_file) as left, np.load(ROOT / residual.prediction_file) as right:
                 if not (np.array_equal(left["row_id"], right["row_id"]) and np.array_equal(left["y"], right["y"])):
                     raise ValueError("Cannot average components from different validation rows")
-                blend_path = ROOT / "artifacts" / "temporal_comparison" / f"{direct.run_id}_{residual.run_id}_equal_heads.npz"
+                suffix = "quarter_xgb" if left_weight == 0.25 else "equal_heads"
+                blend_path = ROOT / "artifacts" / "temporal_comparison" / f"{direct.run_id}_{residual.run_id}_{suffix}.npz"
                 np.savez_compressed(blend_path, row_id=left["row_id"], y=left["y"], month=left["month"],
-                                    prediction=(left["prediction"] + right["prediction"]) / 2)
+                                    prediction=left_weight * left["prediction"] + (1-left_weight) * right["prediction"])
             row = direct.to_dict()
             row.update(candidate=blend_name, prediction_file=str(blend_path.relative_to(ROOT)),
                        components_per_seed=component_count)

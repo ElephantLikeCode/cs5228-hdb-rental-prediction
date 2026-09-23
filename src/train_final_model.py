@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from modeling import (DEFAULT_CONFIG, CANDIDATES, load_config, build_features,
+from modeling import (DEFAULT_CONFIG, CANDIDATES, ADAPTIVE_RECIPES, HISTORY_RECIPES, load_config, build_features,
                       build_training_features, fit_model, predict_model)
 
 from features import (
@@ -32,6 +32,7 @@ def component_suffix(recipe: str, lag: int, residual_mode: bool) -> str:
         "recent": "_recent",
         "local_trend": "_trend",
         "composition_trend": "_composition",
+        "composition_trend_only": "_composition_only",
     }.get(recipe, "")
     return recipe_suffix + (f"_lag{lag}" if lag else "") + (
         "_residual" if residual_mode else ""
@@ -40,7 +41,7 @@ def component_suffix(recipe: str, lag: int, residual_mode: bool) -> str:
 
 def validate_component_recipes(history_views, target_modes, normalize_target=False) -> None:
     """Reject target modes that require adaptive features missing from a view."""
-    adaptive = {"hierarchical", "local_trend", "composition_trend"}
+    adaptive = ADAPTIVE_RECIPES
     if (any(target_modes) or normalize_target) and any(
         view["history"] not in adaptive for view in history_views
     ):
@@ -153,9 +154,7 @@ def main() -> None:
                 lag = int(lag_text)
             except ValueError as exc:
                 raise ValueError("history views must use RECIPE:LAG") from exc
-            if recipe not in {
-                "legacy", "recent", "hierarchical", "local_trend", "composition_trend"
-            } or lag < 0:
+            if recipe not in HISTORY_RECIPES or lag < 0:
                 raise ValueError(f"Invalid history view: {value}")
             parsed_views.append({"history": recipe, "lag": lag})
         if len({(v["history"], v["lag"]) for v in parsed_views}) != len(parsed_views):
@@ -234,7 +233,8 @@ def main() -> None:
                                   verbose=200, sample_weight=fit_weight)
                 predictions.append(predict_model(model, X_test, component_config))
                 suffix = component_suffix(recipe, lag, residual_mode)
-                model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.cbm"
+                extension = "json" if config.get("learner") == "xgboost" else "cbm"
+                model_path = ROOT / "artifacts" / f"{args.model_prefix}{suffix}_seed_{seed}.{extension}"
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 model.save_model(model_path)
                 restored = model.__class__()
@@ -276,7 +276,8 @@ def main() -> None:
         raise ValueError("Reloaded predictions differ beyond CSV precision")
 
     metadata = {
-        "model": "CatBoostRegressor equal-weight component ensemble",
+        "model": ("XGBRegressor" if config.get("learner") == "xgboost" else "CatBoostRegressor")
+                 + " equal-weight component ensemble",
         "feature_set": "all_spatial_" + "+".join(
             f"{view['history']}:{view['lag']}" for view in history_views
         ),

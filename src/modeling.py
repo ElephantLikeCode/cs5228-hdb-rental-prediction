@@ -8,6 +8,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
+from xgboost import XGBRegressor
+
+
+class RentalXGBRegressor(XGBRegressor):
+    # XGBoost 3.0's JSON metadata expects the pre-1.9 sklearn estimator tag.
+    # Keep the CUDA-12.5 build compatible without changing either dependency.
+    _estimator_type = "regressor"
 
 try:
     from .features import (add_past_rent_features, add_spatial_features,
@@ -50,17 +57,29 @@ for mode in ("direct", "residual"):
         BASE_CONFIG, name=composition_name, history="composition_trend",
         residual_target=(mode == "residual"),
     )
+    isolated_name = f"composition_trend_only_{mode}"
+    CANDIDATES[isolated_name] = dict(
+        BASE_CONFIG, name=isolated_name, history="composition_trend_only",
+        residual_target=(mode == "residual"),
+    )
+    for depth in (6, 8):
+        xgb_name = f"xgb_trend_depth{depth}_{mode}"
+        CANDIDATES[xgb_name] = dict(
+            BASE_CONFIG, name=xgb_name, history="local_trend", learner="xgboost",
+            depth=depth, residual_target=(mode == "residual"),
+            min_child_weight=10.0, subsample=0.9, colsample_bytree=0.9,
+            max_cat_to_onehot=4, max_cat_threshold=64, max_bin=256,
+        )
+
+ADAPTIVE_RECIPES = {"hierarchical", "local_trend", "composition_trend", "composition_trend_only"}
+HISTORY_RECIPES = {"legacy", "recent"} | ADAPTIVE_RECIPES
 
 
 def load_config(path: Path = DEFAULT_CONFIG) -> dict:
     config = dict(BASE_CONFIG, **json.loads(path.read_text(encoding="utf-8")))
-    if config["history"] not in {
-        "legacy", "recent", "hierarchical", "local_trend", "composition_trend"
-    }:
+    if config["history"] not in HISTORY_RECIPES:
         raise ValueError("Unknown history recipe")
-    if (config["residual_target"] or config.get("normalize_target")) and config["history"] not in {
-        "hierarchical", "local_trend", "composition_trend"
-    }:
+    if (config["residual_target"] or config.get("normalize_target")) and config["history"] not in ADAPTIVE_RECIPES:
         raise ValueError("Residual target requires the adaptive market baseline")
     return config
 
@@ -78,11 +97,12 @@ def build_features(reference, target, query, lookup, recipe, history_lag=0):
     )
     columns = [c for c in history if c.startswith("HIST_")]
     result[columns] = history[columns]
-    if recipe in {"hierarchical", "local_trend", "composition_trend"}:
+    if recipe in ADAPTIVE_RECIPES:
         adaptive = add_adaptive_rent_features(
             reference, target, query, history_lag=history_lag,
-            include_local_trend=(recipe in {"local_trend", "composition_trend"}),
-            composition_control=(recipe == "composition_trend"),
+            include_local_trend=(recipe != "hierarchical"),
+            composition_control=(recipe in {"composition_trend", "composition_trend_only"}),
+            trend_only_control=(recipe == "composition_trend_only"),
         )
         result[adaptive.columns] = adaptive
     return prepare_for_catboost(result)
@@ -133,6 +153,31 @@ def target_scale(features, config):
 
 def fit_model(features, target, config, seed, task_type="GPU", verbose=False, sample_weight=None):
     """No outer validation labels or early stopping: same budget at deployment."""
+    if config.get("learner") == "xgboost":
+        encoded, categories = prepare_xgb_features(features)
+        model = RentalXGBRegressor(
+            objective="reg:squarederror", n_estimators=config["iterations"],
+            learning_rate=config["learning_rate"], max_depth=config["depth"],
+            reg_lambda=config["l2_leaf_reg"], random_state=seed, n_jobs=8,
+            tree_method="hist", device="cuda:0" if task_type == "GPU" else "cpu",
+            enable_categorical=True,
+            **{key: config[key] for key in (
+                "min_child_weight", "subsample", "colsample_bytree",
+                "max_cat_to_onehot", "max_cat_threshold", "max_bin",
+            )},
+        )
+        scale = target_scale(features, config)
+        if config.get("normalize_target"):
+            sample_weight = scale**2 * (1. if sample_weight is None else sample_weight)
+        model.fit(encoded, (np.asarray(target) - target_offset(features, config)) / scale,
+                  sample_weight=sample_weight, verbose=False)
+        booster = model.get_booster()
+        device = json.loads(booster.save_config())["learner"]["generic_param"]["device"]
+        if task_type == "GPU" and not device.startswith("cuda"):
+            raise RuntimeError(f"Requested XGBoost GPU but actual device is {device}")
+        booster.set_attr(project_categories=json.dumps(categories), project_device=device)
+        model.tree_count_ = booster.num_boosted_rounds()
+        return model
     model = CatBoostRegressor(
         loss_function="RMSE", iterations=config["iterations"],
         learning_rate=config["learning_rate"], depth=config["depth"],
@@ -152,4 +197,21 @@ def fit_model(features, target, config, seed, task_type="GPU", verbose=False, sa
 
 
 def predict_model(model, features, config):
-    return model.predict(features) * target_scale(features, config) + target_offset(features, config)
+    inputs = features
+    if config.get("learner") == "xgboost":
+        categories = json.loads(model.get_booster().attr("project_categories"))
+        inputs, _ = prepare_xgb_features(features, categories)
+    return model.predict(inputs) * target_scale(features, config) + target_offset(features, config)
+
+
+def prepare_xgb_features(features, categories=None):
+    """Fit vocabularies on training rows only; unseen values become missing."""
+    encoded = features.copy()
+    if categories is None:
+        categories = {
+            column: sorted(features[column].dropna().astype(str).unique().tolist())
+            for column in features.select_dtypes(include=["object", "string", "category"])
+        }
+    for column, vocabulary in categories.items():
+        encoded[column] = pd.Categorical(features[column], categories=vocabulary)
+    return encoded, categories

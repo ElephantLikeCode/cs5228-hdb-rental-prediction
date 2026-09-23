@@ -14,7 +14,7 @@ components receive the full permitted training history. It retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-four automated tests cover data contracts,
+50,000-row submission generator. Twenty-six automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -31,7 +31,7 @@ changes; retain previous iteration results in `docs/PROGRESS.md`.
 | CatBoost + spatial and past-rent features (seed 42) | 450.04 | Historical reference |
 | Retained reference: adaptive-market direct/residual ensemble (four components) | 445.52 | Fixed 1,600 trees/component |
 | **Current mainline: normal/stale-history ensemble (eight components)** | **440.89** | **Fixed 1,600 trees/component; temporal limitations below** |
-| Candidate: local-trend/stale-history ensemble (eight components) | 440.76 | Fixed 1,600 trees/component; awaiting platform test |
+| Candidate: local-trend/stale-history ensemble (eight components) | 440.76 | Retained after isolated-trend/XGBoost checks; awaiting platform test |
 
 The final two rows use identical validation rows and seeds, with no scoring-label
 early stopping. Historical baselines used a different early-stopping protocol
@@ -49,6 +49,15 @@ the same four windows by 0.13, 0.13, 0.74 and 0.40 RMSE. Two additional
 three-month cutoffs improve the trend head by 0.17 and 1.47 over its matched
 reference. The older-year deficit is reduced but remains 9.81 RMSE, so the
 candidate is generated for one platform test rather than treated as proven.
+
+The subsequent isolated composition-trend ablation preserved every historical
+baseline and residual offset. Relative to the retained candidate, its final
+eight-component combination improved Jan-Mar 2025 by only 0.002 RMSE and worsened
+the recent-year, older-year and 16-month windows by 0.154, 0.288 and 0.341.
+It was not adopted. The earlier joint composition experiment and this isolated
+experiment remain separate evidence; neither rejects all composition-control
+methods. The bounded current-feature XGBoost screen also failed, including its
+pre-specified cross-learner blends. No new final submission was generated.
 
 The browser-verified public score on 21 September 2026 is **432.47187, rank 3 of
 16**, improved from 436.05684 by 3.58497. The uploaded filename was
@@ -158,7 +167,9 @@ For a second-seed confirmation, add `--comparison-seeds 42 2026 --resume`.
 | `horizon_direct`, `horizon_residual` | Hierarchical features; add a six-month stale-history training view, preserving each observation's total weight |
 | `relative_rent` | Learn a market-normalized residual; squared-scale weights preserve the rent-MSE objective |
 | `local_trend_direct`, `local_trend_residual` | Add smoothed town/flat-type relative-rent changes between the latest and preceding six months |
-| `composition_trend_direct`, `composition_trend_residual` | Test the same local trend after shrinking area/lease-age composition cells; retained as negative evidence |
+| `composition_trend_direct`, `composition_trend_residual` | Jointly change trend and historical baselines using area/lease-age cells; rejected combined experiment, not an isolated ablation |
+| `composition_trend_only_direct`, `composition_trend_only_residual` | Change only trend columns using composition cells; preserve original historical levels and residual targets exactly |
+| `xgb_trend_depth6_*`, `xgb_trend_depth8_*` | GPU XGBoost direct/residual comparison with the identical local-trend features, training-only category vocabularies and fixed tree budget |
 
 The retained `hierarchical_market_blend` reference averages hierarchical and
 market-residual predictions 50:50, then averages seeds. It adds 18 adaptive
@@ -213,6 +224,31 @@ recorded explicitly in metadata; experimental output paths remain isolated.
 Each accepted recipe has a distinct model suffix, and residual/normalized
 targets are rejected unless every view supplies the required adaptive baseline.
 
+Reproduce the isolated ablation and bounded alternative-learner screen:
+
+```bash
+python src/run_experiments.py --compare-candidates --candidates composition_trend_only_direct composition_trend_only_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
+python src/run_experiments.py --compare-candidates --candidates xgb_trend_depth6_direct xgb_trend_depth6_residual xgb_trend_depth8_direct xgb_trend_depth8_residual --windows short_recent horizon16 --comparison-seeds 42 --trial-iterations 1600 --task-type GPU --resume
+python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
+```
+
+The summary includes pre-specified 25% XGBoost / 75% mainline blends, paired on
+the same seed and validation rows. XGBoost's bounded screen did not improve either
+window, alone or blended, so it did not advance to more seeds. This rejects only
+the tested configurations. Native category vocabularies are fitted on training
+rows; unseen values become missing. XGBoost JSON files preserve these vocabularies.
+The pinned XGBoost 3.0.5 CUDA-12.5 build works with this laptop's 560.94 driver;
+newer CUDA-13 builds did not. GPU requests fail explicitly if training falls back
+to CPU. Equal tree counts do not imply equal model capacity or runtime.
+Categorical handling follows the [XGBoost documentation](https://xgboost.readthedocs.io/en/stable/tutorials/categorical.html),
+with explicit saved vocabularies for the pinned version. An input-device warning
+during prediction means pandas data is transferred through a DMatrix; each
+recorded XGBoost training device is independently checked to be `cuda:0`.
+For the exact isolated-versus-prior-candidate uncertainty comparison, run the
+same summary command with `--reference-candidate local_trend_history_diversity_blend`.
+This refreshes the existing summary for that reference; rerun the documented
+hierarchical-reference command to restore the canonical report view.
+
 The original classroom baseline/ablation study remains reproducible with
 `python src/run_experiments.py --task-type GPU` and its `--long-horizon` option.
 Those commands refresh the historical reference tables and use early stopping;
@@ -231,7 +267,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `24 passed` from pytest;
+- `26 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;

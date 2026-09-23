@@ -303,7 +303,7 @@ def add_past_rent_features(
 
 def add_adaptive_rent_features(
     reference, target, query, half_life=12.0, history_lag=0,
-    include_local_trend=False, composition_control=False,
+    include_local_trend=False, composition_control=False, trend_only_control=False,
 ):
     """Past-only decayed comparables with hierarchical fallbacks and damped trend.
 
@@ -381,7 +381,10 @@ def add_adaptive_rent_features(
             comp_sum = composition_groups.transform("sum")
             comp_count = composition_groups.transform("count")
             denom = (comp_sum + 8.0 * flat_month) / (comp_count + 8.0)
-        prior["_RATIO"] = prior["_Y"] / denom
+        # The isolated ablation changes only the trend numerator/denominator.
+        # Preserve all four historical premium/level pairs and target offsets.
+        prior["_TREND_RATIO"] = prior["_Y"] / denom
+        prior["_RATIO"] = prior["_Y"] / (flat_month if trend_only_control else denom)
         prior["_W"] = np.exp2((prior["_MONTH"] - anchor) / half_life)
         prior["_WR"] = prior["_W"] * prior["_RATIO"]
         if include_local_trend:
@@ -394,7 +397,7 @@ def add_adaptive_rent_features(
 
             def period_ratio(start, stop):
                 period = prior.loc[prior["_MONTH"].between(start, stop)]
-                stats = period.groupby(trend_cols)["_RATIO"].agg(["sum", "count"])
+                stats = period.groupby(trend_cols)["_TREND_RATIO"].agg(["sum", "count"])
                 count = stats["count"].reindex(lookup_key).fillna(0).to_numpy(float)
                 total = stats["sum"].reindex(lookup_key).fillna(0).to_numpy(float)
                 ratio = (total + 20.0) / (count + 20.0)

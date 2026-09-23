@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import time
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -374,12 +375,14 @@ def run_candidate_comparison(args):
         feature_cache = {}
         for name in args.candidates:
             config = dict(CANDIDATES[name], iterations=args.trial_iterations)
+            learner = config.get("learner", "catboost")
+            learner_version = version(learner)
             recipe = config["history"]
             cache_key = (recipe, config.get("augmentation_lag", 0), config.get("weight_half_life"))
             for seed in args.comparison_seeds:
                 identity = json.dumps(dict(config=config, seed=seed, window=window,
                                            device=args.task_type, data=data_hash,
-                                           code=code_hash), sort_keys=True)
+                                           code=code_hash, learner_version=learner_version), sort_keys=True)
                 run_id = hashlib.sha256(identity.encode()).hexdigest()[:16]
                 prediction_path = cache_dir / f"{run_id}.npz"
                 if args.resume and prediction_path.exists() and any(r["run_id"] == run_id for r in rows):
@@ -417,6 +420,10 @@ def run_candidate_comparison(args):
                            config_json=json.dumps(config, sort_keys=True),
                            prediction_file=str(prediction_path.relative_to(ROOT)),
                            protocol="fixed_budget_no_outer_early_stopping")
+                row["learner"] = learner
+                row["learner_version"] = learner_version
+                if row["learner"] == "xgboost":
+                    row["actual_device"] = model.get_booster().attr("project_device")
                 rows = [r for r in rows if r["run_id"] != run_id] + [row]
                 pd.DataFrame(rows).to_csv(ledger, index=False)
                 print(f"DONE {name} {window} seed={seed} RMSE={metrics['rmse']:.4f} MAE={metrics['mae']:.4f} seconds={elapsed:.1f}", flush=True)

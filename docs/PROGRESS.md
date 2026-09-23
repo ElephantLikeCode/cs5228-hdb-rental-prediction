@@ -566,9 +566,101 @@ to the next 12-month window worsens RMSE from 466.89 to 489.67. A fixed horizon
 offset is therefore rejected as a regime-dependent correction, not promoted as
 a leaderboard candidate.
 
+Correction after code review: the composition recipe above changed the shared
+historical rent ratios as well as trend columns, hence it also changed the
+residual-target baseline. Its result rejects that combined implementation; it
+does not isolate or reject composition control of trend alone. Similarly, the
+489.67 diagnostic rejects only the tested unshrunk previous-year horizon offsets,
+not all temporal calibration methods. The requested current-feature comparison
+with a different learner remained outstanding at that checkpoint.
+
 Twenty-four tests and all nine setup/data checks pass. The public-verified
 432.47187 history-diversity artifact remains the mainline, and
 `submission_local_trend_diversity.csv` remains the only unsubmitted candidate
 supported for one platform comparison. The next model experiment should learn
 regime adjustment from predictors available at forecast time and prove transfer
 from earlier cutoffs to later cutoffs before final training.
+
+## Isolated trend ablation and current-feature learner comparison — 23 September 2026
+
+The isolated `composition_trend_only` recipe gives only the four trend columns
+their composition-adjusted ratios. All other adaptive columns, including the
+residual offset, must be exactly equal to `local_trend`; a synthetic composition
+shift test verifies both this invariant and same/future-label exclusion.
+
+Experiment scope fixed before the formal results: CatBoost direct/residual
+heads at 1,600 trees, seeds 42/2026 and the same four core temporal windows.
+XGBoost uses exactly the `local_trend` feature table, native categorical splits
+with training-only vocabularies, the same rows, labels and 1,600-tree budget.
+Its bounded screen is depth 6/8, direct/residual, seed 42, on `short_recent`
+and `horizon16`. Only a promising head or pre-specified 25% XGBoost / 75% current-mainline blend
+advances to further windows and seed confirmation; no public scores select it.
+Equal tree counts are a controlled budget, not equal model capacity or compute.
+
+GPU compatibility: the initially installed XGBoost 3.4.1 used CUDA 13.3 and
+fell back to CPU under driver 560.94. The experiment aborted instead of recording
+that as a GPU fit. XGBoost 3.0.5, built with CUDA 12.5, runs on `cuda:0` and is
+pinned. A small regressor adapter preserves its JSON metadata compatibility
+with sklearn 1.9; categories and rent-unit predictions survive save/reload.
+Learner versions enter both the run identity and the per-fit evidence ledger.
+
+The XGBoost screen completed all eight planned fits using actual `cuda:0`.
+The table below uses seed 42 on both sides, not a two-seed CatBoost ensemble
+against single-seed XGBoost. Each head averages its direct/residual models.
+
+| Window | XGB depth | CatBoost local-trend head | XGB head | Mainline | 25% XGB + 75% mainline |
+|---|---:|---:|---:|---:|---:|
+| Jan-Mar 2025 | 6 | 445.4677 | 455.9069 | 440.7998 | 442.1007 |
+| Jan-Mar 2025 | 8 | 445.4677 | 456.7098 | 440.7998 | 442.1462 |
+| Dec 2023-Mar 2025 | 6 | 487.0015 | 503.0877 | 484.0099 | 484.6837 |
+| Dec 2023-Mar 2025 | 8 | 487.0015 | 505.2490 | 484.0099 | 484.9992 |
+
+XGBoost/mainline residual correlations were 0.957-0.971. Both depths and both
+fixed cross-learner blends failed the screen, so no further seeds or final models
+were trained for XGBoost. This is current-feature negative evidence, not a claim
+that CatBoost is universally best or that broader XGBoost searches cannot work.
+
+### Isolated-ablation results and closeout
+
+All 16 planned isolated CatBoost fits completed (four windows, two targets and
+two seeds). The final combination retains the identical frozen stale-history
+components and equal weights; only the normal-history trend columns change.
+
+| Window | Prior local-trend candidate | Isolated-trend combination | Gain versus prior | Paired 95% gain interval |
+|---|---:|---:|---:|---|
+| Jan-Mar 2025 | 440.7629 | 440.7610 | +0.0019 | -0.2098 to +0.2020 |
+| Apr 2024-Mar 2025 | 466.7566 | 466.9105 | -0.1539 | -0.3138 to -0.0055 |
+| Apr 2023-Mar 2024 | 590.3473 | 590.6350 | -0.2876 | -0.4700 to -0.1008 |
+| Dec 2023-Mar 2025 | 483.4345 | 483.7752 | -0.3407 | -0.5031 to -0.1811 |
+
+Intervals use the existing 1,000-replicate paired address-cluster bootstrap.
+They describe these overlapping development samples, not future or private-score
+uncertainty. Reproduce them with the existing summary command and
+`--reference-candidate local_trend_history_diversity_blend --bootstrap`.
+The canonical `temporal_summary.csv` was then restored to the four-component
+hierarchical reference so historical comparisons retain their documented meaning.
+
+The isolated head alone reached 579.7247 on the older year, slightly better than
+the prior local-trend head's 579.8459, but its full combination was worse. Head
+improvements therefore do not substitute for evaluating the final combination.
+Reject this isolated implementation for promotion: its latest-quarter gain is
+effectively a tie and it loses on the other three windows. This does not invalidate
+the composition-control idea in general.
+
+This round completed 24 formal GPU fits with 1,600 trees each (16 CatBoost and
+8 XGBoost), totaling 1,206.56 seconds in the per-fit model timers, excluding
+feature construction, smoke tests and reporting. GPU smoke runs, all 26 tests,
+and the nine-file setup/checksum check passed. Tests verify exact preservation
+of all non-trend adaptive features and residual offsets, attenuation of a known
+synthetic composition shift, exclusion of same/future labels, XGBoost category
+mapping/JSON reload, and the fixed cross-learner blend's weights/model count.
+A separate 90-query check spanning all 51 training months reproduced the frozen
+`2be9063` local-trend adaptive features exactly. All 97 pre-existing per-fit rows
+retain their metrics and prediction paths.
+
+Mainline and retained-candidate model hashes and CSV hashes were rechecked; both
+eight-model runs remain intact. Mainline SHA-256 remains
+`b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7`; candidate remains
+`a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
+No final training, new submission, raw-data edit or browser action occurred.
+The original module/report layout and cumulative progress file are retained.

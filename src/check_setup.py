@@ -26,6 +26,7 @@ PACKAGES = {
     "seaborn": "seaborn",
     "pytest": "pytest",
     "catboost": "catboost",
+    "xgboost": "xgboost",
     "ipykernel": "ipykernel",
     "jupyterlab": "jupyterlab",
 }

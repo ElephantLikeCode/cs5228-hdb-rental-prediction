@@ -276,7 +276,9 @@ def test_summary_matches_rows_and_counts_all_history_components(tmp_path, monkey
     cache.mkdir(parents=True)
     rows = []
     for name, error, code in [("hierarchical", 10., "old"), ("market_residual", -10., "old"),
-                               ("horizon_direct", 30., "new"), ("horizon_residual", 10., "new")]:
+                               ("horizon_direct", 30., "new"), ("horizon_residual", 10., "new"),
+                               ("xgb_trend_depth6_direct", 4., "xgb"),
+                               ("xgb_trend_depth6_residual", 4., "xgb")]:
         for seed in [42, 2026]:
             run = f"{name}_{seed}"
             path = cache / f"{run}.npz"
@@ -296,6 +298,8 @@ def test_summary_matches_rows_and_counts_all_history_components(tmp_path, monkey
     result = summary.loc[summary.candidate.eq("history_diversity_blend")].iloc[0]
     assert result.model_count == 8 and result.rmse == pytest.approx(10.)
     assert result.baseline_rmse == 0. and result.baseline_code_sha256 == "old"
+    cross = summary.loc[summary.candidate.eq("xgb_depth6_quarter_mainline_blend")].iloc[0]
+    assert cross.model_count == 12 and cross.rmse == pytest.approx(8.5)
     # Corrupt one saved row ID: comparisons must fail instead of pairing by position.
     bad = cache / "horizon_direct_42.npz"
     np.savez(bad, row_id=np.array([1, 3]), y=y, prediction=y+30.,
@@ -384,6 +388,61 @@ def test_mainline_config_selects_eight_history_diversity_components():
     assert len(config["seeds"]) * len(config["target_modes"]) * len(config["augmentation_lags"]) == 8
 
 
+def test_trend_only_ablation_preserves_baseline_and_attenuates_composition_shift():
+    from src.modeling import target_offset
+
+    rows, target = [], []
+    for i, month in enumerate(pd.date_range("2023-01-01", periods=14, freq="MS").strftime("%Y-%m")):
+        for town in ["a", "b"]:
+            large_count = (32 if i >= 6 else 8) if town == "a" else (8 if i >= 6 else 32)
+            for j in range(40):
+                large = j < large_count
+                rows.append(dict(RENT_APPROVAL_DATE=month, TOWN=town, BLOCK=town,
+                                 STREET=town, FLAT_TYPE="4 room", FLAT_MODEL="model",
+                                 FLOOR_AREA_SQM=110. if large else 70.,
+                                 LEASE_COMMENCE_DATE=2010 if large else 1980))
+                target.append(4000. if large else 2000.)
+    frame, y = pd.DataFrame(rows), pd.Series(target)
+    query = frame.loc[frame.RENT_APPROVAL_DATE.eq("2024-01")].reset_index(drop=True)
+    original = add_adaptive_rent_features(frame, y, query, include_local_trend=True)
+    kwargs = dict(include_local_trend=True, composition_control=True, trend_only_control=True)
+    isolated = add_adaptive_rent_features(frame, y, query, **kwargs)
+    trend_columns = ["ADAPT_TOWN_FLAT_PREMIUM_RECENT", "ADAPT_TOWN_FLAT_PREMIUM_PREVIOUS",
+                     "ADAPT_TOWN_FLAT_PREMIUM_CHANGE", "ADAPT_TOWN_FLAT_TREND_LOG_SUPPORT"]
+    pd.testing.assert_frame_equal(original.drop(columns=trend_columns), isolated.drop(columns=trend_columns))
+    np.testing.assert_array_equal(target_offset(original, {"residual_target": True}),
+                                  target_offset(isolated, {"residual_target": True}))
+    assert isolated[trend_columns[2]].abs().mean() < original[trend_columns[2]].abs().mean()
+    changed = y.copy()
+    changed.loc[frame.RENT_APPROVAL_DATE.ge("2024-01")] = 100000.
+    pd.testing.assert_frame_equal(isolated, add_adaptive_rent_features(frame, changed, query, **kwargs))
+
+
+def test_xgboost_train_only_categories_and_residual_model_roundtrip(tmp_path):
+    from src.modeling import CANDIDATES, RentalXGBRegressor, prepare_xgb_features, fit_model, predict_model
+
+    frame = pd.DataFrame({"town": ["b", "a"] * 20, "area": np.arange(40) + 70.,
+                          "ADAPT_ADDRESS_FLAT_AREA_LEVEL": np.arange(40) * 10. + 2000.})
+    query = frame.iloc[:3].copy()
+    query["town"] = ["unseen", "a", "b"]
+    _, categories = prepare_xgb_features(frame)
+    encoded, _ = prepare_xgb_features(query, categories)
+    assert categories["town"] == ["a", "b"]
+    assert pd.isna(encoded.loc[0, "town"])
+    for residual in [False, True]:
+        config = dict(CANDIDATES["xgb_trend_depth6_direct"], iterations=5, depth=2,
+                      residual_target=residual)
+        y = frame.ADAPT_ADDRESS_FLAT_AREA_LEVEL.to_numpy() + 200.
+        model = fit_model(frame, y, config, 42, "CPU")
+        predicted = predict_model(model, query, config)
+        path = tmp_path / f"xgb_{residual}.json"
+        model.save_model(path)
+        restored = RentalXGBRegressor()
+        restored.load_model(path)
+        np.testing.assert_array_equal(predicted, predict_model(restored, query, config))
+        assert np.isfinite(predicted).all() and (predicted > 1000).all()
+
+
 def test_mixed_history_model_names_are_unique_and_residual_views_are_validated():
     import sys
     sys.path.insert(0, str(ROOT / "src"))
@@ -391,9 +450,9 @@ def test_mixed_history_model_names_are_unique_and_residual_views_are_validated()
 
     names = {
         final.component_suffix(recipe, 0, False)
-        for recipe in ["legacy", "recent", "hierarchical", "local_trend"]
+        for recipe in final.HISTORY_RECIPES
     }
-    assert len(names) == 4
+    assert len(names) == len(final.HISTORY_RECIPES)
     with pytest.raises(ValueError, match="every view"):
         final.validate_component_recipes(
             [{"history": "hierarchical", "lag": 0}, {"history": "legacy", "lag": 0}],
