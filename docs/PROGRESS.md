@@ -719,3 +719,45 @@ regime-aware gating model. No final model, submission CSV, raw data or default
 configuration changed. Reproduce the tracked result with
 `python src/generate_figures.py --stacking-only`; machine-readable evidence is
 in `reports/stacking_results.csv`.
+
+## Matched-horizon four-head versus eight-model stacking — 24 September 2026
+
+The initial stacking check above left two important questions open: two transfer
+pairs did not use equal forecast horizons, and seed averaging could conceal useful
+model-level differences. The follow-up therefore trained 40 missing GPU OOF fits
+and froze 64 source predictions covering eight time windows, four candidate
+families and seeds 42/2026. `reports/stacking_sources.csv` records each run ID,
+training/validation boundary, configuration, data/code provenance, prediction
+path and SHA-256. It is verified rather than silently reselected on later runs.
+
+Six forward tests now have matched horizons: four successive three-month tests
+and two successive twelve-month tests. Meta-training months always end before
+the evaluation window and raw row IDs cannot overlap. Four seed-averaged heads
+and all eight individual predictions were compared under identical evaluation
+rows. The methods were equal weighting, nonnegative simplex, 50%-shrunk simplex,
+an eight-input seed-pair shrinkage variant, and a strongly regularized temporal
+Ridge correction. Address-cluster bootstrap intervals were also recorded.
+
+| Forward evaluation | Equal-weight RMSE | Half-shrunk 4-head gain | Half-shrunk 8-model gain |
+|---|---:|---:|---:|
+| Sep-Nov 2023 | 574.2864 | +0.9341 | +0.8973 |
+| Jul-Sep 2024 | 469.9204 | -0.1075 | -0.0595 |
+| Oct-Dec 2024 | 436.8152 | -0.4952 | -0.5632 |
+| Jan-Mar 2025 | 440.7629 | -0.4144 | -0.4153 |
+| Apr 2023-Mar 2024 | 590.3473 | +6.8809 | +7.2101 |
+| Apr 2024-Mar 2025 | 466.7566 | -0.4864 | -0.8903 |
+
+Positive gain means lower RMSE than equal weighting. The comparison must not
+cherry-pick a different meta method after seeing each evaluation period; its
+purpose is stability. The apparent annual gain did not transfer to the next
+year. On the two latest quarterly windows every learned four-head and eight-model
+method lost to equal weighting. The individual seeds were also nearly duplicates
+in recent windows, so eight inputs added degrees of freedom without enough new
+signal. Direct eight-model stacking is technically valid but is rejected for
+promotion under current evidence.
+
+All 28 automated tests pass, including a new check that four-head columns equal
+the paired-seed averages and that four- and eight-input equal-weight predictions
+are identical. The mainline config, eight CBMs and `final_submission.csv` remain
+unchanged; submission SHA-256 is still
+`a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.

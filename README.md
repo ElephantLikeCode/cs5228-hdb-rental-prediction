@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-seven automated tests cover data contracts,
+50,000-row submission generator. Twenty-eight automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -59,10 +59,12 @@ the recent-year, older-year and 16-month windows by 0.154, 0.288 and 0.341.
 It was not adopted. The earlier joint composition experiment and this isolated
 experiment remain separate evidence; neither rejects all composition-control
 methods. The bounded current-feature XGBoost screen also failed, including its
-pre-specified cross-learner blends. A subsequent time-transferred stacking test
-learned four-head simplex, shrunk-simplex and Ridge meta models only from earlier
-out-of-fold months. Learned weights failed both longer transfers; the sole recent
-gain was 0.07 RMSE with an interval crossing zero. No stacking submission was generated.
+pre-specified cross-learner blends. The subsequent time-transferred stacking study
+now compares four seed-averaged heads with all eight model outputs directly.
+Across six matched-horizon forward tests, learned weights were not stable: the
+best eight-input method gained 7.21 RMSE in the first annual transfer but lost
+0.89 in the next, and lost 0.56/0.42 on the final two quarterly transfers. No
+stacking submission was generated.
 
 The user-reported public score on 24 September 2026 is **432.14881**, improving
 the prior 432.47187 mainline by **0.32306**. The uploaded filename was
@@ -238,16 +240,20 @@ python src/run_experiments.py --compare-candidates --candidates xgb_trend_depth6
 python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
 ```
 
-Reproduce the leakage-safe stacking comparison from the saved out-of-fold
-predictions:
+Reproduce the leakage-safe four-head versus eight-model stacking comparison.
+The first command creates any missing matched-horizon out-of-fold predictions;
+the second freezes their exact provenance and evaluates the meta models:
 
 ```bash
-python src/generate_figures.py --stacking-only
+python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual horizon_direct horizon_residual --windows bridge_2022 bridge_2023 bridge_2024 short_middle long_early --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
+python src/generate_figures.py --stacking-only --refresh-stacking-sources
 ```
 
 This learns meta weights on months strictly before each evaluation period and
-writes the three transfer checks to `reports/stacking_results.csv`. It does not
-fit a meta model on in-sample base-model predictions.
+writes six matched-horizon transfer checks to `reports/stacking_results.csv`.
+`reports/stacking_sources.csv` records the 64 exact source runs and prediction
+hashes. Later reruns without `--refresh-stacking-sources` verify and reuse that
+frozen source set. It does not fit a meta model on in-sample base-model predictions.
 
 The summary includes pre-specified 25% XGBoost / 75% mainline blends, paired on
 the same seed and validation rows. XGBoost's bounded screen did not improve either
@@ -284,7 +290,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `26 passed` from pytest;
+- `28 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
@@ -323,7 +329,7 @@ This retention is for reproducibility and rollback, not an additional active bra
 Use `--task-type CPU` without NVIDIA hardware. GPU and CPU CatBoost are not
 bit-identical; even fixed-seed GPU reruns can differ. The promoted artifact is
 byte-exact, while retraining reproduces the recipe rather than a guaranteed hash.
-The existing eight-component run took 709.32 seconds on the RTX 4060; the retained
+The current eight-component run took 669.44 seconds on the RTX 4060; the retained
 four-component run took 336.92 seconds. No new fit was run during promotion.
 Private data, models, figures and submission CSVs remain ignored by Git.
 

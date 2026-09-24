@@ -196,7 +196,8 @@ def parse_args() -> argparse.Namespace:
                         default=["legacy", "recent", "hierarchical", "market_residual"])
     parser.add_argument("--windows", nargs="+", default=["short_recent", "long_recent", "long_older"],
                         choices=["short_recent", "short_middle", "bridge_2024", "bridge_2023",
-                                 "long_recent", "long_older", "horizon16"])
+                                 "bridge_2022", "long_recent", "long_older", "long_early",
+                                 "horizon16"])
     parser.add_argument("--comparison-seeds", nargs="+", type=int, default=[42])
     parser.add_argument("--trial-iterations", type=int, default=1600)
     parser.add_argument("--resume", action="store_true")
@@ -345,8 +346,10 @@ def run_candidate_comparison(args):
         "short_middle": ("2024-10", "2024-12"),
         "bridge_2024": ("2024-07", "2024-09"),
         "bridge_2023": ("2023-09", "2023-11"),
+        "bridge_2022": ("2022-09", "2022-11"),
         "long_recent": ("2024-04", "2025-03"),
         "long_older": ("2023-04", "2024-03"),
+        "long_early": ("2022-04", "2023-03"),
         "horizon16": ("2023-12", "2025-03"),
     }
     from features import suspected_low_rent_mask

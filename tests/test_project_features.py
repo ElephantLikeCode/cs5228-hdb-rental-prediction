@@ -324,6 +324,34 @@ def test_stacking_weights_are_nonnegative_normalized_and_recover_signal():
     assert np.all(weights >= 0) and weights.sum() == pytest.approx(1.)
 
 
+def test_eight_model_stacking_preserves_seed_predictions(tmp_path, monkeypatch):
+    import src.generate_figures as figures
+
+    monkeypatch.setattr(figures, "ROOT", tmp_path)
+    cache = tmp_path / "artifacts"
+    cache.mkdir()
+    rows = []
+    y = np.array([2000., 3000.])
+    for family_index, candidate in enumerate(figures.STACK_HEADS):
+        for seed_index, seed in enumerate(figures.STACK_SEEDS):
+            path = cache / f"{candidate}_{seed}.npz"
+            prediction = y + family_index * 10 + seed_index * 2
+            np.savez(path, row_id=np.array([4, 5]), y=y, prediction=prediction,
+                     month=np.array(["2024-01", "2024-01"]))
+            rows.append(dict(window="test", candidate=candidate, seed=seed,
+                             train_end="2023-12", run_id=f"{candidate}_{seed}",
+                             prediction_file=str(path.relative_to(tmp_path))))
+    sources = pd.DataFrame(rows)
+    four = figures.load_stacking_window(sources, "test", "four_heads")
+    eight = figures.load_stacking_window(sources, "test", "eight_models")
+    assert four["predictions"].shape == (2, 4)
+    assert eight["predictions"].shape == (2, 8)
+    np.testing.assert_allclose(four["predictions"],
+                               eight["predictions"].reshape(2, 4, 2).mean(axis=2))
+    np.testing.assert_allclose(four["predictions"].mean(axis=1),
+                               eight["predictions"].mean(axis=1))
+
+
 def test_relative_rent_weighting_keeps_the_squared_rent_objective():
     from src.modeling import target_scale, target_offset, CANDIDATES
 

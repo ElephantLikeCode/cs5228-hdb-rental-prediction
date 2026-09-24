@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import argparse
+import hashlib
+import json
 from itertools import combinations
 
 import matplotlib.pyplot as plt
@@ -24,6 +26,8 @@ STACK_HEADS = (
     "horizon_direct",
     "horizon_residual",
 )
+STACK_SEEDS = (42, 2026)
+STACK_SOURCE_FILE = REPORTS / "stacking_sources.csv"
 
 
 def save(name: str) -> None:
@@ -64,7 +68,7 @@ def simplex_least_squares(predictions: np.ndarray, target: np.ndarray) -> np.nda
 
 def fit_temporal_ridge(predictions: np.ndarray, target: np.ndarray,
                        months: np.ndarray) -> tuple[np.ndarray, float, float]:
-    """Choose Ridge strength on the final three meta-training months only."""
+    """Fit a regularized correction around the equal-weight prediction."""
     unique_months = sorted(np.unique(months))
     if len(unique_months) < 6:
         raise ValueError("Ridge stacking needs at least six meta-training months")
@@ -73,53 +77,150 @@ def fit_temporal_ridge(predictions: np.ndarray, target: np.ndarray,
     inner_valid = ~inner_train
     ratios = (0.01, 0.1, 1.0, 10.0)
     best_ratio, best_rmse = None, np.inf
+    equal = np.full(predictions.shape[1], 1.0 / predictions.shape[1])
+
+    def design(fit_predictions, reference_scale):
+        baseline = fit_predictions @ equal
+        deviations = fit_predictions - baseline[:, None]
+        return np.column_stack([deviations / reference_scale, np.ones(len(fit_predictions))]), baseline
+
+    base_inner = predictions[inner_train] @ equal
+    deviation_scale = (predictions[inner_train]-base_inner[:, None]).std(axis=0)
+    deviation_scale[deviation_scale == 0] = 1.0
     for ratio in ratios:
-        mean = predictions[inner_train].mean(axis=0)
-        scale = predictions[inner_train].std(axis=0)
-        scale[scale == 0] = 1.0
-        model = Ridge(alpha=float(inner_train.sum()) * ratio)
-        model.fit((predictions[inner_train]-mean) / scale, target[inner_train])
-        estimate = model.predict((predictions[inner_valid]-mean) / scale)
+        train_design, train_baseline = design(predictions[inner_train], deviation_scale)
+        valid_design, valid_baseline = design(predictions[inner_valid], deviation_scale)
+        model = Ridge(alpha=float(inner_train.sum()) * ratio, fit_intercept=False)
+        model.fit(train_design, target[inner_train]-train_baseline)
+        estimate = valid_baseline + model.predict(valid_design)
         rmse = float(np.sqrt(np.mean((estimate-target[inner_valid]) ** 2)))
         if rmse < best_rmse:
             best_ratio, best_rmse = ratio, rmse
-    mean = predictions.mean(axis=0)
-    scale = predictions.std(axis=0)
-    scale[scale == 0] = 1.0
-    model = Ridge(alpha=float(len(target)) * best_ratio)
-    model.fit((predictions-mean) / scale, target)
-    weights = model.coef_ / scale
-    intercept = float(model.intercept_ - mean @ weights)
+    baseline = predictions @ equal
+    deviation_scale = (predictions-baseline[:, None]).std(axis=0)
+    deviation_scale[deviation_scale == 0] = 1.0
+    full_design, baseline = design(predictions, deviation_scale)
+    model = Ridge(alpha=float(len(target)) * best_ratio, fit_intercept=False)
+    model.fit(full_design, target-baseline)
+    adjustment = model.coef_[:-1] / deviation_scale
+    weights = equal + adjustment - equal * adjustment.sum()
+    intercept = float(model.coef_[-1])
     return weights, intercept, float(best_ratio)
 
 
-def load_stacking_window(results: pd.DataFrame, window: str) -> dict:
-    """Load four matched two-seed out-of-fold prediction heads."""
-    heads, target, row_ids, months = [], None, None, None
+def resolve_stacking_sources(results: pd.DataFrame, windows: list[str],
+                             refresh: bool = False) -> pd.DataFrame:
+    """Freeze and verify the exact per-component prediction files used by stacking."""
+    required = {(window, candidate, seed) for window in windows
+                for candidate in STACK_HEADS for seed in STACK_SEEDS}
+    if refresh or not STACK_SOURCE_FILE.exists():
+        selected = []
+        eligible = results.loc[
+            results.candidate.isin(STACK_HEADS)
+            & results.window.isin(windows)
+            & results.iterations.eq(1600)
+            & results.actual_trees.eq(1600)
+            & results.task_type.eq("GPU")
+        ]
+        for window, candidate, seed in sorted(required):
+            rows = eligible.loc[(eligible.window == window)
+                                & (eligible.candidate == candidate)
+                                & (eligible.seed.astype(int) == seed)]
+            if rows.empty:
+                raise ValueError(f"Missing formal stacking source: {window}/{candidate}/{seed}")
+            row = rows.iloc[-1]
+            prediction_path = ROOT / row.prediction_file
+            record = row.to_dict()
+            record["prediction_sha256"] = hashlib.sha256(prediction_path.read_bytes()).hexdigest()
+            selected.append(record)
+        manifest = pd.DataFrame(selected)
+        manifest.to_csv(STACK_SOURCE_FILE, index=False)
+    else:
+        manifest = pd.read_csv(STACK_SOURCE_FILE)
+
+    keys = list(zip(manifest.window, manifest.candidate, manifest.seed.astype(int)))
+    if len(keys) != len(set(keys)) or set(keys) != required:
+        raise ValueError("Stacking source manifest does not match the required windows/components")
+    if manifest.run_id.nunique() != len(manifest):
+        raise ValueError("Stacking source run IDs must be unique")
+    ledger = results.set_index("run_id", drop=False)
+    if not set(manifest.run_id).issubset(set(ledger.index)):
+        raise ValueError("Stacking source run is missing from the experiment ledger")
+    verified = []
+    provenance = ["window", "candidate", "seed", "train_end", "validation_start",
+                  "validation_end", "iterations", "actual_trees", "task_type",
+                  "data_sha256", "code_sha256", "config_json", "prediction_file"]
+    for _, saved in manifest.iterrows():
+        current = ledger.loc[saved.run_id]
+        if isinstance(current, pd.DataFrame):
+            raise ValueError(f"Duplicate run ID in experiment ledger: {saved.run_id}")
+        for field in provenance:
+            if str(current[field]) != str(saved[field]):
+                raise ValueError(f"Stacking source provenance changed: {saved.run_id}/{field}")
+        prediction_path = ROOT / saved.prediction_file
+        actual_hash = hashlib.sha256(prediction_path.read_bytes()).hexdigest()
+        if actual_hash != saved.prediction_sha256:
+            raise ValueError(f"Stacking prediction hash mismatch: {saved.run_id}")
+        verified.append(saved.to_dict())
+    sources = pd.DataFrame(verified)
+    if sources.data_sha256.nunique() != 1:
+        raise ValueError("Stacking sources use different raw training data")
+    return sources
+
+
+def load_stacking_window(sources: pd.DataFrame, window: str,
+                         input_level: str) -> dict:
+    """Load matched four-head or eight-component out-of-fold predictions."""
+    columns, labels, run_ids = [], [], []
+    target = row_ids = months = None
+    window_rows = sources.loc[sources.window == window]
+    if window_rows.train_end.nunique() != 1:
+        raise ValueError(f"Stacking sources have mixed training cutoffs for {window}")
     for candidate in STACK_HEADS:
-        rows = results.loc[(results.candidate == candidate)
-                           & (results.window == window)
-                           & (results.iterations >= 1600)].copy()
-        if rows.empty:
-            raise ValueError(f"Missing stacking head {candidate} for {window}")
-        rows = rows.drop_duplicates("seed", keep="last")
-        if set(rows.seed.astype(int)) != {42, 2026}:
-            raise ValueError(f"Stacking requires seeds 42 and 2026 for {candidate}/{window}")
         seed_predictions = []
+        rows = window_rows.loc[window_rows.candidate == candidate]
+        if set(rows.seed.astype(int)) != set(STACK_SEEDS):
+            raise ValueError(f"Stacking source seeds are incomplete for {candidate}/{window}")
         for _, row in rows.sort_values("seed").iterrows():
             with np.load(ROOT / row.prediction_file) as values:
+                value_months = values["month"].astype(str)
                 if target is None:
-                    target = values["y"].copy()
-                    row_ids = values["row_id"].copy()
-                    months = values["month"].astype(str)
+                    target, row_ids, months = (values["y"].copy(), values["row_id"].copy(),
+                                               value_months.copy())
                 if not (np.array_equal(target, values["y"])
                         and np.array_equal(row_ids, values["row_id"])
-                        and np.array_equal(months, values["month"].astype(str))):
+                        and np.array_equal(months, value_months)):
                     raise ValueError("Cannot stack predictions from different validation rows")
                 seed_predictions.append(values["prediction"].copy())
-        heads.append(np.mean(seed_predictions, axis=0))
-    return dict(predictions=np.column_stack(heads), target=target,
-                row_id=row_ids, month=months)
+                run_ids.append(str(row.run_id))
+                if input_level == "eight_models":
+                    columns.append(seed_predictions[-1])
+                    labels.append(f"{candidate}:seed{int(row.seed)}")
+        if input_level == "four_heads":
+            columns.append(np.mean(seed_predictions, axis=0))
+            labels.append(candidate)
+    if input_level not in {"four_heads", "eight_models"}:
+        raise ValueError(f"Unknown stacking input level: {input_level}")
+    return dict(predictions=np.column_stack(columns), labels=labels, target=target,
+                row_id=row_ids, month=months, run_ids=run_ids)
+
+
+def combine_stacking_windows(sources: pd.DataFrame, windows: list[str],
+                             input_level: str) -> dict:
+    """Combine disjoint out-of-fold windows for cumulative meta training."""
+    loaded = [load_stacking_window(sources, window, input_level) for window in windows]
+    labels = loaded[0]["labels"]
+    if any(item["labels"] != labels for item in loaded[1:]):
+        raise ValueError("Stacking component order changed across windows")
+    row_ids = np.concatenate([item["row_id"] for item in loaded])
+    if len(row_ids) != len(np.unique(row_ids)):
+        raise ValueError("Meta-training windows contain overlapping target rows")
+    return dict(
+        predictions=np.vstack([item["predictions"] for item in loaded]), labels=labels,
+        target=np.concatenate([item["target"] for item in loaded]), row_id=row_ids,
+        month=np.concatenate([item["month"] for item in loaded]),
+        run_ids=sorted({run_id for item in loaded for run_id in item["run_ids"]}),
+    )
 
 
 def stacking_gain_interval(reference: np.ndarray, prediction: np.ndarray,
@@ -139,78 +240,91 @@ def stacking_gain_interval(reference: np.ndarray, prediction: np.ndarray,
     return float(np.quantile(gains, .025)), float(np.quantile(gains, .975))
 
 
-def evaluate_stacking() -> pd.DataFrame:
-    """Learn meta weights on earlier OOF months and evaluate on later months."""
+def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
+    """Compare four-head and eight-model stacking across matched time horizons."""
     results = pd.read_csv(REPORTS / "temporal_comparison.csv")
     plans = [
-        ("older_to_recent", "long_older", None, "long_recent"),
-        ("predec_2023_to_horizon16", "long_older", "2023-11", "horizon16"),
-        ("prejan_2025_to_short", "long_recent", "2024-12", "short_recent"),
+        ("three_month_2023", 3, ["bridge_2022"], "bridge_2023"),
+        ("three_month_2024_mid", 3, ["bridge_2022", "bridge_2023"], "bridge_2024"),
+        ("three_month_2024_end", 3, ["bridge_2022", "bridge_2023", "bridge_2024"], "short_middle"),
+        ("three_month_2025", 3, ["bridge_2022", "bridge_2023", "bridge_2024", "short_middle"], "short_recent"),
+        ("twelve_month_2023", 12, ["long_early"], "long_older"),
+        ("twelve_month_2024", 12, ["long_early", "long_older"], "long_recent"),
     ]
+    required_windows = sorted({window for _, _, training, evaluation in plans
+                               for window in training + [evaluation]})
+    sources = resolve_stacking_sources(results, required_windows, refresh=refresh_sources)
     records = []
-    equal = np.full(len(STACK_HEADS), 1.0 / len(STACK_HEADS))
-    for plan, train_window, train_end, eval_window in plans:
-        train = load_stacking_window(results, train_window)
-        evaluation = load_stacking_window(results, eval_window)
-        train_mask = np.ones(len(train["target"]), dtype=bool)
-        if train_end is not None:
-            train_mask &= train["month"] <= train_end
-        if not train_mask.any():
-            raise ValueError(f"Empty meta-training period for {plan}")
-        latest_train_month = sorted(train["month"][train_mask])[-1]
-        earliest_eval_month = sorted(evaluation["month"])[0]
-        if latest_train_month >= earliest_eval_month:
-            raise ValueError(f"Stacking periods overlap for {plan}")
-        learned = simplex_least_squares(train["predictions"][train_mask],
-                                        train["target"][train_mask])
-        ridge_weights, ridge_intercept, ridge_alpha_ratio = fit_temporal_ridge(
-            train["predictions"][train_mask], train["target"][train_mask],
-            train["month"][train_mask],
-        )
-        methods = {
-            "equal_weight_reference": (equal, 0.0, np.nan),
-            "simplex": (learned, 0.0, np.nan),
-            "half_shrunk_simplex": (0.5 * learned + 0.5 * equal, 0.0, np.nan),
-            "temporal_ridge": (ridge_weights, ridge_intercept, ridge_alpha_ratio),
-        }
-        reference = evaluation["predictions"] @ equal
-        reference_rmse = float(np.sqrt(np.mean((reference-evaluation["target"]) ** 2)))
-        for method, (weights, intercept, alpha_ratio) in methods.items():
-            train_prediction = train["predictions"][train_mask] @ weights + intercept
-            prediction = evaluation["predictions"] @ weights + intercept
-            eval_rmse = float(np.sqrt(np.mean((prediction-evaluation["target"]) ** 2)))
-            monthly_gains = []
-            for month in np.unique(evaluation["month"]):
-                mask = evaluation["month"] == month
-                old = np.sqrt(np.mean((reference[mask]-evaluation["target"][mask]) ** 2))
-                new = np.sqrt(np.mean((prediction[mask]-evaluation["target"][mask]) ** 2))
-                monthly_gains.append(float(old-new))
-            lower = upper = np.nan
-            if method != "equal_weight_reference":
-                lower, upper = stacking_gain_interval(
-                    reference, prediction, evaluation["target"], evaluation["row_id"],
-                    random_seed=42 + len(records),
+    for plan, horizon, train_windows, eval_window in plans:
+        for input_level in ("four_heads", "eight_models"):
+            train = combine_stacking_windows(sources, train_windows, input_level)
+            evaluation = load_stacking_window(sources, eval_window, input_level)
+            latest_train_month = sorted(train["month"])[-1]
+            earliest_eval_month = sorted(evaluation["month"])[0]
+            if latest_train_month >= earliest_eval_month:
+                raise ValueError(f"Stacking periods overlap for {plan}")
+            if set(train["row_id"]) & set(evaluation["row_id"]):
+                raise ValueError(f"Meta-training rows overlap evaluation rows for {plan}")
+            equal = np.full(len(train["labels"]), 1.0 / len(train["labels"]))
+            learned = simplex_least_squares(train["predictions"], train["target"])
+            methods = {
+                "equal_weight_reference": (equal, 0.0, np.nan),
+                "simplex": (learned, 0.0, np.nan),
+                "half_shrunk_simplex": (0.5 * learned + 0.5 * equal, 0.0, np.nan),
+            }
+            if input_level == "eight_models":
+                pair_mean = np.repeat(learned.reshape(-1, 2).mean(axis=1), 2)
+                methods["seed_pair_shrunk_simplex"] = (
+                    0.5 * learned + 0.5 * pair_mean, 0.0, np.nan,
                 )
-            record = dict(
-                plan=plan, meta_train_window=train_window,
-                meta_train_start=sorted(train["month"][train_mask])[0],
-                meta_train_end=latest_train_month, evaluation_window=eval_window,
-                evaluation_start=earliest_eval_month,
-                evaluation_end=sorted(evaluation["month"])[-1], method=method,
-                train_rows=int(train_mask.sum()), evaluation_rows=len(evaluation["target"]),
-                train_rmse=float(np.sqrt(np.mean((train_prediction-train["target"][train_mask]) ** 2))),
-                evaluation_rmse=eval_rmse,
-                rmse_improvement=reference_rmse-eval_rmse,
-                months_improved=sum(value > 0 for value in monthly_gains),
-                months=len(monthly_gains), gain_ci_lower=lower, gain_ci_upper=upper,
-                intercept=intercept, ridge_alpha_ratio=alpha_ratio,
-            )
-            record.update({f"weight_{name}": float(weight)
-                           for name, weight in zip(STACK_HEADS, weights)})
-            records.append(record)
+            if len(np.unique(train["month"])) >= 6:
+                ridge_weights, ridge_intercept, ridge_alpha_ratio = fit_temporal_ridge(
+                    train["predictions"], train["target"], train["month"],
+                )
+                methods["ridge_correction"] = (
+                    ridge_weights, ridge_intercept, ridge_alpha_ratio,
+                )
+            reference = evaluation["predictions"] @ equal
+            reference_rmse = float(np.sqrt(np.mean((reference-evaluation["target"]) ** 2)))
+            for method, (weights, intercept, alpha_ratio) in methods.items():
+                train_prediction = train["predictions"] @ weights + intercept
+                prediction = evaluation["predictions"] @ weights + intercept
+                eval_rmse = float(np.sqrt(np.mean((prediction-evaluation["target"]) ** 2)))
+                monthly_gains = []
+                for month in np.unique(evaluation["month"]):
+                    mask = evaluation["month"] == month
+                    old = np.sqrt(np.mean((reference[mask]-evaluation["target"][mask]) ** 2))
+                    new = np.sqrt(np.mean((prediction[mask]-evaluation["target"][mask]) ** 2))
+                    monthly_gains.append(float(old-new))
+                lower = upper = np.nan
+                if method != "equal_weight_reference":
+                    lower, upper = stacking_gain_interval(
+                        reference, prediction, evaluation["target"], evaluation["row_id"],
+                        random_seed=42 + len(records),
+                    )
+                records.append(dict(
+                    plan=plan, horizon_months=horizon, input_level=input_level,
+                    meta_train_windows=json.dumps(train_windows),
+                    meta_train_start=sorted(train["month"])[0],
+                    meta_train_end=latest_train_month, evaluation_window=eval_window,
+                    evaluation_start=earliest_eval_month,
+                    evaluation_end=sorted(evaluation["month"])[-1], method=method,
+                    train_rows=len(train["target"]), evaluation_rows=len(evaluation["target"]),
+                    train_rmse=float(np.sqrt(np.mean((train_prediction-train["target"]) ** 2))),
+                    evaluation_rmse=eval_rmse,
+                    rmse_improvement=reference_rmse-eval_rmse,
+                    months_improved=sum(value > 0 for value in monthly_gains),
+                    months=len(monthly_gains), gain_ci_lower=lower, gain_ci_upper=upper,
+                    intercept=intercept, ridge_alpha_ratio=alpha_ratio,
+                    component_labels=json.dumps(train["labels"]),
+                    weights=json.dumps([float(value) for value in weights]),
+                    meta_source_run_ids=json.dumps(train["run_ids"]),
+                    evaluation_source_run_ids=json.dumps(sorted(evaluation["run_ids"])),
+                    data_sha256=sources.data_sha256.iloc[0],
+                ))
     summary = pd.DataFrame(records)
     summary.to_csv(REPORTS / "stacking_results.csv", index=False)
-    print(summary[["plan", "method", "evaluation_rmse", "rmse_improvement",
+    print(summary[["plan", "input_level", "method", "evaluation_rmse", "rmse_improvement",
                    "months_improved", "months", "gain_ci_lower", "gain_ci_upper"]]
           .round(4).to_string(index=False))
     return summary
@@ -388,6 +502,8 @@ def main() -> None:
     parser.add_argument("--temporal-only", action="store_true")
     parser.add_argument("--stacking-only", action="store_true",
                         help="Evaluate time-transferred meta weights from saved OOF predictions.")
+    parser.add_argument("--refresh-stacking-sources", action="store_true",
+                        help="Explicitly replace the frozen stacking run-ID manifest.")
     parser.add_argument("--reference-candidate", default="legacy")
     parser.add_argument("--error-groups", action="store_true",
                         help="Write local paired errors by month, town, flat type and area.")
@@ -397,7 +513,7 @@ def main() -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", context="notebook")
     if args.stacking_only:
-        evaluate_stacking()
+        evaluate_stacking(refresh_sources=args.refresh_stacking_sources)
         return
     if args.temporal_only:
         summarize_temporal(bootstrap=args.bootstrap, reference_candidate=args.reference_candidate,
