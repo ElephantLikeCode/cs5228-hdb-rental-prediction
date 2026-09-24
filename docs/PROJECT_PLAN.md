@@ -279,7 +279,7 @@ it was not a pure trend ablation. The subsequent isolated trend-only ablation
 preserved those baselines exactly but lost to the retained candidate on three
 of four windows. A current-feature GPU XGBoost depth-6/8 direct/residual screen
 and fixed 25% cross-learner blends also failed their two-window screen.
-Twenty-nine tests cover features, validation, mixed-history outputs, isolated
+Thirty-three tests cover features, validation, mixed-history outputs, isolated
 target preservation, category mappings and model reloads. The two requested
 follow-up comparisons are complete; neither produced an additional submission.
 
@@ -295,21 +295,26 @@ A recency follow-up reused the frozen predictions. Learning only from the latest
 meta-training window produced a small +0.106 RMSE four-head result on Jan-Mar
 2025, but its interval crossed zero and it lost on the preceding quarter and the
 recent annual window. Eight-input recent-only and fixed 12-month-decay variants
-also failed. This narrows the open question to a separately validated regime
-model rather than another fixed recency rule.
+also failed in the tested configurations. Other recency schedules and regime
+models remain untested; the result does not rule them out.
 
 A 16-month forward check was then added to approximate the 17-month competition
 test horizon. Recent-window four-head stacking lost 0.538 RMSE and its eight-input
 version lost 1.189, with both address-cluster intervals entirely below zero. The
 result record now reports each method's actual fit dates, rows, sources and fit
-RMSE. These results do not justify spending a leaderboard submission on the
-current stacking candidate.
+RMSE. The stress check also changes the fitting window to Apr 2022-Mar 2023
+(twelve months), ending eight months before the evaluation cutoff. It is not a
+controlled test of the recent-quarter rule and cannot establish that a public
+leaderboard probe has no value.
 
 The user requested one controlled public-leaderboard probe, so the fixed recent-
 window four-head candidate is available as
 `submissions/submission_recent_window_stacking.csv`. Treat its public score as
-supporting evidence alongside the negative 16-month result; do not promote it
-solely from a small public-half improvement.
+supporting evidence alongside the negative 16-month stress result; do not promote
+it solely from a small public-half improvement. This probe freezes Oct-Dec 2024
+weights rather than refitting the second layer on Jan-Mar 2025. Its score is
+pending. Candidate generation requires fresh CSV and metadata paths to preserve
+already-generated artifacts.
 
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public

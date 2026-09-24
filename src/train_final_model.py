@@ -127,11 +127,12 @@ def create_reweighted_submission(args) -> None:
     source_path = args.reuse_metadata
     source_path = (ROOT / source_path).resolve() if not source_path.is_absolute() else source_path.resolve()
     source_path.relative_to(ROOT.resolve())
+    validate_reweighted_outputs(args.submission, args.metadata, source_path)
     source = json.loads(source_path.read_text(encoding="utf-8"))
     components = source["components"]
     weights = np.asarray(args.component_weights, dtype=float)
     if (weights.shape != (len(components),) or not np.isfinite(weights).all()
-            or np.any(weights < 0) or not np.isclose(weights.sum(), 1.0, atol=1e-10)):
+            or np.any(weights < 0) or not np.isclose(weights.sum(), 1.0, rtol=0, atol=1e-10)):
         raise ValueError("Component weights must be finite, nonnegative, and sum to one")
     if not source["model"].startswith("CatBoostRegressor"):
         raise ValueError("Reusable weighted submissions currently require CatBoost components")
@@ -167,7 +168,13 @@ def create_reweighted_submission(args) -> None:
 
     source_weights = np.asarray(source["weights"], dtype=float)
     source_prediction = source_weights @ prediction_matrix
-    source_submission = pd.read_csv(ROOT / source["submission"])
+    source_submission_path = ROOT / source["submission"]
+    if hashlib.sha256(source_submission_path.read_bytes()).hexdigest() != source["submission_sha256"]:
+        raise ValueError("Source submission hash differs from reusable run")
+    source_submission = pd.read_csv(source_submission_path)
+    if (source_submission.columns.tolist() != ["Id", "Predicted"]
+            or not source_submission["Id"].equals(sample["Id"])):
+        raise ValueError("Source submission schema or IDs differ from the template")
     if not np.allclose(source_prediction, source_submission["Predicted"], rtol=1e-12, atol=1e-9):
         raise ValueError("Reusable components do not reproduce the source submission")
 
@@ -178,7 +185,9 @@ def create_reweighted_submission(args) -> None:
         raise ValueError("Candidate submission IDs or predictions are invalid")
     sample["Predicted"] = prediction
     args.submission.parent.mkdir(parents=True, exist_ok=True)
-    sample.to_csv(args.submission, index=False, lineterminator="\n")
+    # Exclusive creation also protects a file created after the preflight check.
+    with args.submission.open("x", encoding="utf-8", newline="") as handle:
+        sample.to_csv(handle, index=False, lineterminator="\n")
     reloaded = pd.read_csv(args.submission)
     if (reloaded.columns.tolist() != ["Id", "Predicted"]
             or not reloaded["Id"].equals(sample["Id"])
@@ -206,8 +215,18 @@ def create_reweighted_submission(args) -> None:
         "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
     args.metadata.parent.mkdir(parents=True, exist_ok=True)
-    args.metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    with args.metadata.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(metadata, indent=2))
     print(json.dumps(metadata, indent=2))
+
+
+def validate_reweighted_outputs(submission_path: Path, metadata_path: Path,
+                                source_path: Path) -> None:
+    """Require fresh candidate paths; existing complete or partial runs are immutable."""
+    if metadata_path.resolve() == source_path.resolve():
+        raise ValueError("Candidate metadata must not replace source metadata")
+    if submission_path.exists() or metadata_path.exists():
+        raise ValueError("Candidate output already exists; use fresh submission and metadata paths")
 
 
 def archive_previous_run(metadata_path: Path, submission_path: Path) -> Path | None:

@@ -803,9 +803,10 @@ window half-shrunk rule scored 483.9728 with four heads (gain -0.5384, 95% addre
 cluster interval -0.8758 to -0.1697) and 484.6230 with eight inputs (gain -1.1885,
 interval -1.5872 to -0.7733). Fixed time decay was also worse.
 
-This longer forward check removes the practical case for a leaderboard trial of
-the current recency-stacking candidate. No candidate submission was generated;
-the 432.14881 equal-weight mainline remains the supported submission.
+At this point no candidate was generated and the mainline remained unchanged.
+The initial interpretation that this removed the case for a leaderboard probe
+was too strong: this stress check also changes the fitting-window length and
+historical regime. See the clarification below.
 
 ## User-requested leaderboard probe artifact — 24 September 2026
 
@@ -825,3 +826,25 @@ predictions have mean change -1.247 SGD and RMS change 5.618 SGD.
 This is a diagnostic submission, not a promoted model. The mainline files remain
 unchanged pending the reported Kaggle score. Exact component order and provenance
 are recorded in `reports/submission_recent_window_stacking_metadata.json`.
+
+## Candidate protection and interpretation correction — 24 September 2026
+
+The 16-month check uses a twelve-month fit window ending Mar 2023, while the
+exported probe freezes weights fitted on Oct-Dec 2024. The former is evidence of
+historical long-horizon risk, not an isolated test of recent-quarter weighting.
+Address-cluster intervals describe sampling within that historical evaluation;
+they do not quantify future regime uncertainty or guarantee a private score.
+
+The probe's weights were deliberately retained from the recorded quarterly
+experiment. They were not refitted on the available Jan-Mar 2025 OOF predictions,
+so it is a fixed historical-weight probe, not a latest-data refitted stack.
+README and the current plan now state this and that the probe score is pending.
+
+Reweighted generation now requires fresh CSV and metadata paths, rejecting both
+complete and partial existing runs before loading models. Exclusive file creation
+also prevents overwriting if a file appears after preflight. The source CSV hash
+and ID order are verified in addition to model/data hashes. A partially failed
+new run is retained and must use new paths on retry; no atomic-pair guarantee is
+claimed. Four regression cases cover existing/partial output and source-metadata
+protection. Original candidate metadata retains the original generator provenance.
+The candidate CSV, mainline CSV and eight CBMs were not regenerated or replaced.

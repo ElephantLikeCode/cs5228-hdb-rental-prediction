@@ -446,6 +446,35 @@ def test_mainline_config_selects_eight_local_trend_history_diversity_components(
     assert len(config["seeds"]) * len(config["target_modes"]) * len(config["history_views"]) == 8
 
 
+@pytest.mark.parametrize("existing", ["csv", "metadata", "both"])
+def test_reweighted_entry_rejects_existing_outputs_before_loading_models(tmp_path, monkeypatch, existing):
+    monkeypatch.syspath_prepend(str(ROOT / "src"))
+    import train_final_model as final
+    monkeypatch.setattr(final, "ROOT", tmp_path)
+    csv_path = tmp_path / "candidate.csv"
+    metadata_path = tmp_path / "candidate.json"
+    source = tmp_path / "source.json"
+    source.write_text("deliberately invalid: must not be read")
+    if existing in ("csv", "both"):
+        csv_path.write_bytes(b"existing submitted CSV")
+    if existing in ("metadata", "both"):
+        metadata_path.write_bytes(b"existing metadata")
+    before = {p: p.read_bytes() for p in (csv_path, metadata_path, source) if p.exists()}
+    args = final.argparse.Namespace(reuse_metadata=source, component_weights=[1.],
+                                    submission=csv_path, metadata=metadata_path)
+    with pytest.raises(ValueError, match="Candidate output already exists"):
+        final.create_reweighted_submission(args)
+    assert {p: p.read_bytes() for p in (csv_path, metadata_path, source) if p.exists()} == before
+
+
+def test_reweighted_outputs_require_fresh_paths_and_preserve_source(tmp_path):
+    from src.train_final_model import validate_reweighted_outputs
+    source = tmp_path / "source.json"
+    validate_reweighted_outputs(tmp_path / "new.csv", tmp_path / "new.json", source)
+    with pytest.raises(ValueError, match="must not replace source"):
+        validate_reweighted_outputs(tmp_path / "new.csv", source, source)
+
+
 def test_trend_only_ablation_preserves_baseline_and_attenuates_composition_shift():
     from src.modeling import target_offset
 

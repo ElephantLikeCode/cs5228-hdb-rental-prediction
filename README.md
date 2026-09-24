@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-nine automated tests cover data contracts,
+50,000-row submission generator. Thirty-three automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -68,9 +68,13 @@ follow-up using only the latest meta-training window reduced some losses but did
 not make the result stable: its four-head gain on Jan-Mar 2025 was only 0.106
 RMSE with an interval crossing zero, while its eight-input result was -0.054.
 Fixed 12-month time decay also lost on the latest quarter. In a 16-month forward
-check approximating the competition horizon, the recent-window four-head rule
-lost 0.538 RMSE and its eight-input counterpart lost 1.189. No stacking submission
-was generated.
+stress check, weights fitted on Apr 2022-Mar 2023 lost 0.538 RMSE with four heads
+and 1.189 with eight inputs. This check changes the historical regime, fitting
+window length and prediction horizon together; it is long-horizon risk evidence,
+not a clean rejection of quarterly recency weighting. At the user's request,
+`submission_recent_window_stacking.csv` was generated as a fixed-weight probe.
+Its weights were fitted on Oct-Dec 2024 and were not refitted on Jan-Mar 2025.
+The public score is pending; the mainline remains 432.14881.
 
 The user-reported public score on 24 September 2026 is **432.14881**, improving
 the prior 432.47187 mainline by **0.32306**. The uploaded filename was
@@ -300,7 +304,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `29 passed` from pytest;
+- `33 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
@@ -321,16 +325,20 @@ history views) must specify separate `--submission`, `--metadata` and
 `--model-prefix` paths; otherwise the command fails before training.
 Output paths are restricted to their project output directories.
 
-To reproduce the user-requested recent-window stacking CSV without retraining,
+To reproduce the user-requested fixed historical-weight stacking CSV without retraining,
 reuse the eight verified mainline CBMs with the recorded component-order weights:
 
 ```bash
 python src/train_final_model.py --reuse-metadata reports/final_model_metadata.json --component-weights 0.06945411339312821 0.1600015151383129 0.06945411339312821 0.1600015151383129 0.13361900687086095 0.13692536459769795 0.13361900687086095 0.13692536459769795 --weight-label three_month_2025/four_heads/recent_window_half_shrunk_simplex --model-prefix candidate_recent_stack --submission submissions/submission_recent_window_stacking.csv --metadata reports/submission_recent_window_stacking_metadata.json
 ```
 
-The command verifies every model/data hash and first reproduces the source
-equal-weight submission before writing the candidate. This CSV is experimental;
-its local long-horizon result is worse than the mainline.
+The command verifies model/data/source-CSV hashes and IDs, then reproduces the
+source equal-weight prediction before writing the candidate. Both output paths
+must be fresh: existing complete or partial candidates are rejected before model
+loading, and exclusive file creation prevents overwriting. The command above
+documents the original artifact; use two new output paths to rerun it locally.
+The fixed weights came from Oct-Dec 2024 OOF predictions; they were not refitted
+on the available Jan-Mar 2025 OOF predictions. This is an experimental probe.
 
 Before replacing an existing complete run, the training command verifies and
 snapshots its CSV, metadata and every model into ignored
