@@ -260,6 +260,7 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
         ("three_month_2025", 3, ["bridge_2022", "bridge_2023", "bridge_2024", "short_middle"], "short_recent"),
         ("twelve_month_2023", 12, ["long_early"], "long_older"),
         ("twelve_month_2024", 12, ["long_early", "long_older"], "long_recent"),
+        ("sixteen_month_2025", 16, ["long_early"], "horizon16"),
     ]
     required_windows = sorted({window for _, _, training, evaluation in plans
                                for window in training + [evaluation]})
@@ -321,7 +322,17 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
             reference_rmse = float(np.sqrt(np.mean((reference-evaluation["target"]) ** 2)))
             for method, (weights, intercept, alpha_ratio, fit_windows,
                          half_life, fit_rows) in methods.items():
-                train_prediction = train["predictions"] @ weights + intercept
+                fit_data = latest_window if method == "recent_window_half_shrunk_simplex" else train
+                fit_prediction = fit_data["predictions"] @ weights + intercept
+                fit_weight = None
+                if method == "time_decay_half_shrunk_simplex":
+                    fit_month_number = pd.PeriodIndex(fit_data["month"], freq="M").asi8
+                    fit_weight = np.exp2(
+                        (fit_month_number-fit_month_number.max()) / float(half_life)
+                    )
+                fit_mse = np.average(
+                    (fit_prediction-fit_data["target"]) ** 2, weights=fit_weight,
+                )
                 prediction = evaluation["predictions"] @ weights + intercept
                 eval_rmse = float(np.sqrt(np.mean((prediction-evaluation["target"]) ** 2)))
                 monthly_gains = []
@@ -341,12 +352,15 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
                     meta_train_windows=json.dumps(train_windows),
                     meta_fit_windows=json.dumps(fit_windows), meta_fit_rows=fit_rows,
                     meta_weight_half_life_months=half_life,
+                    meta_fit_start=sorted(fit_data["month"])[0],
+                    meta_fit_end=sorted(fit_data["month"])[-1],
+                    meta_fit_weighted=fit_weight is not None,
                     meta_train_start=sorted(train["month"])[0],
                     meta_train_end=latest_train_month, evaluation_window=eval_window,
                     evaluation_start=earliest_eval_month,
                     evaluation_end=sorted(evaluation["month"])[-1], method=method,
                     train_rows=len(train["target"]), evaluation_rows=len(evaluation["target"]),
-                    train_rmse=float(np.sqrt(np.mean((train_prediction-train["target"]) ** 2))),
+                    train_rmse=float(np.sqrt(fit_mse)), meta_fit_rmse=float(np.sqrt(fit_mse)),
                     evaluation_rmse=eval_rmse,
                     rmse_improvement=reference_rmse-eval_rmse,
                     months_improved=sum(value > 0 for value in monthly_gains),
@@ -355,6 +369,7 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
                     component_labels=json.dumps(train["labels"]),
                     weights=json.dumps([float(value) for value in weights]),
                     meta_source_run_ids=json.dumps(train["run_ids"]),
+                    meta_fit_source_run_ids=json.dumps(sorted(fit_data["run_ids"])),
                     evaluation_source_run_ids=json.dumps(sorted(evaluation["run_ids"])),
                     data_sha256=sources.data_sha256.iloc[0],
                 ))

@@ -783,3 +783,26 @@ Recency reduces several earlier losses, so regime drift remains a useful lead,
 but neither fixed rule transfers consistently enough to replace equal weighting.
 No model, config or submission changed. All 29 tests pass; the added test verifies
 that weighted simplex fitting responds to the intended sample emphasis.
+
+## Fit-record correction and competition-horizon check — 24 September 2026
+
+The result schema now distinguishes the full set of earlier OOF rows available
+at each origin from the exact rows used by a method. `meta_fit_start/end`,
+`meta_fit_rows`, `meta_fit_source_run_ids` and `meta_fit_weighted` make this
+explicit. `train_rmse` and `meta_fit_rmse` are now calculated on those actual fit
+rows; the time-decay version uses the same sample weights as its objective. This
+corrects a reporting-only issue where recent-window weights were evaluated across
+all earlier windows. Evaluation RMSE, weights and promotion decisions were not
+affected.
+
+Eight existing horizon predictions were added to the frozen manifest, bringing
+it to 72 exact sources. A seventh forward check learns weights from Apr 2022-Mar
+2023 OOF predictions and evaluates Dec 2023-Mar 2025, a 16-month span close to
+the competition test's 17 months. Equal weighting scored 483.4345. The recent-
+window half-shrunk rule scored 483.9728 with four heads (gain -0.5384, 95% address-
+cluster interval -0.8758 to -0.1697) and 484.6230 with eight inputs (gain -1.1885,
+interval -1.5872 to -0.7733). Fixed time decay was also worse.
+
+This longer forward check removes the practical case for a leaderboard trial of
+the current recency-stacking candidate. No candidate submission was generated;
+the 432.14881 equal-weight mainline remains the supported submission.

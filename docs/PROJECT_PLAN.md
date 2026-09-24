@@ -298,6 +298,13 @@ recent annual window. Eight-input recent-only and fixed 12-month-decay variants
 also failed. This narrows the open question to a separately validated regime
 model rather than another fixed recency rule.
 
+A 16-month forward check was then added to approximate the 17-month competition
+test horizon. Recent-window four-head stacking lost 0.538 RMSE and its eight-input
+version lost 1.189, with both address-cluster intervals entirely below zero. The
+result record now reports each method's actual fit dates, rows, sources and fit
+RMSE. These results do not justify spending a leaderboard submission on the
+current stacking candidate.
+
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public
    leaderboard results only as supporting evidence.
