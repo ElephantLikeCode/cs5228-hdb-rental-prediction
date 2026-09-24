@@ -1,78 +1,92 @@
 {
   "model": "CatBoostRegressor equal-weight component ensemble",
-  "feature_set": "all_spatial_hierarchical",
+  "feature_set": "all_spatial_local_trend:0+hierarchical:6",
   "config": {
     "history": "hierarchical",
     "residual_target": false,
     "iterations": 1600,
     "learning_rate": 0.04,
     "depth": 8,
-    "l2_leaf_reg": 6,
+    "l2_leaf_reg": 6.0,
     "seeds": [
       42,
       2026
     ],
     "outlier_policy": "keep",
-    "name": "history_diversity_blend",
+    "name": "local_trend_history_diversity_blend",
     "target_modes": [
       false,
       true
     ],
-    "augmentation_lags": [
-      0,
-      6
+    "history_views": [
+      {
+        "history": "local_trend",
+        "lag": 0
+      },
+      {
+        "history": "hierarchical",
+        "lag": 6
+      }
     ]
   },
-  "feature_count": 74,
+  "feature_count": 78,
+  "feature_counts": {
+    "local_trend:0": 78,
+    "hierarchical:6": 74
+  },
   "code_sha256": {
-    "features.py": "33aec3112da7d27c95b600584997610236d98d88d0eb85534abd28a1e0c40c59",
-    "modeling.py": "e228024472122ed8f7db5a61e0d13b2eae78326d241a469d7bab54c52c4ea29a",
-    "train_final_model.py": "7ee9ff050b26d79f663bfec3317c9e4227d53c0a60c2dbc208a561abb93fbc56"
+    "features.py": "6852b4061c7f8db0e690cfa1b1455d3d95d3eb1705c67d2e750ac80096ff2ddf",
+    "modeling.py": "5c4e7b262297449271f80b36c3c0d7d2bce52c52a0eb3aabae77e1b03b2cad5b",
+    "train_final_model.py": "062771bb97550e7b024e904276bab513239f9c83bdcfc594e5893725a35e2611"
   },
   "history_features": [
+    "ADAPT_ADDRESS_FLAT_AGE",
+    "ADAPT_ADDRESS_FLAT_AREA_AGE",
+    "ADAPT_ADDRESS_FLAT_AREA_LEVEL",
+    "ADAPT_ADDRESS_FLAT_AREA_LOG_MASS",
+    "ADAPT_ADDRESS_FLAT_AREA_PREMIUM",
+    "ADAPT_ADDRESS_FLAT_LEVEL",
+    "ADAPT_ADDRESS_FLAT_LOG_MASS",
+    "ADAPT_ADDRESS_FLAT_PREMIUM",
+    "ADAPT_HORIZON",
+    "ADAPT_MARKET_LEVEL",
+    "ADAPT_STREET_FLAT_AGE",
+    "ADAPT_STREET_FLAT_LEVEL",
+    "ADAPT_STREET_FLAT_LOG_MASS",
+    "ADAPT_STREET_FLAT_PREMIUM",
+    "ADAPT_TOWN_FLAT_AGE",
+    "ADAPT_TOWN_FLAT_LEVEL",
+    "ADAPT_TOWN_FLAT_LOG_MASS",
+    "ADAPT_TOWN_FLAT_PREMIUM",
+    "ADAPT_TOWN_FLAT_PREMIUM_CHANGE",
+    "ADAPT_TOWN_FLAT_PREMIUM_PREVIOUS",
+    "ADAPT_TOWN_FLAT_PREMIUM_RECENT",
+    "ADAPT_TOWN_FLAT_TREND_LOG_SUPPORT",
+    "HIST_ADDRESS_FLAT_AREA_LOG_COUNT",
+    "HIST_ADDRESS_FLAT_AREA_MEAN",
+    "HIST_ADDRESS_FLAT_LOG_COUNT",
+    "HIST_ADDRESS_FLAT_MEAN",
+    "HIST_ADDRESS_LOG_COUNT",
+    "HIST_ADDRESS_MEAN",
+    "HIST_FLAT_MODEL_LOG_COUNT",
+    "HIST_FLAT_MODEL_MEAN",
+    "HIST_FLAT_TYPE_LOG_COUNT",
+    "HIST_FLAT_TYPE_MEAN",
     "HIST_GLOBAL_MEAN",
     "HIST_GLOBAL_TREND",
-    "HIST_ADDRESS_MEAN",
-    "HIST_ADDRESS_LOG_COUNT",
-    "HIST_TOWN_FLAT_MEAN",
-    "HIST_TOWN_FLAT_LOG_COUNT",
-    "HIST_TOWN_MEAN",
-    "HIST_TOWN_LOG_COUNT",
-    "HIST_FLAT_TYPE_MEAN",
-    "HIST_FLAT_TYPE_LOG_COUNT",
-    "HIST_FLAT_MODEL_MEAN",
-    "HIST_FLAT_MODEL_LOG_COUNT",
-    "HIST_ADDRESS_FLAT_MEAN",
-    "HIST_ADDRESS_FLAT_LOG_COUNT",
-    "HIST_ADDRESS_FLAT_AREA_MEAN",
-    "HIST_ADDRESS_FLAT_AREA_LOG_COUNT",
-    "HIST_STREET_FLAT_MEAN",
     "HIST_STREET_FLAT_LOG_COUNT",
-    "HIST_TOWN_FLAT_MODEL_MEAN",
+    "HIST_STREET_FLAT_MEAN",
+    "HIST_TOWN_FLAT_LOG_COUNT",
+    "HIST_TOWN_FLAT_MEAN",
     "HIST_TOWN_FLAT_MODEL_LOG_COUNT",
-    "ADAPT_MARKET_LEVEL",
-    "ADAPT_HORIZON",
-    "ADAPT_TOWN_FLAT_LEVEL",
-    "ADAPT_TOWN_FLAT_PREMIUM",
-    "ADAPT_TOWN_FLAT_LOG_MASS",
-    "ADAPT_TOWN_FLAT_AGE",
-    "ADAPT_STREET_FLAT_LEVEL",
-    "ADAPT_STREET_FLAT_PREMIUM",
-    "ADAPT_STREET_FLAT_LOG_MASS",
-    "ADAPT_STREET_FLAT_AGE",
-    "ADAPT_ADDRESS_FLAT_LEVEL",
-    "ADAPT_ADDRESS_FLAT_PREMIUM",
-    "ADAPT_ADDRESS_FLAT_LOG_MASS",
-    "ADAPT_ADDRESS_FLAT_AGE",
-    "ADAPT_ADDRESS_FLAT_AREA_LEVEL",
-    "ADAPT_ADDRESS_FLAT_AREA_PREMIUM",
-    "ADAPT_ADDRESS_FLAT_AREA_LOG_MASS",
-    "ADAPT_ADDRESS_FLAT_AREA_AGE"
+    "HIST_TOWN_FLAT_MODEL_MEAN",
+    "HIST_TOWN_LOG_COUNT",
+    "HIST_TOWN_MEAN"
   ],
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,
-  "l2_leaf_reg": 6,
+  "l2_leaf_reg": 6.0,
   "task_type": "GPU",
   "outlier_policy": "keep",
   "outlier_ratio": 0.5,
@@ -98,86 +112,96 @@
     {
       "seed": 42,
       "residual_target": false,
+      "history": "local_trend",
       "augmentation_lag": 0,
-      "model_path": "artifacts/final_model_seed_42.cbm",
+      "model_path": "artifacts/final_model_trend_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 69.58,
-      "sha256": "dfc191a9d622630b52626d0214a6d66bdb22f21de42d3d3922f467d9e7cbdf58"
+      "elapsed_seconds": 66.44,
+      "sha256": "5f30c042042e24416676270706136aba3c7d19b1fbcb21403fc8ae129f4b530b"
     },
     {
       "seed": 42,
       "residual_target": true,
+      "history": "local_trend",
       "augmentation_lag": 0,
-      "model_path": "artifacts/final_model_residual_seed_42.cbm",
+      "model_path": "artifacts/final_model_trend_residual_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 73.07,
-      "sha256": "5dab519a2e949ce3f69108009bdd7bb09a5d1cb754026f5dfe96422b87c87499"
+      "elapsed_seconds": 75.46,
+      "sha256": "634ca6448f64fbefb6044ea71844129bdcbffd30b6ad1315da4c8b7da9fa6e26"
     },
     {
       "seed": 2026,
       "residual_target": false,
+      "history": "local_trend",
       "augmentation_lag": 0,
-      "model_path": "artifacts/final_model_seed_2026.cbm",
+      "model_path": "artifacts/final_model_trend_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 71.93,
-      "sha256": "45f95e049167c2d953c45966f019e62b871fd1422c8b3d083b0d1ee1d9e4e580"
+      "elapsed_seconds": 70.58,
+      "sha256": "2b49b3607e8c6587b54dae80b8c47cf59da39438346cd6afea9310771b020029"
     },
     {
       "seed": 2026,
       "residual_target": true,
+      "history": "local_trend",
       "augmentation_lag": 0,
-      "model_path": "artifacts/final_model_residual_seed_2026.cbm",
+      "model_path": "artifacts/final_model_trend_residual_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 69.51,
-      "sha256": "b3f0f0883ecd01a8005f582fb212eaea4a6dbdbcdbd012f6719cf98cae582ac6"
+      "elapsed_seconds": 69.15,
+      "sha256": "045529a529b7d00d6f67b0da8493ffdfa20eb09e692f80d18c781023c17a891f"
     },
     {
       "seed": 42,
       "residual_target": false,
+      "history": "hierarchical",
       "augmentation_lag": 6,
       "model_path": "artifacts/final_model_lag6_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 79.89,
-      "sha256": "16107df5270d7cc009e3d0fdba9142ab0966e695aa4c4acc43bc7b02a8e6bb06"
+      "elapsed_seconds": 70.84,
+      "sha256": "81122421ba1bffe62551f4b7f3c44c97662f593ae1daa1ac874588309261218c"
     },
     {
       "seed": 42,
       "residual_target": true,
+      "history": "hierarchical",
       "augmentation_lag": 6,
       "model_path": "artifacts/final_model_lag6_residual_seed_42.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 89.25,
-      "sha256": "58929d2785265bb66fbee30cff494a4d6e1942cc87c7b95bd7c70d9387d0c77d"
+      "elapsed_seconds": 71.16,
+      "sha256": "012b5b95f0087349ed65963c037e6fbe21a7d13f3801369c33dad10ccb054c0e"
     },
     {
       "seed": 2026,
       "residual_target": false,
+      "history": "hierarchical",
       "augmentation_lag": 6,
       "model_path": "artifacts/final_model_lag6_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 91.18,
-      "sha256": "8df36fd4a1c497b3f165c920a869f2a35bb05d267befad666ffc31c5570dcad2"
+      "elapsed_seconds": 73.27,
+      "sha256": "1903a2061a565ce930ce79011047cd05d2869c164f5a51a7564f09b050019cbc"
     },
     {
       "seed": 2026,
       "residual_target": true,
+      "history": "hierarchical",
       "augmentation_lag": 6,
       "model_path": "artifacts/final_model_lag6_residual_seed_2026.cbm",
       "actual_trees": 1600,
-      "elapsed_seconds": 84.33,
-      "sha256": "4ab7c87933df83ccb864b3d220606f7862449ae9f9faf28b33b3b4d389b364e1"
+      "elapsed_seconds": 74.21,
+      "sha256": "c4d7612f0fd7efb104acb72a047090015072882132b3a9ae2090b7a4676114a5"
     }
   ],
   "raw_train_rows": 150000,
   "train_rows": 150000,
   "training_views": {
-    "0": {
+    "local_trend:0": {
       "fit_rows": 150000,
-      "weight_sum": 150000
+      "weight_sum": 150000.0,
+      "feature_count": 78
     },
-    "6": {
+    "hierarchical:6": {
       "fit_rows": 262381,
-      "weight_sum": 150000
+      "weight_sum": 150000.0,
+      "feature_count": 74
     }
   },
   "test_rows": 50000,
@@ -185,31 +209,32 @@
     "train.csv": "6d7a417de72112361f8353659ba6fe44a442b07465b488aff1b03f7ec1ea3ba6",
     "test.csv": "dfc407406d957bbf7c2f005e5d9852b1bfc6546cd4186f07e6824d8e03e64cfc"
   },
-  "submission_sha256": "b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7",
-  "prediction_min": 1448.98202209246,
-  "prediction_max": 5487.4653946728295,
-  "elapsed_seconds": 709.32,
+  "submission_sha256": "a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a",
+  "prediction_min": 1461.8273359507086,
+  "prediction_max": 5437.83378186837,
+  "elapsed_seconds": 669.44,
   "submission": "submissions/final_submission.csv",
   "model_paths": [
-    "artifacts/final_model_seed_42.cbm",
-    "artifacts/final_model_residual_seed_42.cbm",
-    "artifacts/final_model_seed_2026.cbm",
-    "artifacts/final_model_residual_seed_2026.cbm",
+    "artifacts/final_model_trend_seed_42.cbm",
+    "artifacts/final_model_trend_residual_seed_42.cbm",
+    "artifacts/final_model_trend_seed_2026.cbm",
+    "artifacts/final_model_trend_residual_seed_2026.cbm",
     "artifacts/final_model_lag6_seed_42.cbm",
     "artifacts/final_model_lag6_residual_seed_42.cbm",
     "artifacts/final_model_lag6_seed_2026.cbm",
     "artifacts/final_model_lag6_residual_seed_2026.cbm"
   ],
   "promotion": {
-    "date": "2026-09-21",
-    "public_rmse": 432.47187,
-    "rank_at_verification": 3,
-    "teams_at_verification": 16,
-    "source_metadata": "artifacts/candidates/history_diversity/metadata.json",
-    "source_submission": "submissions/submission_history_diversity.csv",
-    "source_config_name": "custom_history_views",
+    "date": "2026-09-24",
+    "public_rmse": 432.14881,
+    "previous_public_rmse": 432.47187,
+    "improvement": 0.32306,
+    "score_source": "user-reported Kaggle submission result",
+    "source_metadata": "artifacts/candidates/local_trend_diversity/metadata.json",
+    "source_submission": "submissions/submission_local_trend_diversity.csv",
+    "source_config_name": "custom_mixed_history_views",
     "retrained": false,
-    "retained_reference_root": "artifacts/submitted/cb6ec7a6d60cf2e491ff044faa202ccf1873adb962a8ef810ccf437f4c85b2d3",
-    "note": "Exact submitted CSV and CBMs copied to mainline paths. Original training hashes/timings retained; config name is a descriptive alias. Older 12-month RMSE regression remains unresolved."
+    "retained_previous_source": "artifacts/candidates/history_diversity/metadata.json",
+    "note": "Exact submitted CSV and eight verified CBMs promoted without retraining. Original training hashes and timings retained."
   }
 }

@@ -380,12 +380,15 @@ def test_previous_run_backup_is_complete_and_checks_hashes(tmp_path, monkeypatch
         final.archive_previous_run(tmp_path / "absent.json", submission)
 
 
-def test_mainline_config_selects_eight_history_diversity_components():
+def test_mainline_config_selects_eight_local_trend_history_diversity_components():
     from src.modeling import load_config
     config = load_config()
-    assert config["name"] == "history_diversity_blend"
-    assert config["augmentation_lags"] == [0, 6]
-    assert len(config["seeds"]) * len(config["target_modes"]) * len(config["augmentation_lags"]) == 8
+    assert config["name"] == "local_trend_history_diversity_blend"
+    assert config["history_views"] == [
+        {"history": "local_trend", "lag": 0},
+        {"history": "hierarchical", "lag": 6},
+    ]
+    assert len(config["seeds"]) * len(config["target_modes"]) * len(config["history_views"]) == 8
 
 
 def test_trend_only_ablation_preserves_baseline_and_attenuates_composition_shift():

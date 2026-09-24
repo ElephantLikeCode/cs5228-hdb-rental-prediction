@@ -1,9 +1,12 @@
 {
-  "name": "history_diversity_blend",
+  "name": "local_trend_history_diversity_blend",
   "history": "hierarchical",
   "residual_target": false,
   "target_modes": [false, true],
-  "augmentation_lags": [0, 6],
+  "history_views": [
+    {"history": "local_trend", "lag": 0},
+    {"history": "hierarchical", "lag": 6}
+  ],
   "iterations": 1600,
   "learning_rate": 0.04,
   "depth": 8,

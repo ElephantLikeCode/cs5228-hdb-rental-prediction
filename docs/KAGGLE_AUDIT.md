@@ -68,3 +68,11 @@ Auxiliary timing caveat: current spatial features use supplied facility snapshot
 and MRT status `open`, not opening dates as of each historical rental month.
 Past-only target histories are tested separately; they do not eliminate this
 snapshot-availability limitation.
+
+## Score update — 24 September 2026
+
+The user reported public RMSE **432.14881** for
+`submission_local_trend_diversity.csv`, improving the previous 432.47187
+mainline by 0.32306. The exact submitted CSV has SHA-256
+`a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
+No rank was supplied or inferred, and no final-submission selection was changed.

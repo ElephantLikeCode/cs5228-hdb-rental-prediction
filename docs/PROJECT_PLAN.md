@@ -253,7 +253,7 @@ they are superseded, not official deadlines.
 
 | Timing | Main target / status |
 | --- | --- |
-| Completed through 21 Sep | Audit, EDA, baselines, spatial ablations, chronological comparisons, 432.47187 mainline |
+| Completed through 24 Sep | Audit, EDA, baselines, spatial ablations, chronological comparisons, 432.14881 mainline |
 | Before / around 4 Oct | Prepare 10-15 slide progress-report PDF from existing evidence |
 | Sun 4 Oct | Canvas progress-report target; explicitly not a hard deadline |
 | After progress feedback | Resume stability/model experiments when requested; maintain one mainline and justified alternative |
@@ -262,16 +262,17 @@ they are superseded, not official deadlines.
 
 ## 9. Current checkpoint and deferred queue
 
-Mainline: eight-component history-diversity ensemble, public RMSE 432.47187,
-browser-verified rank 3/16 on 21 September. Default config, final submission,
-eight CBMs and metadata now agree. The exact 436.05684 reference and the original
-432.47187 candidate are retained locally, alongside the unchanged Keep/Remove
+Mainline: eight-component local-trend/history-diversity ensemble, user-reported
+public RMSE 432.14881 on 24 September. Default config, final submission, eight
+CBMs and metadata agree. The exact 436.05684 reference and 432.47187
+history-diversity run are retained locally, alongside the unchanged Keep/Remove
 submissions. Promotion is a decision based on current evidence, not a claim of
-uniform temporal improvement: the older 12-month window worsens by 10.55 RMSE.
+uniform temporal improvement: the older 12-month deficit versus the
+four-component reference remains 9.81 RMSE.
 
 The 23 September momentum experiment added four past-only town/flat-type trend
-features and produced a locally stronger candidate while retaining the
-432.47187 submission as the public-verified mainline. A follow-up composition
+features and produced a locally stronger candidate. Its public RMSE of 432.14881
+then improved the 432.47187 reference by 0.32306 and it was promoted. A follow-up composition
 control using area and lease-age cells was rejected because it was less stable
 than that candidate. That joint experiment also changed historical baselines;
 it was not a pure trend ablation. The subsequent isolated trend-only ablation
@@ -280,11 +281,11 @@ of four windows. A current-feature GPU XGBoost depth-6/8 direct/residual screen
 and fixed 25% cross-learner blends also failed their two-window screen.
 Twenty-six tests cover features, validation, mixed-history outputs, isolated
 target preservation, category mappings and model reloads. The two requested
-follow-up comparisons are complete; no additional submission was generated.
+follow-up comparisons are complete; neither produced an additional submission.
 
 When the user resumes work:
-1. Submit `submission_local_trend_diversity.csv` once if a platform comparison
-   is desired, then record the score before deciding on promotion.
+1. Preserve the 432.14881 mixed-view run as the current mainline and use public
+   leaderboard results only as supporting evidence.
 2. Keep one mainline and consider one genuinely complementary final candidate,
    without tuning repeatedly against the public leaderboard.
 3. Investigate a model-based, past-only correction for market regime change;

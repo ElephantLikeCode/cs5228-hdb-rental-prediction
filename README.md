@@ -6,10 +6,12 @@ local evaluation method.
 
 ## Current mainline and retained reference
 
-The mainline is the **history-diversity CatBoost ensemble**: normal-history and
-six-month stale-history training views, each with direct-rent and market-residual
-targets and seeds 42/2026 (eight equally weighted components). At inference all
-components receive the full permitted training history. It retains all labels.
+The mainline is the **local-trend/history-diversity CatBoost ensemble**: a
+normal-history view with four past-only town/flat-type momentum features and a
+six-month stale hierarchical-history view, each with direct-rent and
+market-residual targets and seeds 42/2026 (eight equally weighted components).
+At inference all components receive the full permitted training history. It
+retains all labels.
 
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
@@ -30,25 +32,25 @@ changes; retain previous iteration results in `docs/PROGRESS.md`.
 | CatBoost core | 455.71 | Historical reference |
 | CatBoost + spatial and past-rent features (seed 42) | 450.04 | Historical reference |
 | Retained reference: adaptive-market direct/residual ensemble (four components) | 445.52 | Fixed 1,600 trees/component |
-| **Current mainline: normal/stale-history ensemble (eight components)** | **440.89** | **Fixed 1,600 trees/component; temporal limitations below** |
-| Candidate: local-trend/stale-history ensemble (eight components) | 440.76 | Retained after isolated-trend/XGBoost checks; awaiting platform test |
+| Retained reference: normal/stale-history ensemble (eight components) | 440.89 | Fixed 1,600 trees/component; public RMSE 432.47187 |
+| **Current mainline: local-trend/stale-history ensemble (eight components)** | **440.76** | **Fixed 1,600 trees/component; public RMSE 432.14881** |
 
 The final two rows use identical validation rows and seeds, with no scoring-label
 early stopping. Historical baselines used a different early-stopping protocol
 and do not measure this update's gain. The eight-component model costs more.
 
-The mainline improves the recent three-month, recent 12-month and 16-month
+The retained normal/stale reference improves the recent three-month, recent 12-month and 16-month
 windows by 4.63, 2.65 and 2.81 RMSE, but **worsens Apr 2023-Mar 2024 by 10.55**,
 with all 12 months worsening and systematic overprediction. The windows overlap;
 they are development evidence, not independent tests or a private-score guarantee.
 Full results remain in `reports/temporal_summary.csv` and `docs/PROGRESS.md`.
 
-The new candidate replaces only the normal-history half with four extra
-town/flat-type momentum features. Relative to the current mainline it improves
+The current mainline replaces only the normal-history half with four extra
+town/flat-type momentum features. Relative to the retained reference it improves
 the same four windows by 0.13, 0.13, 0.74 and 0.40 RMSE. Two additional
 three-month cutoffs improve the trend head by 0.17 and 1.47 over its matched
-reference. The older-year deficit is reduced but remains 9.81 RMSE, so the
-candidate is generated for one platform test rather than treated as proven.
+reference. The older-year deficit is reduced but remains 9.81 RMSE, so temporal
+regime sensitivity remains unresolved despite the public-score improvement.
 
 The subsequent isolated composition-trend ablation preserved every historical
 baseline and residual offset. Relative to the retained candidate, its final
@@ -59,19 +61,20 @@ experiment remain separate evidence; neither rejects all composition-control
 methods. The bounded current-feature XGBoost screen also failed, including its
 pre-specified cross-learner blends. No new final submission was generated.
 
-The browser-verified public score on 21 September 2026 is **432.47187, rank 3 of
-16**, improved from 436.05684 by 3.58497. The uploaded filename was
-`submission_history_diversity.csv`. Its exact bytes are now also the mainline
+The user-reported public score on 24 September 2026 is **432.14881**, improving
+the prior 432.47187 mainline by **0.32306**. The uploaded filename was
+`submission_local_trend_diversity.csv`. Its exact bytes are now also the mainline
 `submissions/final_submission.csv`; SHA-256:
-`b464777c16870c3f1484dccf8a418465b239d6f22ded97965bb5553c81f113b7`.
-Promotion copied the verified CSV and eight CBMs, without retraining.
+`a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
+Promotion copied the submitted CSV and eight verified CBMs, without retraining.
+The score is recorded as user-reported; no current rank was supplied.
 The former four-component pipeline is retained locally as a reproducible reference,
 not discarded. The Keep/Remove submissions also remain unchanged.
 
 Public scores use approximately 50% of test rows; private evaluation uses the
 other half, with no verified random/temporal split rule. Up to two final
 submissions may be selected; the two slots do not require two separate codebases.
-No selection has been changed by this agent. Exact submitted scores are in
+No final-submission selection was changed by this agent. Exact submitted scores are in
 `reports/kaggle_submissions.csv`.
 
 The official Kaggle ZIP was checked on 18 September 2026; its eight CSVs match
@@ -175,10 +178,10 @@ The retained `hierarchical_market_blend` reference averages hierarchical and
 market-residual predictions 50:50, then averages seeds. It adds 18 adaptive
 features to the existing 56; category cleanup and raw data remain unchanged.
 
-The selected `history_diversity_blend` in `configs/model.json` averages that
-reference and the stale-history ensemble 50:50 (eight equal-weight components).
-Its weights were fixed after initial screening, then checked with the second
-seed and two additional windows; they were not optimized over a weight grid.
+The selected `local_trend_history_diversity_blend` in `configs/model.json`
+averages the local-trend normal-history head and the stale hierarchical-history
+head 50:50 (eight equal-weight components). Its weights were inherited from the
+validated history-diversity design rather than optimized over a weight grid.
 At inference every component receives all available permitted training history;
 the latest six months are hidden only in the extra training view.
 Promotion followed the public result and review of the old-year regression;
@@ -210,7 +213,7 @@ within these development samples; it does not establish future-market accuracy.
 `--trial-iterations 5 --candidates legacy --windows short_recent` is a quick
 GPU smoke run; its scores are not suitable for model selection.
 
-Generate the current local-trend candidate without changing the mainline:
+The explicit commands used to generate the now-promoted local-trend run were:
 
 ```bash
 python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
@@ -271,8 +274,8 @@ Expected results:
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
-- eight loadable models under `artifacts/final_model*.cbm`: two seeds,
-  direct/residual targets and normal/`_lag6` training views;
+- eight active model paths listed in `reports/final_model_metadata.json`: two
+  seeds, direct/residual targets and local-trend/`_lag6` training views;
 - `reports/final_model_metadata.json` with component modes, weights, timings,
   model/code/data hashes, and the submission hash.
 

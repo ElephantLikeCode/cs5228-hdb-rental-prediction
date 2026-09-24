@@ -664,3 +664,22 @@ eight-model runs remain intact. Mainline SHA-256 remains
 `a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
 No final training, new submission, raw-data edit or browser action occurred.
 The original module/report layout and cumulative progress file are retained.
+
+## Local-trend mainline promotion — 24 September 2026
+
+The user reported public RMSE **432.14881** for
+`submission_local_trend_diversity.csv`, an improvement of **0.32306** over the
+432.47187 history-diversity mainline. This agrees directionally with the four
+pre-recorded chronological windows, where the candidate improved by 0.13, 0.13,
+0.74 and 0.40 RMSE. It is supporting evidence on the public half, not a guarantee
+for the private half; the older-year deficit versus the four-component reference
+remains 9.81 RMSE.
+
+The submitted CSV and its eight already-verified CBMs were promoted byte-exactly
+without retraining. The default config now records the mixed views explicitly:
+`local_trend:0` and `hierarchical:6`, crossed with direct/residual targets and
+seeds 42/2026. `submissions/final_submission.csv` now has SHA-256
+`a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
+The previous 432.47187 artifact remains reproducible under the existing
+`artifacts/candidates/history_diversity/` directory and its original submission
+filename. No raw data, final-submission selection or experiment results changed.
