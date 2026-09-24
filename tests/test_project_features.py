@@ -324,6 +324,17 @@ def test_stacking_weights_are_nonnegative_normalized_and_recover_signal():
     assert np.all(weights >= 0) and weights.sum() == pytest.approx(1.)
 
 
+def test_weighted_stacking_can_prioritize_recent_rows():
+    from src.generate_figures import simplex_least_squares
+
+    predictions = np.array([[0., 10.], [0., 10.]])
+    target = np.array([0., 10.])
+    old_heavy = simplex_least_squares(predictions, target, np.array([100., 1.]))
+    recent_heavy = simplex_least_squares(predictions, target, np.array([1., 100.]))
+    assert old_heavy[0] > 0.9
+    assert recent_heavy[1] > 0.9
+
+
 def test_eight_model_stacking_preserves_seed_predictions(tmp_path, monkeypatch):
     import src.generate_figures as figures
 

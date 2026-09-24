@@ -36,14 +36,23 @@ def save(name: str) -> None:
     plt.close()
 
 
-def simplex_least_squares(predictions: np.ndarray, target: np.ndarray) -> np.ndarray:
+def simplex_least_squares(predictions: np.ndarray, target: np.ndarray,
+                          sample_weight: np.ndarray | None = None) -> np.ndarray:
     """Fit nonnegative ensemble weights constrained to sum to one."""
     predictions = np.asarray(predictions, dtype=float)
     target = np.asarray(target, dtype=float)
     if predictions.ndim != 2 or target.shape != (len(predictions),):
         raise ValueError("Stacking predictions and target have incompatible shapes")
+    if sample_weight is None:
+        sample_weight = np.ones(len(target))
+    sample_weight = np.asarray(sample_weight, dtype=float)
+    if (sample_weight.shape != target.shape or not np.isfinite(sample_weight).all()
+            or np.any(sample_weight <= 0)):
+        raise ValueError("Stacking sample weights must be finite and positive")
     scale = max(float(np.nanmedian(np.abs(target))), 1.0)
-    X, y = predictions / scale, target / scale
+    root_weight = np.sqrt(sample_weight / sample_weight.mean())
+    X = predictions / scale * root_weight[:, None]
+    y = target / scale * root_weight
     best_weights, best_loss = None, np.inf
     for size in range(1, X.shape[1] + 1):
         for active in combinations(range(X.shape[1]), size):
@@ -58,7 +67,8 @@ def simplex_least_squares(predictions: np.ndarray, target: np.ndarray) -> np.nda
             weights = np.zeros(X.shape[1])
             weights[list(active)] = np.maximum(solution, 0.0)
             weights /= weights.sum()
-            loss = float(np.mean((predictions @ weights - target) ** 2))
+            loss = float(np.average((predictions @ weights - target) ** 2,
+                                    weights=sample_weight))
             if loss < best_loss:
                 best_weights, best_loss = weights, loss
     if best_weights is None:
@@ -267,15 +277,37 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
                 raise ValueError(f"Meta-training rows overlap evaluation rows for {plan}")
             equal = np.full(len(train["labels"]), 1.0 / len(train["labels"]))
             learned = simplex_least_squares(train["predictions"], train["target"])
+            latest_window = load_stacking_window(sources, train_windows[-1], input_level)
+            recent_learned = simplex_least_squares(
+                latest_window["predictions"], latest_window["target"],
+            )
+            month_number = pd.PeriodIndex(train["month"], freq="M").asi8
+            decay_half_life = 12.0
+            decay_weight = np.exp2((month_number-month_number.max()) / decay_half_life)
+            decay_learned = simplex_least_squares(
+                train["predictions"], train["target"], decay_weight,
+            )
             methods = {
-                "equal_weight_reference": (equal, 0.0, np.nan),
-                "simplex": (learned, 0.0, np.nan),
-                "half_shrunk_simplex": (0.5 * learned + 0.5 * equal, 0.0, np.nan),
+                "equal_weight_reference": (equal, 0.0, np.nan, train_windows, np.nan,
+                                             len(train["target"])),
+                "simplex": (learned, 0.0, np.nan, train_windows, np.nan,
+                            len(train["target"])),
+                "half_shrunk_simplex": (0.5 * learned + 0.5 * equal, 0.0, np.nan,
+                                         train_windows, np.nan, len(train["target"])),
+                "recent_window_half_shrunk_simplex": (
+                    0.5 * recent_learned + 0.5 * equal, 0.0, np.nan,
+                    [train_windows[-1]], np.nan, len(latest_window["target"]),
+                ),
+                "time_decay_half_shrunk_simplex": (
+                    0.5 * decay_learned + 0.5 * equal, 0.0, np.nan,
+                    train_windows, decay_half_life, len(train["target"]),
+                ),
             }
             if input_level == "eight_models":
                 pair_mean = np.repeat(learned.reshape(-1, 2).mean(axis=1), 2)
                 methods["seed_pair_shrunk_simplex"] = (
                     0.5 * learned + 0.5 * pair_mean, 0.0, np.nan,
+                    train_windows, np.nan, len(train["target"]),
                 )
             if len(np.unique(train["month"])) >= 6:
                 ridge_weights, ridge_intercept, ridge_alpha_ratio = fit_temporal_ridge(
@@ -283,10 +315,12 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
                 )
                 methods["ridge_correction"] = (
                     ridge_weights, ridge_intercept, ridge_alpha_ratio,
+                    train_windows, np.nan, len(train["target"]),
                 )
             reference = evaluation["predictions"] @ equal
             reference_rmse = float(np.sqrt(np.mean((reference-evaluation["target"]) ** 2)))
-            for method, (weights, intercept, alpha_ratio) in methods.items():
+            for method, (weights, intercept, alpha_ratio, fit_windows,
+                         half_life, fit_rows) in methods.items():
                 train_prediction = train["predictions"] @ weights + intercept
                 prediction = evaluation["predictions"] @ weights + intercept
                 eval_rmse = float(np.sqrt(np.mean((prediction-evaluation["target"]) ** 2)))
@@ -300,11 +334,13 @@ def evaluate_stacking(refresh_sources: bool = False) -> pd.DataFrame:
                 if method != "equal_weight_reference":
                     lower, upper = stacking_gain_interval(
                         reference, prediction, evaluation["target"], evaluation["row_id"],
-                        random_seed=42 + len(records),
+                        random_seed=42,
                     )
                 records.append(dict(
                     plan=plan, horizon_months=horizon, input_level=input_level,
                     meta_train_windows=json.dumps(train_windows),
+                    meta_fit_windows=json.dumps(fit_windows), meta_fit_rows=fit_rows,
+                    meta_weight_half_life_months=half_life,
                     meta_train_start=sorted(train["month"])[0],
                     meta_train_end=latest_train_month, evaluation_window=eval_window,
                     evaluation_start=earliest_eval_month,

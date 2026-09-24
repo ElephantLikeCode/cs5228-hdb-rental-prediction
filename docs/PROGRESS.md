@@ -717,8 +717,9 @@ The result rejects these static four-head meta models for promotion. It does not
 reject stacking with genuinely diverse base predictions or a separately validated
 regime-aware gating model. No final model, submission CSV, raw data or default
 configuration changed. Reproduce the tracked result with
-`python src/generate_figures.py --stacking-only`; machine-readable evidence is
-in `reports/stacking_results.csv`.
+commit `bab7c46`; the current `--stacking-only` command runs the expanded matched-
+horizon study below. Machine-readable current evidence is in
+`reports/stacking_results.csv`.
 
 ## Matched-horizon four-head versus eight-model stacking — 24 September 2026
 
@@ -761,3 +762,24 @@ the paired-seed averages and that four- and eight-input equal-weight predictions
 are identical. The mainline config, eight CBMs and `final_submission.csv` remain
 unchanged; submission SHA-256 is still
 `a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
+
+## Recency-aware stacking follow-up — 24 September 2026
+
+The same frozen 64 OOF predictions were reused to test whether old regimes were
+causing the static weights to fail. No CatBoost model was retrained. Two rules
+were fixed across every forward test: learn the simplex from only the latest
+available meta-training window, or use all meta-training rows with a 12-month
+exponential half-life. Both were shrunk 50% toward equal weights. Bootstrap
+comparisons use identical address-cluster draws across methods.
+
+The latest-window four-head rule improved Jul-Sep 2024 by 0.045 RMSE and Jan-Mar
+2025 by 0.106, but their confidence intervals crossed zero. It lost 0.229 on
+Oct-Dec 2024 and 0.474 on Apr 2024-Mar 2025. With all eight seed-level inputs it
+lost 0.054 on Jan-Mar 2025 and 0.442 on the recent annual window. Fixed time
+decay lost 0.184/0.239 on the latest quarter for four/eight inputs and also lost
+on the recent annual window.
+
+Recency reduces several earlier losses, so regime drift remains a useful lead,
+but neither fixed rule transfers consistently enough to replace equal weighting.
+No model, config or submission changed. All 29 tests pass; the added test verifies
+that weighted simplex fitting responds to the intended sample emphasis.

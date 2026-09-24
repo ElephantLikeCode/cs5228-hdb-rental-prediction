@@ -279,7 +279,7 @@ it was not a pure trend ablation. The subsequent isolated trend-only ablation
 preserved those baselines exactly but lost to the retained candidate on three
 of four windows. A current-feature GPU XGBoost depth-6/8 direct/residual screen
 and fixed 25% cross-learner blends also failed their two-window screen.
-Twenty-eight tests cover features, validation, mixed-history outputs, isolated
+Twenty-nine tests cover features, validation, mixed-history outputs, isolated
 target preservation, category mappings and model reloads. The two requested
 follow-up comparisons are complete; neither produced an additional submission.
 
@@ -290,6 +290,13 @@ frozen in `reports/stacking_sources.csv`. The half-shrunk eight-input method gai
 7.21 RMSE on the first annual transfer but failed to transfer, losing 0.89 on the
 next annual window; all learned variants lost on the final two quarters.
 The equal-weight 432.14881 pipeline therefore remains the mainline.
+
+A recency follow-up reused the frozen predictions. Learning only from the latest
+meta-training window produced a small +0.106 RMSE four-head result on Jan-Mar
+2025, but its interval crossed zero and it lost on the preceding quarter and the
+recent annual window. Eight-input recent-only and fixed 12-month-decay variants
+also failed. This narrows the open question to a separately validated regime
+model rather than another fixed recency rule.
 
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public

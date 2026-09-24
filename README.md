@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-eight automated tests cover data contracts,
+50,000-row submission generator. Twenty-nine automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -63,8 +63,12 @@ pre-specified cross-learner blends. The subsequent time-transferred stacking stu
 now compares four seed-averaged heads with all eight model outputs directly.
 Across six matched-horizon forward tests, learned weights were not stable: the
 best eight-input method gained 7.21 RMSE in the first annual transfer but lost
-0.89 in the next, and lost 0.56/0.42 on the final two quarterly transfers. No
-stacking submission was generated.
+0.89 in the next, and lost 0.56/0.42 on the final two quarterly transfers. A
+follow-up using only the latest meta-training window reduced some losses but did
+not make the result stable: its four-head gain on Jan-Mar 2025 was only 0.106
+RMSE with an interval crossing zero, while its eight-input result was -0.054.
+Fixed 12-month time decay also lost on the latest quarter. No stacking submission
+was generated.
 
 The user-reported public score on 24 September 2026 is **432.14881**, improving
 the prior 432.47187 mainline by **0.32306**. The uploaded filename was
@@ -245,12 +249,13 @@ The first command creates any missing matched-horizon out-of-fold predictions;
 the second freezes their exact provenance and evaluates the meta models:
 
 ```bash
-python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual horizon_direct horizon_residual --windows bridge_2022 bridge_2023 bridge_2024 short_middle long_early --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
+python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual horizon_direct horizon_residual --windows bridge_2022 bridge_2023 bridge_2024 short_middle short_recent long_early long_older long_recent --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
 python src/generate_figures.py --stacking-only --refresh-stacking-sources
 ```
 
-This learns meta weights on months strictly before each evaluation period and
-writes six matched-horizon transfer checks to `reports/stacking_results.csv`.
+This learns static, latest-window and fixed 12-month-decay meta weights on months
+strictly before each evaluation period and writes six matched-horizon transfer
+checks to `reports/stacking_results.csv`.
 `reports/stacking_sources.csv` records the 64 exact source runs and prediction
 hashes. Later reruns without `--refresh-stacking-sources` verify and reuse that
 frozen source set. It does not fit a meta model on in-sample base-model predictions.
@@ -290,7 +295,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `28 passed` from pytest;
+- `29 passed` from pytest;
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
