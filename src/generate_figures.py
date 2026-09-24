@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import argparse
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.linear_model import Ridge
 
 from features import suspected_low_rent_mask
 
@@ -16,12 +18,202 @@ from features import suspected_low_rent_mask
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 FIGURES = REPORTS / "figures"
+STACK_HEADS = (
+    "local_trend_direct",
+    "local_trend_residual",
+    "horizon_direct",
+    "horizon_residual",
+)
 
 
 def save(name: str) -> None:
     plt.tight_layout()
     plt.savefig(FIGURES / name, dpi=180, bbox_inches="tight")
     plt.close()
+
+
+def simplex_least_squares(predictions: np.ndarray, target: np.ndarray) -> np.ndarray:
+    """Fit nonnegative ensemble weights constrained to sum to one."""
+    predictions = np.asarray(predictions, dtype=float)
+    target = np.asarray(target, dtype=float)
+    if predictions.ndim != 2 or target.shape != (len(predictions),):
+        raise ValueError("Stacking predictions and target have incompatible shapes")
+    scale = max(float(np.nanmedian(np.abs(target))), 1.0)
+    X, y = predictions / scale, target / scale
+    best_weights, best_loss = None, np.inf
+    for size in range(1, X.shape[1] + 1):
+        for active in combinations(range(X.shape[1]), size):
+            subset = X[:, active]
+            gram = subset.T @ subset
+            kkt = np.block([[gram, np.ones((size, 1))],
+                            [np.ones((1, size)), np.zeros((1, 1))]])
+            rhs = np.r_[subset.T @ y, 1.0]
+            solution = np.linalg.lstsq(kkt, rhs, rcond=None)[0][:-1]
+            if np.any(solution < -1e-9):
+                continue
+            weights = np.zeros(X.shape[1])
+            weights[list(active)] = np.maximum(solution, 0.0)
+            weights /= weights.sum()
+            loss = float(np.mean((predictions @ weights - target) ** 2))
+            if loss < best_loss:
+                best_weights, best_loss = weights, loss
+    if best_weights is None:
+        raise ValueError("No feasible stacking weights")
+    return best_weights
+
+
+def fit_temporal_ridge(predictions: np.ndarray, target: np.ndarray,
+                       months: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """Choose Ridge strength on the final three meta-training months only."""
+    unique_months = sorted(np.unique(months))
+    if len(unique_months) < 6:
+        raise ValueError("Ridge stacking needs at least six meta-training months")
+    inner_validation = set(unique_months[-3:])
+    inner_train = np.array([month not in inner_validation for month in months])
+    inner_valid = ~inner_train
+    ratios = (0.01, 0.1, 1.0, 10.0)
+    best_ratio, best_rmse = None, np.inf
+    for ratio in ratios:
+        mean = predictions[inner_train].mean(axis=0)
+        scale = predictions[inner_train].std(axis=0)
+        scale[scale == 0] = 1.0
+        model = Ridge(alpha=float(inner_train.sum()) * ratio)
+        model.fit((predictions[inner_train]-mean) / scale, target[inner_train])
+        estimate = model.predict((predictions[inner_valid]-mean) / scale)
+        rmse = float(np.sqrt(np.mean((estimate-target[inner_valid]) ** 2)))
+        if rmse < best_rmse:
+            best_ratio, best_rmse = ratio, rmse
+    mean = predictions.mean(axis=0)
+    scale = predictions.std(axis=0)
+    scale[scale == 0] = 1.0
+    model = Ridge(alpha=float(len(target)) * best_ratio)
+    model.fit((predictions-mean) / scale, target)
+    weights = model.coef_ / scale
+    intercept = float(model.intercept_ - mean @ weights)
+    return weights, intercept, float(best_ratio)
+
+
+def load_stacking_window(results: pd.DataFrame, window: str) -> dict:
+    """Load four matched two-seed out-of-fold prediction heads."""
+    heads, target, row_ids, months = [], None, None, None
+    for candidate in STACK_HEADS:
+        rows = results.loc[(results.candidate == candidate)
+                           & (results.window == window)
+                           & (results.iterations >= 1600)].copy()
+        if rows.empty:
+            raise ValueError(f"Missing stacking head {candidate} for {window}")
+        rows = rows.drop_duplicates("seed", keep="last")
+        if set(rows.seed.astype(int)) != {42, 2026}:
+            raise ValueError(f"Stacking requires seeds 42 and 2026 for {candidate}/{window}")
+        seed_predictions = []
+        for _, row in rows.sort_values("seed").iterrows():
+            with np.load(ROOT / row.prediction_file) as values:
+                if target is None:
+                    target = values["y"].copy()
+                    row_ids = values["row_id"].copy()
+                    months = values["month"].astype(str)
+                if not (np.array_equal(target, values["y"])
+                        and np.array_equal(row_ids, values["row_id"])
+                        and np.array_equal(months, values["month"].astype(str))):
+                    raise ValueError("Cannot stack predictions from different validation rows")
+                seed_predictions.append(values["prediction"].copy())
+        heads.append(np.mean(seed_predictions, axis=0))
+    return dict(predictions=np.column_stack(heads), target=target,
+                row_id=row_ids, month=months)
+
+
+def stacking_gain_interval(reference: np.ndarray, prediction: np.ndarray,
+                           target: np.ndarray, row_ids: np.ndarray,
+                           random_seed: int = 42) -> tuple[float, float]:
+    """Paired address-cluster interval for RMSE gain on one evaluation period."""
+    raw_keys = pd.read_csv(ROOT / "data" / "raw" / "train.csv",
+                           usecols=["TOWN", "BLOCK", "STREET"]).iloc[row_ids]
+    address = raw_keys.astype(str).agg("|".join, axis=1)
+    group_id, _ = pd.factorize(address)
+    counts = np.bincount(group_id)
+    ref_sse = np.bincount(group_id, weights=(reference-target) ** 2)
+    new_sse = np.bincount(group_id, weights=(prediction-target) ** 2)
+    draws = np.random.default_rng(random_seed).integers(len(counts), size=(1000, len(counts)))
+    totals = counts[draws].sum(axis=1)
+    gains = np.sqrt(ref_sse[draws].sum(axis=1) / totals) - np.sqrt(new_sse[draws].sum(axis=1) / totals)
+    return float(np.quantile(gains, .025)), float(np.quantile(gains, .975))
+
+
+def evaluate_stacking() -> pd.DataFrame:
+    """Learn meta weights on earlier OOF months and evaluate on later months."""
+    results = pd.read_csv(REPORTS / "temporal_comparison.csv")
+    plans = [
+        ("older_to_recent", "long_older", None, "long_recent"),
+        ("predec_2023_to_horizon16", "long_older", "2023-11", "horizon16"),
+        ("prejan_2025_to_short", "long_recent", "2024-12", "short_recent"),
+    ]
+    records = []
+    equal = np.full(len(STACK_HEADS), 1.0 / len(STACK_HEADS))
+    for plan, train_window, train_end, eval_window in plans:
+        train = load_stacking_window(results, train_window)
+        evaluation = load_stacking_window(results, eval_window)
+        train_mask = np.ones(len(train["target"]), dtype=bool)
+        if train_end is not None:
+            train_mask &= train["month"] <= train_end
+        if not train_mask.any():
+            raise ValueError(f"Empty meta-training period for {plan}")
+        latest_train_month = sorted(train["month"][train_mask])[-1]
+        earliest_eval_month = sorted(evaluation["month"])[0]
+        if latest_train_month >= earliest_eval_month:
+            raise ValueError(f"Stacking periods overlap for {plan}")
+        learned = simplex_least_squares(train["predictions"][train_mask],
+                                        train["target"][train_mask])
+        ridge_weights, ridge_intercept, ridge_alpha_ratio = fit_temporal_ridge(
+            train["predictions"][train_mask], train["target"][train_mask],
+            train["month"][train_mask],
+        )
+        methods = {
+            "equal_weight_reference": (equal, 0.0, np.nan),
+            "simplex": (learned, 0.0, np.nan),
+            "half_shrunk_simplex": (0.5 * learned + 0.5 * equal, 0.0, np.nan),
+            "temporal_ridge": (ridge_weights, ridge_intercept, ridge_alpha_ratio),
+        }
+        reference = evaluation["predictions"] @ equal
+        reference_rmse = float(np.sqrt(np.mean((reference-evaluation["target"]) ** 2)))
+        for method, (weights, intercept, alpha_ratio) in methods.items():
+            train_prediction = train["predictions"][train_mask] @ weights + intercept
+            prediction = evaluation["predictions"] @ weights + intercept
+            eval_rmse = float(np.sqrt(np.mean((prediction-evaluation["target"]) ** 2)))
+            monthly_gains = []
+            for month in np.unique(evaluation["month"]):
+                mask = evaluation["month"] == month
+                old = np.sqrt(np.mean((reference[mask]-evaluation["target"][mask]) ** 2))
+                new = np.sqrt(np.mean((prediction[mask]-evaluation["target"][mask]) ** 2))
+                monthly_gains.append(float(old-new))
+            lower = upper = np.nan
+            if method != "equal_weight_reference":
+                lower, upper = stacking_gain_interval(
+                    reference, prediction, evaluation["target"], evaluation["row_id"],
+                    random_seed=42 + len(records),
+                )
+            record = dict(
+                plan=plan, meta_train_window=train_window,
+                meta_train_start=sorted(train["month"][train_mask])[0],
+                meta_train_end=latest_train_month, evaluation_window=eval_window,
+                evaluation_start=earliest_eval_month,
+                evaluation_end=sorted(evaluation["month"])[-1], method=method,
+                train_rows=int(train_mask.sum()), evaluation_rows=len(evaluation["target"]),
+                train_rmse=float(np.sqrt(np.mean((train_prediction-train["target"][train_mask]) ** 2))),
+                evaluation_rmse=eval_rmse,
+                rmse_improvement=reference_rmse-eval_rmse,
+                months_improved=sum(value > 0 for value in monthly_gains),
+                months=len(monthly_gains), gain_ci_lower=lower, gain_ci_upper=upper,
+                intercept=intercept, ridge_alpha_ratio=alpha_ratio,
+            )
+            record.update({f"weight_{name}": float(weight)
+                           for name, weight in zip(STACK_HEADS, weights)})
+            records.append(record)
+    summary = pd.DataFrame(records)
+    summary.to_csv(REPORTS / "stacking_results.csv", index=False)
+    print(summary[["plan", "method", "evaluation_rmse", "rmse_improvement",
+                   "months_improved", "months", "gain_ci_lower", "gain_ci_upper"]]
+          .round(4).to_string(index=False))
+    return summary
 
 
 def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_groups=False):
@@ -194,6 +386,8 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--temporal-only", action="store_true")
+    parser.add_argument("--stacking-only", action="store_true",
+                        help="Evaluate time-transferred meta weights from saved OOF predictions.")
     parser.add_argument("--reference-candidate", default="legacy")
     parser.add_argument("--error-groups", action="store_true",
                         help="Write local paired errors by month, town, flat type and area.")
@@ -202,6 +396,9 @@ def main() -> None:
     args = parser.parse_args()
     FIGURES.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", context="notebook")
+    if args.stacking_only:
+        evaluate_stacking()
+        return
     if args.temporal_only:
         summarize_temporal(bootstrap=args.bootstrap, reference_candidate=args.reference_candidate,
                            error_groups=args.error_groups)

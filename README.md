@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Twenty-six automated tests cover data contracts,
+50,000-row submission generator. Twenty-seven automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -59,7 +59,10 @@ the recent-year, older-year and 16-month windows by 0.154, 0.288 and 0.341.
 It was not adopted. The earlier joint composition experiment and this isolated
 experiment remain separate evidence; neither rejects all composition-control
 methods. The bounded current-feature XGBoost screen also failed, including its
-pre-specified cross-learner blends. No new final submission was generated.
+pre-specified cross-learner blends. A subsequent time-transferred stacking test
+learned four-head simplex, shrunk-simplex and Ridge meta models only from earlier
+out-of-fold months. Learned weights failed both longer transfers; the sole recent
+gain was 0.07 RMSE with an interval crossing zero. No stacking submission was generated.
 
 The user-reported public score on 24 September 2026 is **432.14881**, improving
 the prior 432.47187 mainline by **0.32306**. The uploaded filename was
@@ -234,6 +237,17 @@ python src/run_experiments.py --compare-candidates --candidates composition_tren
 python src/run_experiments.py --compare-candidates --candidates xgb_trend_depth6_direct xgb_trend_depth6_residual xgb_trend_depth8_direct xgb_trend_depth8_residual --windows short_recent horizon16 --comparison-seeds 42 --trial-iterations 1600 --task-type GPU --resume
 python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
 ```
+
+Reproduce the leakage-safe stacking comparison from the saved out-of-fold
+predictions:
+
+```bash
+python src/generate_figures.py --stacking-only
+```
+
+This learns meta weights on months strictly before each evaluation period and
+writes the three transfer checks to `reports/stacking_results.csv`. It does not
+fit a meta model on in-sample base-model predictions.
 
 The summary includes pre-specified 25% XGBoost / 75% mainline blends, paired on
 the same seed and validation rows. XGBoost's bounded screen did not improve either

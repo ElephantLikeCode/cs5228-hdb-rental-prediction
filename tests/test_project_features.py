@@ -308,6 +308,22 @@ def test_summary_matches_rows_and_counts_all_history_components(tmp_path, monkey
         figures.summarize_temporal(reference_candidate="hierarchical_market_blend")
 
 
+def test_stacking_weights_are_nonnegative_normalized_and_recover_signal():
+    import src.generate_figures as figures
+
+    predictions = np.array([
+        [0., 4., 8.],
+        [2., 3., 7.],
+        [4., 2., 6.],
+        [6., 1., 5.],
+        [8., 0., 4.],
+    ])
+    target = 0.75 * predictions[:, 0] + 0.25 * predictions[:, 2]
+    weights = figures.simplex_least_squares(predictions, target)
+    np.testing.assert_allclose(weights, [0.75, 0., 0.25], atol=1e-8)
+    assert np.all(weights >= 0) and weights.sum() == pytest.approx(1.)
+
+
 def test_relative_rent_weighting_keeps_the_squared_rent_objective():
     from src.modeling import target_scale, target_offset, CANDIDATES
 

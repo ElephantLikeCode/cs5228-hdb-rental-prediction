@@ -279,25 +279,35 @@ it was not a pure trend ablation. The subsequent isolated trend-only ablation
 preserved those baselines exactly but lost to the retained candidate on three
 of four windows. A current-feature GPU XGBoost depth-6/8 direct/residual screen
 and fixed 25% cross-learner blends also failed their two-window screen.
-Twenty-six tests cover features, validation, mixed-history outputs, isolated
+Twenty-seven tests cover features, validation, mixed-history outputs, isolated
 target preservation, category mappings and model reloads. The two requested
 follow-up comparisons are complete; neither produced an additional submission.
+
+A leakage-safe four-head stacking comparison is also complete. Simplex,
+half-shrunk simplex and temporally tuned Ridge meta models were learned from
+strictly earlier out-of-fold months. They failed both longer time transfers;
+the only positive result was about 0.07 RMSE on the latest quarter and was not
+stable under address-cluster resampling. The equal-weight 432.14881 pipeline
+therefore remains the mainline.
 
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public
    leaderboard results only as supporting evidence.
 2. Keep one mainline and consider one genuinely complementary final candidate,
    without tuning repeatedly against the public leaderboard.
-3. Investigate a model-based, past-only correction for market regime change;
+3. Before revisiting stacking, develop a base predictor with materially different
+   errors, such as a leakage-safe nearest-comparable model; the current four heads
+   are too correlated for learned static weights to transfer.
+4. Investigate a model-based, past-only correction for market regime change;
    the tested unshrunk previous-year horizon offsets failed because bias changed
    sign. Other temporal calibration methods remain untested, not disproven.
-4. Reproduce setup/tests as a team, confirm member ownership, and prepare the
+5. Reproduce setup/tests as a team, confirm member ownership, and prepare the
    progress slides from EDA, cleaning, baselines, ablations,
    quantitative gains, negative results and unresolved limitations.
-5. Audit auxiliary snapshot timing: MRT `open` status is not historical
+6. Audit auxiliary snapshot timing: MRT `open` status is not historical
    opening-date filtering. Record this limitation rather than claiming full
    point-in-time availability.
-6. Reconfirm the final report deadline and reproduce/package the chosen pipeline.
+7. Reconfirm the final report deadline and reproduce/package the chosen pipeline.
 
 The single cumulative technical record remains `docs/PROGRESS.md`; README keeps
 one main comparison table. Historical reports are evidence, not active recipes.

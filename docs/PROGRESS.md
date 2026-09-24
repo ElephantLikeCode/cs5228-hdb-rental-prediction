@@ -683,3 +683,39 @@ seeds 42/2026. `submissions/final_submission.csv` now has SHA-256
 The previous 432.47187 artifact remains reproducible under the existing
 `artifacts/candidates/history_diversity/` directory and its original submission
 filename. No raw data, final-submission selection or experiment results changed.
+
+## Time-transferred stacking experiment — 24 September 2026
+
+The proposed stacking idea was tested using the four distinct two-seed heads in
+the 432.14881 mainline: local-trend direct, local-trend residual, stale-history
+direct and stale-history residual. Every meta model was trained only on cached
+out-of-fold predictions from months strictly earlier than its evaluation period.
+No base model was scored on rows used to train that base model, and no evaluation
+label selected a meta-model weight.
+
+Three fixed transfer checks were used: Apr 2023-Mar 2024 to Apr 2024-Mar 2025;
+Apr-Nov 2023 to Dec 2023-Mar 2025; and Apr-Dec 2024 to Jan-Mar 2025. The tested
+meta models were exact nonnegative simplex weights, a 50% shrink toward equal
+weights, and Ridge with its regularization selected on the final three months of
+the meta-training period.
+
+| Meta model | Older year -> recent year | Pre-Dec 2023 -> 16 months | Pre-Jan 2025 -> recent quarter |
+|---|---:|---:|---:|
+| Equal-weight mainline | 466.7566 | 483.4345 | 440.7629 |
+| Simplex gain | -2.4271 | -2.8193 | +0.0692 |
+| Half-shrunk simplex gain | -0.4737 | -0.2427 | +0.0723 |
+| Temporal Ridge gain | -8.7075 | -1.8337 | -0.9461 |
+
+Positive gain means lower RMSE than the equal-weight mainline. Address-cluster
+bootstrap intervals for the recent-quarter half-shrunk gain were -0.05 to +0.19;
+both longer-transfer simplex losses were clear. The older regimes learned to put
+most weight on the local-trend residual head and almost discard the stale-history
+heads, but that relationship did not transfer. Equal weighting remains more
+robust across regime changes.
+
+The result rejects these static four-head meta models for promotion. It does not
+reject stacking with genuinely diverse base predictions or a separately validated
+regime-aware gating model. No final model, submission CSV, raw data or default
+configuration changed. Reproduce the tracked result with
+`python src/generate_figures.py --stacking-only`; machine-readable evidence is
+in `reports/stacking_results.csv`.
