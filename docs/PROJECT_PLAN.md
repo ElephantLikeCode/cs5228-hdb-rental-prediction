@@ -262,6 +262,10 @@ they are superseded, not official deadlines.
 
 ## 9. Current checkpoint and deferred queue
 
+Best recorded public candidate: fixed recent-window four-head stacking,
+user-reported RMSE 432.04286 on 24 September, a 0.10595 improvement. It reuses the
+eight mainline CBMs with Oct-Dec 2024 weights and is retained without promotion.
+
 Mainline: eight-component local-trend/history-diversity ensemble, user-reported
 public RMSE 432.14881 on 24 September. Default config, final submission, eight
 CBMs and metadata agree. The exact 436.05684 reference and 432.47187
@@ -312,28 +316,39 @@ window four-head candidate is available as
 `submissions/submission_recent_window_stacking.csv`. Treat its public score as
 supporting evidence alongside the negative 16-month stress result; do not promote
 it solely from a small public-half improvement. This probe freezes Oct-Dec 2024
-weights rather than refitting the second layer on Jan-Mar 2025. Its score is
-pending. Candidate generation requires fresh CSV and metadata paths to preserve
+weights rather than refitting the second layer on Jan-Mar 2025. Its user-reported
+public RMSE is 432.04286. Candidate generation requires fresh CSV and metadata paths to preserve
 already-generated artifacts.
 
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public
    leaderboard results only as supporting evidence.
-2. Keep one mainline and consider one genuinely complementary final candidate,
-   without tuning repeatedly against the public leaderboard.
-3. Before revisiting stacking, develop a base predictor with materially different
-   errors, such as a leakage-safe nearest-comparable model; exposing the current
-   eight seed-level predictions directly added complexity but no stable gain.
-4. Investigate a model-based, past-only correction for market regime change;
+2. Retain the 432.04286 fixed-weight candidate as the public-best alternative.
+   First decompose its cached OOF gains/losses by month, town, flat type, price
+   band (diagnostic only) and history support. Assess systematic signed error as
+   well as RMSE; do not tune rules using public scores or target-only groups.
+3. For one bounded stacking follow-up, predefine the latest-quarter four-head
+   refit with the same 50% shrinkage. Evaluate equivalent historical refit rules
+   on quarterly and longer horizons, including recent-quarter fitting at the
+   long-horizon origin. Compare with equal weights and the fixed probe, then
+   refit on Jan-Mar 2025 OOF predictions only for deployment. Do not repeatedly
+   search public-leaderboard weights. The existing annual-fit long-horizon test
+   alone cannot decide this quarterly-refit question.
+4. Prioritize additional predictive information over many small weight changes:
+   test a past-only nearest-comparable rent-premium predictor using matching
+   flat type, similar area, nearby blocks and recency. Benchmark it alone and
+   with one fixed small blend on the same rows. Existing hierarchical history
+   features already cover much of this information, so verify incremental value.
+5. Investigate a model-based, past-only correction for market regime change;
    the tested unshrunk previous-year horizon offsets failed because bias changed
    sign. Other temporal calibration methods remain untested, not disproven.
-5. Reproduce setup/tests as a team, confirm member ownership, and prepare the
+6. Reproduce setup/tests as a team, confirm member ownership, and prepare the
    progress slides from EDA, cleaning, baselines, ablations,
    quantitative gains, negative results and unresolved limitations.
-6. Audit auxiliary snapshot timing: MRT `open` status is not historical
+7. Audit auxiliary snapshot timing: MRT `open` status is not historical
    opening-date filtering. Record this limitation rather than claiming full
    point-in-time availability.
-7. Reconfirm the final report deadline and reproduce/package the chosen pipeline.
+8. Reconfirm the final report deadline and reproduce/package the chosen pipeline.
 
 The single cumulative technical record remains `docs/PROGRESS.md`; README keeps
 one main comparison table. Historical reports are evidence, not active recipes.

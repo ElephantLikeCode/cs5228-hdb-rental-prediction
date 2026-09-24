@@ -34,8 +34,9 @@ changes; retain previous iteration results in `docs/PROGRESS.md`.
 | Retained reference: adaptive-market direct/residual ensemble (four components) | 445.52 | Fixed 1,600 trees/component |
 | Retained reference: normal/stale-history ensemble (eight components) | 440.89 | Fixed 1,600 trees/component; public RMSE 432.47187 |
 | **Current mainline: local-trend/stale-history ensemble (eight components)** | **440.76** | **Fixed 1,600 trees/component; public RMSE 432.14881** |
+| Public-best candidate: fixed recent-window four-head stacking | 440.66 | Same eight CBMs; public RMSE 432.04286; not promoted |
 
-The final two rows use identical validation rows and seeds, with no scoring-label
+The final three rows use identical validation rows and seeds, with no scoring-label
 early stopping. Historical baselines used a different early-stopping protocol
 and do not measure this update's gain. The eight-component model costs more.
 
@@ -74,7 +75,11 @@ window length and prediction horizon together; it is long-horizon risk evidence,
 not a clean rejection of quarterly recency weighting. At the user's request,
 `submission_recent_window_stacking.csv` was generated as a fixed-weight probe.
 Its weights were fitted on Oct-Dec 2024 and were not refitted on Jan-Mar 2025.
-The public score is pending; the mainline remains 432.14881.
+The user reported public RMSE **432.04286** on 24 September, improving the
+mainline by **0.10595**. This is the best recorded public candidate, with SHA-256
+`05bf5b69408b0b8d61a35cc54590277ee48e41cb8c30a371a594a6f360ce9cff`.
+The result supports testing fixed head weighting but does not establish private-
+score or cross-regime improvement. The default mainline remains 432.14881.
 
 The user-reported public score on 24 September 2026 is **432.14881**, improving
 the prior 432.47187 mainline by **0.32306**. The uploaded filename was

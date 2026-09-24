@@ -848,3 +848,28 @@ new run is retained and must use new paths on retry; no atomic-pair guarantee is
 claimed. Four regression cases cover existing/partial output and source-metadata
 protection. Original candidate metadata retains the original generator provenance.
 The candidate CSV, mainline CSV and eight CBMs were not regenerated or replaced.
+
+## Fixed-weight probe public result — 24 September 2026
+
+The user supplied the completed Kaggle result for
+`submission_recent_window_stacking.csv`: **432.04286**. The score is recorded as
+user-reported, not newly browser-verified; no current rank was provided.
+The local CSV SHA-256 is
+`05bf5b69408b0b8d61a35cc54590277ee48e41cb8c30a371a594a6f360ce9cff`.
+It improves the 432.14881 mainline by 0.10595 and the first 438.94488 submission
+by 6.90202. This is the best recorded public submission, while the default
+equal-weight mainline remains unchanged pending stronger stability evidence.
+
+The public gain is close in magnitude to the +0.10638 quarterly OOF gain, but
+this agreement does not prove generalization to the private half or establish
+that all stacking/recency schemes work. The quarterly interval still crosses
+zero; losses on other historical origins remain part of the evidence. The
+annual-fit sixteen-month stress test also changes regime and fit-window length,
+so it is not an isolated rejection of quarterly-refit deployment.
+
+Next work is recorded in PROJECT_PLAN: explain the gain/loss groups using cached
+predictions, perform at most one prespecified quarterly-refit follow-up, and
+prioritize a complementary past-only comparable-property predictor and market
+calibration. Avoid prolonged public-score weight tuning. This update records
+the score and plan only; no training, candidate regeneration, promotion or
+Kaggle final-selection action was performed.
