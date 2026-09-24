@@ -321,6 +321,17 @@ history views) must specify separate `--submission`, `--metadata` and
 `--model-prefix` paths; otherwise the command fails before training.
 Output paths are restricted to their project output directories.
 
+To reproduce the user-requested recent-window stacking CSV without retraining,
+reuse the eight verified mainline CBMs with the recorded component-order weights:
+
+```bash
+python src/train_final_model.py --reuse-metadata reports/final_model_metadata.json --component-weights 0.06945411339312821 0.1600015151383129 0.06945411339312821 0.1600015151383129 0.13361900687086095 0.13692536459769795 0.13361900687086095 0.13692536459769795 --weight-label three_month_2025/four_heads/recent_window_half_shrunk_simplex --model-prefix candidate_recent_stack --submission submissions/submission_recent_window_stacking.csv --metadata reports/submission_recent_window_stacking_metadata.json
+```
+
+The command verifies every model/data hash and first reproduces the source
+equal-weight submission before writing the candidate. This CSV is experimental;
+its local long-horizon result is worse than the mainline.
+
 Before replacing an existing complete run, the training command verifies and
 snapshots its CSV, metadata and every model into ignored
 `artifacts/submitted/<submission-sha256>/`, mirroring repository-relative paths.

@@ -305,6 +305,12 @@ result record now reports each method's actual fit dates, rows, sources and fit
 RMSE. These results do not justify spending a leaderboard submission on the
 current stacking candidate.
 
+The user requested one controlled public-leaderboard probe, so the fixed recent-
+window four-head candidate is available as
+`submissions/submission_recent_window_stacking.csv`. Treat its public score as
+supporting evidence alongside the negative 16-month result; do not promote it
+solely from a small public-half improvement.
+
 When the user resumes work:
 1. Preserve the 432.14881 mixed-view run as the current mainline and use public
    leaderboard results only as supporting evidence.

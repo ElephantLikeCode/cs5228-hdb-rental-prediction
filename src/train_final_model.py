@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from catboost import CatBoostRegressor
 from modeling import (DEFAULT_CONFIG, CANDIDATES, ADAPTIVE_RECIPES, HISTORY_RECIPES, load_config, build_features,
                       build_training_features, fit_model, predict_model)
 
@@ -70,6 +71,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outlier-ratio", type=float, default=0.5)
     parser.add_argument("--model-prefix", default="final_model")
     parser.add_argument(
+        "--reuse-metadata", type=Path,
+        help="Reuse a verified CatBoost run and write a separately weighted submission.",
+    )
+    parser.add_argument(
+        "--component-weights", type=float, nargs="+",
+        help="Weights in the exact component order stored by --reuse-metadata.",
+    )
+    parser.add_argument(
+        "--weight-label",
+        help="Auditable description of the validation rule that produced the weights.",
+    )
+    parser.add_argument(
         "--metadata",
         type=Path,
         default=ROOT / "reports" / "final_model_metadata.json",
@@ -99,11 +112,102 @@ def validate_output_paths(args) -> None:
               or args.augmentation_lags is not None or args.history_views is not None
               or args.seeds is not None
               or args.iterations is not None or args.outlier_policy is not None
-              or args.outlier_ratio != 0.5)
+              or args.outlier_ratio != 0.5 or args.reuse_metadata is not None
+              or args.component_weights is not None)
     if custom and (args.submission == root / "submissions/final_submission.csv"
                    or args.metadata == root / "reports/final_model_metadata.json"
                    or (prefix.parent == root / "artifacts" and prefix.name.startswith("final_model"))):
         raise ValueError("Experimental overrides require separate --submission, --metadata and --model-prefix")
+
+
+def create_reweighted_submission(args) -> None:
+    """Reuse verified saved CatBoost components with a new fixed weight vector."""
+    if args.reuse_metadata is None or args.component_weights is None:
+        raise ValueError("Reweighting requires --reuse-metadata and --component-weights")
+    source_path = args.reuse_metadata
+    source_path = (ROOT / source_path).resolve() if not source_path.is_absolute() else source_path.resolve()
+    source_path.relative_to(ROOT.resolve())
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    components = source["components"]
+    weights = np.asarray(args.component_weights, dtype=float)
+    if (weights.shape != (len(components),) or not np.isfinite(weights).all()
+            or np.any(weights < 0) or not np.isclose(weights.sum(), 1.0, atol=1e-10)):
+        raise ValueError("Component weights must be finite, nonnegative, and sum to one")
+    if not source["model"].startswith("CatBoostRegressor"):
+        raise ValueError("Reusable weighted submissions currently require CatBoost components")
+
+    train = pd.read_csv(RAW / "train.csv")
+    test = pd.read_csv(RAW / "test.csv")
+    sample = pd.read_csv(RAW / "example-submission.csv")
+    raw_train = train.drop(columns=[TARGET])
+    target = train[TARGET].astype(float)
+    for name, expected in source["raw_sha256"].items():
+        actual = hashlib.sha256((RAW / name).read_bytes()).hexdigest()
+        if actual != expected:
+            raise ValueError(f"Raw data hash differs from reusable run: {name}")
+    lookup = build_block_lookup(RAW / "auxiliary")
+    feature_cache = {}
+    predictions = []
+    for component in components:
+        model_path = ROOT / component["model_path"]
+        if hashlib.sha256(model_path.read_bytes()).hexdigest() != component["sha256"]:
+            raise ValueError(f"Reusable model hash mismatch: {model_path}")
+        recipe = component["history"]
+        if recipe not in feature_cache:
+            feature_cache[recipe] = build_features(raw_train, target, test, lookup, recipe)
+        config = dict(
+            source["config"], history=recipe,
+            augmentation_lag=component["augmentation_lag"],
+            residual_target=component["residual_target"],
+        )
+        model = CatBoostRegressor()
+        model.load_model(model_path)
+        predictions.append(predict_model(model, feature_cache[recipe], config))
+    prediction_matrix = np.vstack(predictions)
+
+    source_weights = np.asarray(source["weights"], dtype=float)
+    source_prediction = source_weights @ prediction_matrix
+    source_submission = pd.read_csv(ROOT / source["submission"])
+    if not np.allclose(source_prediction, source_submission["Predicted"], rtol=1e-12, atol=1e-9):
+        raise ValueError("Reusable components do not reproduce the source submission")
+
+    prediction = weights @ prediction_matrix
+    if sample.columns.tolist() != ["Id", "Predicted"] or len(sample) != len(prediction):
+        raise ValueError("Unexpected submission template")
+    if sample["Id"].tolist() != list(range(len(sample))) or not np.isfinite(prediction).all():
+        raise ValueError("Candidate submission IDs or predictions are invalid")
+    sample["Predicted"] = prediction
+    args.submission.parent.mkdir(parents=True, exist_ok=True)
+    sample.to_csv(args.submission, index=False, lineterminator="\n")
+    reloaded = pd.read_csv(args.submission)
+    if (reloaded.columns.tolist() != ["Id", "Predicted"]
+            or not reloaded["Id"].equals(sample["Id"])
+            or not np.allclose(reloaded["Predicted"], prediction, rtol=1e-12, atol=1e-9)):
+        raise ValueError("Reweighted submission failed its round-trip check")
+
+    metadata = {
+        "model": "Reweighted verified CatBoost component ensemble",
+        "source_metadata": str(source_path.relative_to(ROOT.resolve())),
+        "source_metadata_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+        "source_submission_sha256": source["submission_sha256"],
+        "weight_label": args.weight_label,
+        "component_order": [
+            {key: component[key] for key in
+             ("history", "augmentation_lag", "seed", "residual_target", "model_path", "sha256")}
+            for component in components
+        ],
+        "weights": weights.tolist(),
+        "raw_sha256": source["raw_sha256"],
+        "test_rows": len(test),
+        "prediction_min": float(prediction.min()),
+        "prediction_max": float(prediction.max()),
+        "submission": str(args.submission.relative_to(ROOT)),
+        "submission_sha256": hashlib.sha256(args.submission.read_bytes()).hexdigest(),
+        "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+    args.metadata.parent.mkdir(parents=True, exist_ok=True)
+    args.metadata.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    print(json.dumps(metadata, indent=2))
 
 
 def archive_previous_run(metadata_path: Path, submission_path: Path) -> Path | None:
@@ -143,6 +247,9 @@ def archive_previous_run(metadata_path: Path, submission_path: Path) -> Path | N
 def main() -> None:
     args = parse_args()
     validate_output_paths(args)
+    if args.reuse_metadata is not None or args.component_weights is not None:
+        create_reweighted_submission(args)
+        return
     config = dict(CANDIDATES[args.candidate]) if args.candidate else load_config(args.config)
     if args.augmentation_lags is not None:
         config.update(augmentation_lags=args.augmentation_lags, name="custom_history_views")

@@ -806,3 +806,22 @@ interval -1.5872 to -0.7733). Fixed time decay was also worse.
 This longer forward check removes the practical case for a leaderboard trial of
 the current recency-stacking candidate. No candidate submission was generated;
 the 432.14881 equal-weight mainline remains the supported submission.
+
+## User-requested leaderboard probe artifact — 24 September 2026
+
+At the user's request, the fixed recent-window four-head rule was exported for a
+single public-leaderboard comparison despite the negative long-horizon evidence.
+No base model was retrained. The generator verifies the raw data and all eight CBM
+hashes, rebuilds their 50,000 test predictions, and confirms that the original
+equal weights reproduce the 432.14881 source CSV before applying new weights.
+
+`submissions/submission_recent_window_stacking.csv` has SHA-256
+`05bf5b69408b0b8d61a35cc54590277ee48e41cb8c30a371a594a6f360ce9cff`.
+Its head weights are 0.138908 local-trend direct, 0.320003 local-trend residual,
+0.267238 stale-history direct and 0.273851 stale-history residual, divided equally
+between seeds 42/2026 within each head. Compared with the mainline its test
+predictions have mean change -1.247 SGD and RMS change 5.618 SGD.
+
+This is a diagnostic submission, not a promoted model. The mainline files remain
+unchanged pending the reported Kaggle score. Exact component order and provenance
+are recorded in `reports/submission_recent_window_stacking_metadata.json`.
