@@ -873,3 +873,473 @@ prioritize a complementary past-only comparable-property predictor and market
 calibration. Avoid prolonged public-score weight tuning. This update records
 the score and plan only; no training, candidate regeneration, promotion or
 Kaggle final-selection action was performed.
+
+## Progress-report slide deck - 25 September 2026
+
+Canvas was rechecked read-only. The progress report requires an approximately
+10-15 slide PDF that covers the goals, task/data understanding, initial design
+and results, current obstacles, and one or two final slides of next steps. The
+assignment accepts PDF files only and states that one group member may submit.
+
+A 14-slide English draft now lives in `progress_report/main.tex`, adapted from
+the user-selected NUS LaTeX Beamer template. Five selected report figures and
+the NUS logo are stored in `progress_report/assets/` so a clean clone does not
+depend on ignored local plot files. The compiled deliverable is
+`output/pdf/CS5228_Progress_Report.pdf`. It covers the data audit, chronological
+validation, preprocessing and leakage controls, baseline comparison, spatial
+and historical features, current ensemble, error analysis, submitted public
+scores, limitations, and two final planning slides. It also includes the AI-use
+declaration requested on the Canvas assignment page.
+
+No model, experiment table, submission file or mainline selection changed. The
+title now lists all four members in a consistent surname-first romanisation and
+includes their student IDs. A final group review remains necessary before
+submission.
+
+The report evidence was then audited against the saved experiment artifacts.
+The baseline chart now compares CatBoost with the other learners on core inputs,
+the staged-results slide no longer presents successive pipeline revisions as a
+single-feature ablation, and the rent-band chart is rebuilt from the selected
+440.7629-RMSE mainline predictions. The validation slide now states that its
+stress windows overlap, while the ensemble slide documents the weighted stale-
+history augmentation and full-history inference behavior. The results slide
+also distinguishes the selected 432.14881 mainline from the unpromoted
+432.04286 stacking candidate and quantifies the 9.81-RMSE older-period deficit.
+
+The final report audit then tightened four interpretations. The initial model
+screen now distinguishes its validation-based CatBoost early stopping from the
+later fixed 1,600-tree candidate protocol. The rent-band discussion labels the
+entire at-or-below-SGD-2,500 group rather than treating every row as an anomaly,
+and identifies the 954-row removal as an earlier sensitivity test. The
+older-year comparison now names the current equal-weight mainline and the
+earlier adaptive-market reference. The stacking result records that the weights
+were fitted on Oct-Dec 2024 and evaluated on Jan-Mar 2025, with a 0.106-RMSE
+gain and an address-bootstrap interval of -0.034 to 0.226 that crosses zero.
+The slide labels this explicitly as a 95% interval. LaTeX log files created
+inside `progress_report/` are ignored as build intermediates.
+
+The title slide now lists the four members vertically in alphabetical order by
+surname-first romanised name: Han Linxuan (A0350911M), Sun Shenghe
+(A0354849L), Zhang Yuhong (A0356795H), and Zhang Zhexuan (A0355290A). The
+balanced two-column block is centred as a whole. All slide source notes use one
+bottom-left alignment rule, including figure slides that otherwise centre their
+main content. The plan slide was also updated to remove the completed
+student-ID task.
+
+## Professor feedback and bounded experiments - 6 October 2026
+
+The team supplied feedback confirming that the project direction is sound,
+while recommending clearer categorical encoding and candidate definitions,
+analysis of which flat types/areas generate extreme errors, possible specialist
+models, and early final-report drafting. The instructor's announcement clarifies
+that dates are ordered but there is no unique individual-flat identity. Block
+histories represent comparable transactions. The 425 identical rows are not
+proven duplicate observations and remain retained. Chronological validation still
+matches the competition split, and query/validation targets must not enter
+prediction features. The user deprioritised stacking and kept it as an alternative.
+
+A bounded screen was predefined: nearest comparable rents with three market
+forecasts; input-flat-type specialists; and a soft three-band rental mixture.
+The latter uses a feature-based classifier at inference, never true query rent.
+Fixed 25% blends with the frozen eight-component mainline are included. The
+trained screens use seed 42 and 1,600 trees without outer early stopping.
+Three-month and sixteen-month windows screen candidates first; promising
+candidates need recent-year/older-year confirmation and a second trained seed.
+Promotion requires a meaningful recent gain (about 2 RMSE), positive long-
+horizon gain and no material regression in confirmation windows. The screen
+uses fewer ensemble members than the mainline and is not an equal-capacity
+causal ablation. All validation windows remain development evidence.
+
+The entry point is `src/feedback_experiments.py`. Results accumulate in
+`reports/feedback_results.csv`; hash-identified configurations, matched predictions
+and subgroup diagnostics stay in ignored `artifacts/feedback_study/` directories.
+A GPU smoke run successfully exercised all three families on 3,000 training and
+300 validation rows with 40 trees. Its metrics are execution checks only and do
+not enter the formal ledger. Four additional tests cover canonical routing,
+mixture probabilities, constant-rent comparables and rejection of same-month
+reference labels. The complete test suite passed: 37 tests.
+
+A diagnostic on Jan-Mar 2025 found 2,408 of 8,924 rows in canonical identical-
+input groups, with a maximum within-group rent span of SGD 2,600. The best
+constant prediction within each identical-input group, calculated using the
+validation labels themselves, gives an optimistic sample RMSE lower bound of
+171.85636. Singleton groups are fitted perfectly in this diagnostic. It is not
+a deployable predictor, population noise-floor estimate, or evidence about other
+teams' methods; external individual-flat information could change the grouping.
+It illustrates the ambiguity emphasized by the instructor. Other teams' public
+scores near 173 cannot be attributed to a particular method from the leaderboard.
+
+The formal GPU screen completed with run ID `d0e607697ec39679`, two validation
+origins, 22 score rows (including two frozen references), 14 regressor fits and
+two classifiers. Recent validation uses 141,076 training / 8,924 validation rows;
+the sixteen-month origin uses 102,829 / 47,171. No validation labels were provided
+to fitting, early stopping, reference-rent construction or mixture routing.
+Classifier budgets are 1,000 depth-6 trees; expert/regressor budgets are 1,600
+depth-8 trees. The ledger's `trees` describes the regressor budget, not the total
+ensemble size. Frozen-reference `model_seconds=0` means cached predictions were
+reused, not that the mainline trains for free. Blend times describe the new
+family's computation only. `seed=42` identifies this screening run; the frozen
+reference still averages seeds 42 and 2026 across four heads. `feature_group`
+names the constructed local-trend/spatial pool, not the nearest method's actual
+inputs: nearest uses flat type, approval month, coordinates, area and lease age
+plus training-only observed rents. The frozen reference also includes its
+unchanged stale hierarchical-history view, as its source run IDs specify.
+Unique new-family computation totalled 1,238.96
+seconds, plus 61.22 seconds for shared feature construction; do not sum duplicated
+blend/nearest rows as independent training runs. RTX 4060 GPU execution was
+confirmed; the user connected power and adjusted power settings during the run.
+
+| Fixed recipe | Jan-Mar 2025 RMSE | Dec 2023-Mar 2025 RMSE |
+|---|---:|---:|
+| Frozen current eight-component mainline | 440.7629 | 483.4345 |
+| Nearest comparables, flat market | 455.7328 | 493.4052 |
+| Nearest comparables, damped market trend | 455.8490 | 491.8830 |
+| Nearest comparables, bounded linear trend | 455.9122 | 506.2170 |
+| Input-flat-type specialists | 449.5262 | 506.4313 |
+| Soft rental-band mixture | 451.5176 | 487.3899 |
+| Mainline 75% + nearest/flat 25% | 441.8423 | 482.1983 |
+| Mainline 75% + nearest/damped 25% | 441.8372 | 482.5230 |
+| Mainline 75% + nearest/linear 25% | 441.8366 | 483.7023 |
+| Mainline 75% + flat specialists 25% | 441.2614 | 483.3562 |
+| Mainline 75% + rental mixture 25% | 441.9618 | 482.4875 |
+
+No configuration passed the predefined recent-and-long-window gate. No second
+seed, additional confirmation-window fit, final retraining or new submission
+was warranted. The nearest/flat blend gains 1.2361 on the long window but loses
+1.0794 on the recent quarter; the soft-mixture blend gains 0.9469 and loses
+1.1989, respectively. This is evidence against promoting these specific recipes,
+not proof that specialists, nearest comparables or mixture models cannot work.
+The recent mixture blend improves MAE only from 316.5491 to 316.2118 while its
+RMSE worsens; no claim of overall superiority follows.
+
+Grouped diagnostics refine the next research question. In recent validation,
+1,458 rows with true rent <= SGD 2,500 (16.34%) contribute 52.23% of mainline
+squared error; the long window also attributes 50.86% to that band. It is not an
+anomaly label or an inference-time routing variable. Executive flats have recent
+RMSE 506.73, but only 462 rows and 6.84% of total squared error. Four-room and
+three-room flats contribute 35.11% and 29.76%, respectively. Jurong West five-
+and four-room groups contribute 4.31% and 3.65%; Bukit Merah five-room flats have
+RMSE 612.09 across 106 rows but contribute only 2.29%. High subgroup RMSE alone
+does not identify the largest total improvement opportunity. The classifier-
+routed mixture did not resolve low-band overprediction in the recent quarter.
+
+Next, investigate cross-fitted, training-only comparable-flat premiums and
+dispersion: train-row encodings exclude the entire held-out inner fold, whereas
+outer validation uses only the outer training partition. This would explicitly
+test the cross-sectional interpretation and reduce the mismatch between sparse
+early training histories and full-history inference, without assuming a unique
+flat identity or accessing future validation labels. Keep the existing history
+and target recipe fixed in the first ablation. Examine low-rent support and
+observable region/type/area groups, rather than routing by true query rent.
+Whether more permissible information exists should be checked against course
+rules; the leaderboard alone cannot explain other teams' large score gains.
+
+Post-run checks: all 37 automated tests pass; all eight selected CBM checksums,
+both existing submission checksums and raw train/test checksums match their
+recorded provenance. Raw data, `configs/model.json`, mainline models and existing
+CSVs remain unchanged. This round's code, result ledger and cumulative document
+updates remain local and have not been committed or pushed. Existing unrelated
+report/slide work was preserved.
+
+### Comparable-statistics follow-up - 6 October 2026
+
+The user authorised the information audit and isolated cross-fitting study.
+The existing entry point now supports `--families crossfit` and `--audit-only`.
+`reports/information_audit.csv` records input cardinalities, missingness, canonical
+category counts, date ranges and production spatial-join coverage. Source snapshots
+are retained inside ignored run directories, including the previous formal run.
+No raw input rows are removed. FEE and FURNISHED are constant in both supplied
+datasets; coordinates, maximum floors and completion years have no missing joined
+rows in either dataset.
+
+Predefined comparison: keep the original local-trend feature pool, residual
+offset, seed and fixed 1,600-tree/depth-8 budget. Add comparable relative-rent
+statistics at town/flat, street/flat, address/flat and address/flat/rounded-area
+levels. Reference rents are normalised by reference-only month/town/flat market
+means shrunk toward month/flat means (strength 20). Group estimates shrink toward
+reference flat-type priors with strength 20. The means view adds eight mean/count
+features; the distribution view adds eight standard-deviation/relative-low-rate
+features as well. Relative-low means a reference rent ratio below 0.65, not an
+assertion that a transaction is incorrect.
+
+Five inner GroupKFold partitions group identical canonical input rows (including
+month) together. Every training encoding excludes the whole query fold. Outer
+validation encodings use the outer training data only. A strict-past distribution
+control uses identical statistic definitions and identical validation features,
+but each training query uses only earlier training months. The earliest month
+gets label-independent mean=1 and count/std/low-rate=0 defaults. This contrast
+isolates the training-encoding rule; the means/distribution contrast studies the
+additional dispersion features. Direct and residual targets are each compared
+against their frozen same-seed original components, not only the larger ensemble.
+
+Each window fits six GPU regressors. A seed-specific ensemble comparison replaces
+exactly two normal-history components in the existing eight-component prediction;
+the remaining six stay frozen. It does not assume that an untrained second seed
+will behave identically. Screen on Jan-Mar 2025 and Dec 2023-Mar 2025 first. A
+clear two-component recent gain around 1 RMSE with positive long-window evidence
+can justify second-seed confirmation; promotion still requires about 2 RMSE recent
+gain for the complete candidate, positive long-window gain and no material
+confirmation-window regression. Additional windows/seeds are conditional rather
+than automatically fitting every failed recipe. Smoke scores are execution QA.
+
+Additional audit findings: canonical town/flat/model/street categories have zero
+unseen test rows against the full training set. At month precision, March 2025
+appears in both datasets: 3,032 training and 380 test rows. This is only 0.76% of
+test rows and does not establish that individual event ordering was violated.
+The production past-only rule excludes those March training labels for March
+queries; an available-training-only same-month study is a separate future
+hypothesis, not a plausible explanation of a 432-to-173 score gap by itself.
+The supplied COE and stock-price tables are not consumed by the current feature
+pipeline; their potential economic information remains untested. No external
+target lookup was performed.
+
+A validation-label diagnostic uses the actual same-month/town/canonical-flat
+median only to describe relative price tails, never to route predictions or
+construct training features. On the frozen recent mainline:
+
+| Actual rent / validation-group median | Rows | RMSE | Mean prediction minus rent | Fraction of total squared error |
+|---|---:|---:|---:|---:|
+| <= 0.50 | 93 | 1,747.62 | +1,710.19 | 16.38% |
+| > 0.50 and <= 0.75 | 641 | 941.11 | +891.14 | 32.75% |
+| > 0.75 and <= 1.25 | 8,091 | 314.26 | -79.36 | 46.09% |
+| > 1.25 | 99 | 914.71 | -819.53 | 4.78% |
+
+The 734 rows at/below 75% are 8.22% of validation but account for 49.13% of
+squared error. Jurong West 5/4-room, Ang Mo Kio 3-room, Kallang/Whampoa 3-room
+and Bukit Merah 3-room are among their largest absolute SSE contributors. These
+are label-defined research groups, not observable routing rules or proven data
+errors. Even setting all 734 residuals to zero while leaving every other residual
+unchanged would yield approximately 314 RMSE on all 8,924 rows. Resolving only
+this tail would therefore not reproduce a public score near 173 on this window.
+This arithmetic is an optimistic what-if calculation, not a achievable-model
+claim or a public-test estimate.
+
+The formal follow-up completed on GPU with run ID `02e104f0ffdf57c5`: twelve
+1,600-tree regressors, 32 scored rows and 5,408 subgroup rows. The result ledger
+now has 54 formal rows including the previous study; no smoke rows are included.
+New regressor fitting/prediction totalled 735.80 seconds, production feature
+construction 46.89 seconds and additional statistic construction 54.02 seconds.
+Source snapshots, fold assignments, sixteen encoded feature columns and exact
+query predictions are retained under that ignored run directory. Entry command:
+
+```bash
+python src/feedback_experiments.py --families crossfit --windows short_recent horizon16 --seed 42 --task-type GPU --resume
+```
+
+Matched seed-42 normal-history pairs (direct/residual mean):
+
+| Training encoding / extra features | Jan-Mar 2025 RMSE | Dec 2023-Mar 2025 RMSE |
+|---|---:|---:|
+| Original normal-history pair | 445.4677 | 487.0015 |
+| Inner-fold-excluded mean/support statistics | 465.0201 | 512.2764 |
+| Inner-fold-excluded distribution statistics | 463.4765 | 509.4779 |
+| Strict-past distribution statistics | 446.2969 | 489.2022 |
+
+Actual eight-component predictions, replacing only the two seed-42 normal heads:
+
+| Eight-component configuration | Jan-Mar 2025 RMSE | Dec 2023-Mar 2025 RMSE |
+|---|---:|---:|
+| Frozen current mainline | 440.7629 | 483.4345 |
+| Replace with cross-fitted mean/support heads | 442.5545 | 483.8341 |
+| Replace with cross-fitted distribution heads | 442.3438 | 483.6721 |
+| Replace with strict-past distribution heads | 440.6410 | 483.2988 |
+
+The encoding-rule contrast is adverse: cross-fitting distribution statistics
+loses 17.1796 recent RMSE and 20.2758 long-window RMSE against the same-statistic
+strict-past pair. Adding dispersion to the cross-fitted means does recover 1.5435
+and 2.7985 versus cross-fitted means alone, but both remain worse than the original
+pair. The strict-past pair is itself worse by 0.8292 / 2.2006; its tiny ensemble
+gain (0.1219 / 0.1357) reflects complementary errors rather than a better stand-
+alone predictor. Its long-window MAE worsens from 355.3968 to 355.7491. No recipe
+passes the predefined advancement gate, so no second seed, annual confirmation,
+final retraining, submission generation or mainline promotion was performed.
+
+Recent price-band diagnostics also contradict a simple global-offset explanation:
+cross-fitted distribution-pair bias is approximately zero overall, while low,
+middle and high rent RMSE all worsen. High-rent RMSE rises from 567.59 to 631.84,
+and Executive RMSE from 512.92 to 555.40. Address/flat/area encoding support is
+larger at validation (log-count median 2.708 versus 2.485 in cross-fitted training),
+as expected when all reference rows become available. Mean/std/low-rate marginal
+quantiles are relatively similar. These summaries do not establish the exact
+cause of failure; temporal heterogeneity, fold noise and model reliance on the
+new statistics are hypotheses, not proven explanations. The experiment rejects
+this encoding/statistic/budget configuration, not all cross-fitting methods or
+the instructor's cross-sectional interpretation.
+
+Next priority: evaluate information already provided but unused. The stock table
+contains 77 symbols from 4 January 2021 to 30 July 2026; COE spans 2021-2026 with
+four categories. A bounded market-level calibration study can test monthly
+economic summaries alongside the original baseline, with explicit data-availability
+assumptions and same-budget/feature controls. Further independent-learner or
+targeted residual studies remain possible; repeated weight/threshold searches
+and another full cross-fit configuration are lower priority after this result.
+
+Final verification: 41 tests pass, including perturbing every label in an inner
+query fold and perturbing current/future-month labels in the strict-past control.
+Formal metrics are finite, temporal cutoffs and ledger keys are valid, source
+hashes match the saved run, and the eight original CBMs, two submitted CSVs and
+raw train/test hashes remain unchanged. All changes remain local; no Git commit
+or push has been performed. Existing unrelated slide/report modifications were
+preserved. README retains its one main comparison table; this cumulative entry
+and the existing result ledger hold the new rejected-candidate evidence.
+
+## Supplied market information, matched learners and targeted corrections — 6 October 2026
+
+Completed the remaining bounded experiments before closing the work. Formal run
+`8050c7a295047db8` covers Jan-Mar 2025 (141,076 training / 8,924 validation rows)
+and Dec 2023-Mar 2025 (102,829 / 47,171 rows), seed 42. Training ends Dec 2024
+and Nov 2023 respectively. All rows and rental labels are retained. The frozen
+eight-component mainline is the deployment reference; its same-seed two
+normal-history heads are the feature/learner comparison reference. No outer
+validation labels enter fitting, encoders, sample selection or prediction routing.
+
+Research uses the existing entry point `src/feedback_experiments.py`, with
+reusable market/correction logic isolated in `src/market_experiments.py` rather
+than creating multiple competing training pipelines. Production features,
+configuration, eight selected CBMs and submission generator are unchanged.
+
+### Experiments and availability assumptions
+
+- COE: monthly mean premium, three-month premium change and bids/quota ratios
+  for categories A/B/C/E, parsed from the supplied currency/comma fields.
+- Stocks: monthly CLOSE-based median-return cumulative index, one-/three-month
+  returns, three-month volatility, positive-return breadth and symbol coverage.
+  No rent labels or externally downloaded stock information is used. Snapshot
+  membership introduces survivorship/availability limitations; CLOSE avoids
+  adjusted-close hindsight but does not remove all corporate-action effects.
+- Each query joins the preceding month. No backward fill or future-fitted
+  normalization is used. The COE/stock single-group screens share an aggregate
+  source-missingness indicator; they are not completely isolated missingness
+  ablations. The combined view contains 19 extra numeric columns.
+- COE alone, stocks alone, both and an origin-only frozen future-covariate
+  control each train direct/residual CatBoost heads (1,600 trees, depth 8).
+  Supplied-snapshot variants assume future-month economic information is
+  permitted in this offline competition. Origin-only does not use it. A monthly
+  lag is not verified release-time availability. The CatBoost control uses
+  separate same-seed fits, so small GPU fit variation remains a confound.
+- GPU XGBoost (original/market inputs, direct/residual, fixed 1,600-tree depth-8
+  budget) uses training-only categorical vocabularies. CPU Ridge (alpha 100)
+  uses training-only numeric imputation/scaling and one-hot encoding, with the
+  unchanged market-residual target. Same rows/features are compared, not equal
+  algorithm capacity. XGBoost confirms actual CUDA training; its host-input
+  prediction-transfer warning is not a CPU-training fallback.
+- Targeted correction uses the latest 12 months of existing, honest earlier-
+  origin OOF mainline predictions. Overlaps retain the most recent origin,
+  chosen without errors. It fits 600-tree depth-4 residual regressors, or a
+  classifier plus two residual experts for rent below 65% of the OOF prediction.
+  Validation routing is probabilistic and uses observable features/base
+  prediction only. Predefined correction weights are 25%/50%. The recent/long
+  correction fits use 35,239/23,869 OOF rows, never fitted-training residuals.
+
+These families trained 32 GPU models and four CPU Ridge models. Family runtime
+was 1,913.81 seconds, excluding 72.92 seconds of outer feature construction and
+initial data loading. RTX 4060 usage was confirmed. Pair/replacement/blend
+result rows reuse these fits and must not be counted as additional models.
+
+### Results and adoption decision
+
+`replace_seed` replaces only two of eight frozen components, not the untrained
+second seed. The guarded Ridge row is a fixed 25% blend, and correction rows
+apply a fixed 25% residual strength. These are deployment-candidate checks.
+
+| Configuration | Jan-Mar 2025 RMSE | Dec 2023-Mar 2025 RMSE |
+|---|---:|---:|
+| Frozen current mainline | 440.7629 | 483.4345 |
+| COE heads: replace two components | 440.8770 | 483.4336 |
+| Stock heads: replace two components | 440.8159 | 483.5355 |
+| Combined market heads: replace two components | 440.8101 | 483.4322 |
+| Origin-only market heads: replace two components | 440.7727 | 483.5769 |
+| Original-feature XGBoost: replace two components | 441.8813 | 485.2444 |
+| Market-feature XGBoost: replace two components | 442.1336 | 484.8956 |
+| Guarded, origin-only Ridge: fixed 25% blend | 442.3978 | 481.5146 |
+| OOF residual correction, strength 25% | 440.9220 | 483.3395 |
+| OOF relative-price mixture correction, strength 25% | 441.0134 | 483.3793 |
+
+The COE pair improves its matched normal-history pair by only 0.207 long-window
+RMSE and loses 0.863 recent RMSE. Combined-head replacement gains 0.0023 on the
+long window and loses 0.0472 recently; the paired intervals cross zero. These
+are not meaningful promotion evidence. Both XGBoost replacements lose in both
+windows. Stronger 50% residual/mixture corrections also lose in both windows.
+No candidate passes the recent-and-long advancement gate; no second seed,
+additional promotion windows, final training, new CSV or mainline replacement
+was warranted. This rejects these fixed configurations, not every use of market
+information, every linear model, or every specialist method.
+
+### Follow-up: diagnose unbounded linear extrapolation
+
+Rather than stop at the first poor Ridge result, run `e3bf7c874aee98da` tested a
+training-input-range clipping guard on both windows. It trained four additional
+CPU Ridge models (20.13 seconds plus 61.10 seconds of outer features). The
+origin-only market prediction reuses the SAME fitted market Ridge. The original
+permitted rental offset is retained after prediction, not its clipped copy.
+Training `ADAPT_HORIZON` ranges from 0 to 1; recent validation ranges 1 to 3,
+with 67.84% outside the training range. Other future time/market inputs also
+exceed training ranges. Unbounded original/market Ridge RMSE of 601.83/1207.32
+recently becomes 464.97/466.41 with the joint clipping guard. Long-window
+unbounded RMSE is 1251.85/3308.71. This supports extrapolation instability as
+an issue, but does not identify a single causal feature because all numeric
+inputs are clipped together. Even the best guarded blend loses 1.635 recently
+despite gaining 1.920 on the long window. Address-cluster gain intervals are
+[-2.456,-0.841] and [1.595,2.264], respectively. It remains rejected.
+
+### Low-rent findings beyond RMSE
+
+For the operational event `actual rent < 0.65 * frozen prediction`, prevalence
+is 2.992% recently and 3.364% on the long window. These rows contribute 32.47%
+and 31.27% of mainline squared error. The classifier's recent/long AUC is
+0.5761/0.5433, average precision 0.04161/0.04061 versus prevalence baselines
+0.02992/0.03364. There is weak ranking signal, not effective separation;
+Brier scores 0.02911/0.03296 are also recorded. Neither the softer mixture nor
+the direct residual correction improves the recent window. Unobserved contract
+conditions remain a hypothesis, not a proven explanation or grounds to delete
+these records. All target-defined groups stay diagnostic, not inference routes.
+
+Observable-group diagnostics do not point mainly to Executive flats: of the
+267 recent low-event rows, 94 are 3-room and 91 are 4-room (69.3% combined).
+Their groups also contribute 64.87% of total mainline SSE, partly because they
+are common. Two-room flats have the highest low-event rate among adequately
+represented flat types, 7.02% (17/242), versus 3.22% for 3-room and 2.84% for
+4-room. Among towns with at least 200 validation rows, Kallang/Whampoa and
+Jurong West have rates 5.56% and 4.68%. These are overlapping label-derived
+diagnostics, not held-out discoveries: most rows in every group are not low
+events, so group membership alone cannot justify deletion or hard low-rent routing.
+
+### Evidence, external-data boundary and synchronization
+
+The existing `reports/feedback_results.csv` now holds 158 cumulative rows,
+including 104 new formal score rows; none is a smoke result. Per-run predictions,
+low-rent probabilities, OOF training row/source-origin records, monthly economic
+features, grouped errors, configurations and original source snapshots stay in
+ignored `artifacts/feedback_study/`. No new model artifacts were retained for
+rejected candidates. Sources and raw/auxiliary hashes were verified, and every
+non-reference saved prediction reproduces its ledger RMSE. The summary command
+appends 1,000-resample address-cluster gain intervals to the SAME existing table.
+It repairs per-model budget/device metadata: Ridge runs on CPU with zero trees,
+targeted correction models use 600 trees; primary heads use 1,600. Original
+run-local records/snapshots remain unchanged. Intervals are exploratory,
+post-development, within overlapping windows; they are not independent tests or
+future-market uncertainty bounds.
+
+Official external-source investigation is recorded in `docs/KAGGLE_AUDIT.md`.
+HDB open rental records now overlap the competition test period, but were NOT
+downloaded/matched/used. Additional-data permission does not explicitly settle
+direct test-period rental-label lookup; instructor clarification is still
+required. CPI/URA macro sources were located, not trained; release timing and
+revisions require a separate point-in-time audit. No conclusions about other
+teams' methods or misconduct follow from public scores near 173.
+
+Final QA: 50 automated tests pass, including source-fingerprint rejection,
+metadata repair, train-only clipping and paired-interval sign checks. Mixed-
+family GPU smoke succeeded before the formal run, and the final entry point
+also received a guarded-Ridge smoke. Raw train/test and the two selected CSV
+hashes remain unchanged. The 12 existing local final-model CBMs (including the
+eight selected components and retained references) are protected by a before/
+after hash check. README retains its single main results table; experiment
+code, aggregate tables and cumulative documentation are the synchronization
+scope, with data/models/submissions/artifacts and unrelated slide/plot edits
+excluded.
+
+Next priority is instructor clarification of the external-data boundary and
+final-report preparation. A new predictive-information hypothesis should precede
+another large model/weight search. Current mainline remains public 432.14881;
+the retained stacking alternative remains public 432.04286.

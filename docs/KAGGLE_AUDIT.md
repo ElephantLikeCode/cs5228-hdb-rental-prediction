@@ -76,3 +76,43 @@ The user reported public RMSE **432.14881** for
 mainline by 0.32306. The exact submitted CSV has SHA-256
 `a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a`.
 No rank was supplied or inferred, and no final-submission selection was changed.
+
+## External-information boundary check — 6 October 2026
+
+Read-only Kaggle checks reconfirmed that the Overview welcomes collecting
+additional data. The Rules page contains the short competition-specific rules
+and Kaggle's foundational rules. This does not explicitly settle whether
+external rental records overlapping the hidden test interval may be used.
+No post, message, upload, rule acceptance or final-selection change was made.
+
+Official HDB open rental records cover January 2021 through September 2026,
+overlapping the competition test period. Their six fields include rental month,
+town, block, street, flat type and monthly rent. The site describes rents as
+owner-declared and not verified by HDB. That supports treating extreme values
+as uncertain observations, not automatically as known errors or room rentals.
+Source (read 6 October):
+https://data.gov.sg/datasets/d_c9f57187485a850908655db0e8cfe651/view
+
+No transaction-level external rent data was downloaded, matched or used for
+training. Direct test-period rent lookup would change the information problem
+and requires explicit instructor clarification before consideration. This
+availability finding does not explain, or allege anything about, other teams'
+scores. The current pipeline uses only supplied training rental labels.
+
+Non-transaction macro candidates are available from official sources:
+- Monthly CPI, SingStat/data.gov.sg:
+  https://data.gov.sg/datasets/d_bdaff844e3ef89d39fceb962ff8f0791/view
+- Quarterly private-residential rental indices, URA:
+  https://www.ura.gov.sg/property-data/
+  https://eservice.ura.gov.sg/property-market-information/pmiResidentialTimeseries
+
+These sources were investigated, not imported or trained this round. Release
+lags, historical revisions, licences and HDB/private-market applicability still
+need checking before use. Provided COE and stock tables are being tested
+separately with a previous-month join and an origin-only availability control;
+their snapshot timing is not equivalent to verified real-time availability.
+
+The 2023 competition is a related HDB rent/RMSE task, not a verified identical
+dataset. Its public winner scored 477.52195 and final private winner 478.81397;
+the older public/private scores cannot establish a noise floor for this edition.
+Source: https://www.kaggle.com/competitions/cs5228-2310-final-project/leaderboard

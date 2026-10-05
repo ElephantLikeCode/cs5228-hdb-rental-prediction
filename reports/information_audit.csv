@@ -1,0 +1,56 @@
+dataset,check,field,rows,unique,missing,value,detail
+train,field,RENT_APPROVAL_DATE,150000.0,51.0,0.0,,input
+train,field,TOWN,150000.0,26.0,0.0,,input
+train,field,BLOCK,150000.0,2720.0,0.0,,input
+train,field,STREET,150000.0,1146.0,0.0,,input
+train,field,FLAT_TYPE,150000.0,11.0,0.0,,input
+train,field,FLAT_MODEL,150000.0,20.0,0.0,,input
+train,field,FLOOR_AREA_SQM,150000.0,156.0,0.0,,input
+train,field,FURNISHED,150000.0,1.0,0.0,,input
+train,field,LEASE_COMMENCE_DATE,150000.0,57.0,0.0,,input
+train,field,FEE,150000.0,1.0,0.0,,input
+train,field,MONTHLY_RENT,150000.0,608.0,0.0,,target
+train,month_min,RENT_APPROVAL_DATE,150000.0,,,2021-01,month precision only
+train,month_max,RENT_APPROVAL_DATE,150000.0,,,2025-03,month precision only
+train,canonical_category_count,TOWN,150000.0,,,26,production normalization
+train,canonical_category_count,FLAT_TYPE,150000.0,,,6,production normalization
+train,canonical_category_count,FLAT_MODEL,150000.0,,,20,production normalization
+train,canonical_category_count,STREET,150000.0,,,576,production normalization
+train,identical_input_rows,all_inputs,150000.0,,,40204,not proof of repeated individual-flat transactions
+test,field,RENT_APPROVAL_DATE,50000.0,17.0,0.0,,input
+test,field,TOWN,50000.0,26.0,0.0,,input
+test,field,BLOCK,50000.0,2660.0,0.0,,input
+test,field,STREET,50000.0,1129.0,0.0,,input
+test,field,FLAT_TYPE,50000.0,6.0,0.0,,input
+test,field,FLAT_MODEL,50000.0,19.0,0.0,,input
+test,field,FLOOR_AREA_SQM,50000.0,148.0,0.0,,input
+test,field,FURNISHED,50000.0,1.0,0.0,,input
+test,field,LEASE_COMMENCE_DATE,50000.0,57.0,0.0,,input
+test,field,FEE,50000.0,1.0,0.0,,input
+test,month_min,RENT_APPROVAL_DATE,50000.0,,,2025-03,month precision only
+test,month_max,RENT_APPROVAL_DATE,50000.0,,,2026-07,month precision only
+test,canonical_category_count,TOWN,50000.0,,,26,production normalization
+test,canonical_category_count,FLAT_TYPE,50000.0,,,6,production normalization
+test,canonical_category_count,FLAT_MODEL,50000.0,,,19,production normalization
+test,canonical_category_count,STREET,50000.0,,,573,production normalization
+test,identical_input_rows,all_inputs,50000.0,,,13973,not proof of repeated individual-flat transactions
+train,overlap_month_rows,RENT_APPROVAL_DATE,150000.0,,,3032,overlapping month bins: 2025-03
+test,overlap_month_rows,RENT_APPROVAL_DATE,50000.0,,,380,overlapping month bins: 2025-03
+test,unseen_canonical_category_rows,TOWN,50000.0,,,0,relative to full provided training data
+test,unseen_canonical_category_rows,FLAT_TYPE,50000.0,,,0,relative to full provided training data
+test,unseen_canonical_category_rows,FLAT_MODEL,50000.0,,,0,relative to full provided training data
+test,unseen_canonical_category_rows,STREET,50000.0,,,0,relative to full provided training data
+auxiliary,usage,sg-coe-prices.csv,,,,not used,current production feature construction
+auxiliary,usage,sg-hdb-block.csv,,,,spatial features,current production feature construction
+auxiliary,usage,sg-mrt-stations.csv,,,,spatial features,current production feature construction
+auxiliary,usage,sg-schools.csv,,,,spatial features,current production feature construction
+auxiliary,usage,sg-shopping-malls.csv,,,,spatial features,current production feature construction
+auxiliary,usage,sg-stock-prices.csv,,,,not used,current production feature construction
+train,spatial_join_missing,LATITUDE,150000.0,,,0,before model missing-value preparation
+train,spatial_join_missing,LONGITUDE,150000.0,,,0,before model missing-value preparation
+train,spatial_join_missing,MAX_FLOOR,150000.0,,,0,before model missing-value preparation
+train,spatial_join_missing,YEAR_COMPLETED,150000.0,,,0,before model missing-value preparation
+test,spatial_join_missing,LATITUDE,50000.0,,,0,before model missing-value preparation
+test,spatial_join_missing,LONGITUDE,50000.0,,,0,before model missing-value preparation
+test,spatial_join_missing,MAX_FLOOR,50000.0,,,0,before model missing-value preparation
+test,spatial_join_missing,YEAR_COMPLETED,50000.0,,,0,before model missing-value preparation

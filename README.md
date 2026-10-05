@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Thirty-three automated tests cover data contracts,
+50,000-row submission generator. Fifty automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -45,6 +45,17 @@ windows by 4.63, 2.65 and 2.81 RMSE, but **worsens Apr 2023-Mar 2024 by 10.55**,
 with all 12 months worsening and systematic overprediction. The windows overlap;
 they are development evidence, not independent tests or a private-score guarantee.
 Full results remain in `reports/temporal_summary.csv` and `docs/PROGRESS.md`.
+
+The 6 October feedback-driven GPU screen tested five predictors and their fixed
+25% blends on the recent quarter and sixteen-month window. None improved both
+windows, so no mainline replacement or new submission was generated. Exact
+RMSE/MAE/bias, cutoffs, hashes and incremental runtimes are recorded in
+`reports/feedback_results.csv`; definitions and subgroup insights are appended
+to `docs/PROGRESS.md`. The specialists/mixture use one screening seed, compared
+with the frozen eight-component reference; this is a deployment-candidate screen,
+not an equal-capacity causal comparison. The mixture classifier has 1,000 trees;
+its three regression experts each have 1,600. Cached-reference fit time is zero
+in the ledger because it was reused; blend times exclude original mainline fitting.
 
 The current mainline replaces only the normal-history half with four extra
 town/flat-type momentum features. Relative to the retained reference it improves
@@ -291,6 +302,122 @@ same summary command with `--reference-candidate local_trend_history_diversity_b
 This refreshes the existing summary for that reference; rerun the documented
 hierarchical-reference command to restore the canonical report view.
 
+Feedback-driven experiments use one separate entry point and never overwrite
+the selected model or submission:
+
+```bash
+python src/feedback_experiments.py --smoke --windows short_recent --task-type GPU
+python src/feedback_experiments.py --windows short_recent horizon16 --families nearest specialists mixture --task-type GPU --resume
+python src/feedback_experiments.py --audit-only
+python src/feedback_experiments.py --families crossfit --windows short_recent --task-type GPU --smoke
+python src/feedback_experiments.py --families crossfit --windows short_recent horizon16 --seed 42 --task-type GPU --resume
+python src/feedback_experiments.py --families market learners correction --windows short_recent horizon16 --task-type GPU --smoke
+python src/feedback_experiments.py --families market learners correction --windows short_recent horizon16 --seed 42 --task-type GPU --resume
+python src/feedback_experiments.py --families ridge_guarded --windows short_recent horizon16 --task-type GPU --resume
+```
+
+The nearest-comparable predictor matches canonical flat type and uses location,
+area, lease age and recency. Its three market forecasts are a constant level,
+the existing six-month damping, and bounded linear extrapolation. Flat-type
+specialists split 3-room, 4-room, 5-room/executive and smaller flats; sparse
+groups fall back to the frozen mainline. The rent mixture trains three target-
+band regressors and a feature-based classifier, then combines the regressors
+using predicted probabilities. Validation rent never chooses a prediction route.
+Each alternative is tested alone and in a predefined 25% blend with the mainline.
+The GPU screen uses seed 42 and 1,600 trees per regressor, versus the frozen
+eight-component mainline; it is a practical candidate screen, not an isolated
+equal-capacity ablation. Promising trained candidates need a second seed and
+matched longer/older-period confirmation before promotion. Smoke runs use
+reduced data and 40 trees and are excluded from formal result tables.
+
+The cross-fitting follow-up preserves original history features and targets.
+Four comparable groups receive eight relative-rent mean/support features, or
+sixteen features including dispersion and the rate below 65% of the reference
+market level. Five input-group folds exclude every query-fold label; canonical
+identical inputs share a fold. A strict-past control computes the same statistics
+from earlier training months. Both encodings use identical outer-training-only
+statistics for future validation. The contrast separates the training-encoding
+rule from the added feature definitions. Original direct/residual same-seed
+predictions supply matched references. `comparison_gain` compares a component
+or normal-history pair with its matched reference; `gain` compares with the full
+mainline; `crossfit_vs_past_gain` compares identical distribution features under
+the two encoding rules. `replace_seed` changes only two of the eight components.
+It requires a second-seed and other-window check before any full promotion.
+New-fit times are recorded per regressor; paired/ensemble rows reuse those fits.
+Cross-fit statistic computation time is recorded separately. Audit summaries
+stay in `reports/information_audit.csv`; run-specific sources, fold assignments,
+encoded features, predictions and subgroup tables remain in ignored artifacts.
+
+The market screen adds supplied monthly COE premiums, three-month changes and
+bid/quota demand ratios, plus a median-return stock index, returns, volatility,
+breadth and coverage. Each rental row uses the PREVIOUS month, without backward
+filling. The `origin_only` control freezes future economic inputs before the
+forecast origin; other variants assume the provided future-month snapshot is
+permitted for this offline task. Neither assumption establishes real-time release
+availability. Stock membership is snapshot-based; CLOSE avoids ex-post dividend
+adjustments but not every corporate-action distortion. The COE-only/stock-only
+screens share a missing-data-availability indicator across the supplied sources.
+
+The matched learner screen compares original and market-augmented inputs with
+GPU XGBoost (native categorical vocabularies fitted on training only) and CPU
+Ridge (training-only imputation/scaling and one-hot encoding, alpha 100). A
+follow-up clips Ridge inference inputs to training-input ranges; the original
+rent offset is preserved. This checks unbounded extrapolation, not a new target
+or cleaned validation subset. The guarded Ridge origin-only control reuses the
+same fitted market model. CatBoost origin-only and supplied-snapshot controls
+use separate same-seed fits; small GPU fit variation remains a confound.
+
+The targeted correction uses the latest twelve months of honest earlier-origin
+OOF predictions, not fitted-training residuals. It trains a 600-tree depth-4
+residual regressor, or a classifier plus two residual experts for rents below
+65% of the OOF base prediction. Routing at validation uses predicted probabilities
+only. Fixed correction strengths are 25% and 50%. Its geographic/flat/area/age
+inputs denote comparable transactions, not individual-flat identity. Label-based
+rent groups are diagnosis only. A source-verified saved-run summary can append
+descriptive address-cluster gain intervals without training:
+
+```bash
+python src/feedback_experiments.py --summarize-runs 8050c7a295047db8 e3bf7c874aee98da
+```
+
+This command requires those original ignored local run artifacts. Canonical
+ledger `trees` is the per-regressor tree budget (Ridge/nearest neighbours: zero;
+targeted corrections: 600); paired/replacement/blend rows reuse fits. The earlier
+absolute-rent mixture classifier has 1,000 trees in addition to its three
+1,600-tree experts. `actual_device` distinguishes CPU Ridge from GPU boosters.
+Intervals are exploratory within overlapping development windows and are not
+independent confirmation or estimates of private leaderboard performance.
+
+The market/learner/correction screen and guarded-Ridge follow-up are complete:
+32 GPU fits and eight CPU Ridge fits across two windows, with 104 new formal
+score rows. No candidate improves both windows enough to advance. Mainline
+RMSE remains 440.7629/483.4345; the best long-window guarded Ridge blend reaches
+481.5146 but loses recently (442.3978). Relative-low-rent detection is weak
+(AUC 0.576/0.543), and neither tested correction improves the recent window.
+No new CSV or production replacement was made. Exact negative results and
+external-data boundaries are recorded in PROGRESS and KAGGLE_AUDIT.
+
+The cross-fitting follow-up is complete (seed 42, both windows, twelve regressor fits).
+The cross-fitted distribution pair loses 17.18/20.28 RMSE to the identical-
+statistic strict-past control. Replacing two mainline heads with strict-past
+statistics gains only 0.122/0.136, below the advancement gate; the mainline and
+submissions are retained. Details and subgroup interpretations are in PROGRESS.
+The ledger distinguishes standalone, paired and actual two-head-replacement
+scores. A cached same-seed reference is not retrained. Raw records remain retained;
+the audit confirms complete supplied block joins, constant FEE/FURNISHED and no
+unseen canonical town/flat/model/street categories in the supplied test set.
+
+`reports/feedback_results.csv` records metrics, dates, time, feature groups,
+source prediction IDs and hashes. Exact configurations, candidate predictions
+and group diagnostics stay locally under `artifacts/feedback_study/`.
+
+Categorical preprocessing is model-specific: canonical text is passed through
+CatBoost's native categorical handling; Linear/Ridge use one-hot encoding;
+the original classical tree baselines use ordinal encoding. An address/flat-type
+history denotes comparable transactions, not an identified individual flat.
+Identical rows are retained because the dataset cannot establish whether they
+refer to the same flat.
+
 The original classroom baseline/ablation study remains reproducible with
 `python src/run_experiments.py --task-type GPU` and its `--long-horizon` option.
 Those commands refresh the historical reference tables and use early stopping;
@@ -381,13 +508,20 @@ configs/model.json         Current submission recipe and hyperparameters
 src/validation.py          Rolling time folds and regression/error metrics
 src/generate_eda.py        Reproducible EDA figures and summaries
 src/run_experiments.py     Baselines, rolling validation, and feature ablations
+src/feedback_experiments.py   Entry point for information audit and feedback-driven experiments
+src/market_experiments.py     Research-only monthly COE/stocks, matched learners and OOF corrections
 src/generate_figures.py    Report-ready experiment and error plots
 src/update_progress.py     Refresh current results in the cumulative progress log
 src/train_final_model.py   Train the selected model and validate its submission
 reports/temporal_comparison.csv   Current fixed-budget per-fit evidence
 reports/temporal_summary.csv      Matched-seed and fixed-blend comparisons
+reports/feedback_results.csv      Feedback-driven screens; not a mainline selection
+reports/information_audit.csv     Aggregate input and spatial-join audit
 reports/final_model_metadata.json Exact local model and submission provenance
 reports/kaggle_submissions.csv    Only actually submitted public scores
+progress_report/main.tex          Editable source for the 14-slide progress report
+progress_report/assets/           NUS logo and the five figures used by the report
+output/pdf/CS5228_Progress_Report.pdf   Submission-ready progress-report PDF
 tests/                     Automated data, feature, and validation tests
 requirements.txt           Exact verified direct dependencies
 ```
@@ -410,8 +544,9 @@ git switch -c feature/short-description
 
 Before opening a pull request, run `python src/check_setup.py` and
 `python -m pytest -q`. Keep reusable logic in `src/`, use notebooks only for
-exploration, and never commit course data, templates, credentials, trained
-models, or generated submissions.
+exploration, and never commit course data, credentials, trained models, or
+generated submissions. The adapted progress-report source and its selected
+figures are versioned so that the submitted PDF can be reproduced.
 
 ## Course deliverables and next work
 
@@ -426,6 +561,19 @@ Canvas rechecked on 21 September 2026:
   former local 6 November date, or the Kaggle closing date, as a confirmed course deadline.
 - Source: https://canvas.nus.edu.sg/courses/93866/pages/project
 
+The current 14-slide draft is `output/pdf/CS5228_Progress_Report.pdf`. Edit
+`progress_report/main.tex`, then rebuild with a LaTeX installation containing
+Beamer:
+
+```bash
+cd progress_report
+latexmk -pdf -outdir=../output/pdf -jobname=CS5228_Progress_Report main.tex
+```
+
+The title page lists all four team members and their student IDs. Before
+submission, let every member confirm the spelling and ID pairing, and review
+the claims and AI declaration.
+
 No further experiments are scheduled by this closeout. When the team resumes:
 
 1. Reproduce setup/tests and agree on member ownership.
@@ -433,7 +581,7 @@ No further experiments are scheduled by this closeout. When the team resumes:
    monthly/town/flat-type errors before tuning against public scores.
 3. Maintain one mainline and, only when justified, a complementary final candidate;
    preserve both outlier-policy submissions as historical evidence.
-4. Prepare the progress report from existing EDA, baselines, ablations and failures.
+4. Prepare the final report from existing EDA, baselines, ablations, failures and instructor feedback.
 5. Verify the final deadline and freeze/reproduce the final pipeline before delivery.
 
 Keep one cumulative `docs/PROGRESS.md`, one main results table here, and the

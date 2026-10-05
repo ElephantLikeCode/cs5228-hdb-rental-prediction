@@ -352,3 +352,76 @@ When the user resumes work:
 
 The single cumulative technical record remains `docs/PROGRESS.md`; README keeps
 one main comparison table. Historical reports are evidence, not active recipes.
+
+## Feedback-driven priority update - 6 October 2026
+
+Stacking stays as the retained alternative; additional weight searches are low
+priority. The bounded nearest-comparable, flat-type specialist and probabilistic
+rent-mixture screen is complete: none passed the recent-and-long-window gate.
+Keep the current mainline and do not extrapolate these failures to every possible
+configuration of these methods. Explain gains
+by observable groups and distinguish those groups from target-price diagnostics.
+Only candidates with a meaningful recent improvement and consistent long-window
+evidence advance to a second seed and potential mainline replacement. Keep all
+raw labels and identical rows in the primary comparison. Record rejected methods
+as well as accepted ones in the cumulative PROGRESS record.
+
+Start the final report alongside experiments: clarify the absence of individual-
+flat IDs, native CatBoost versus classical-model encoding, precise candidate
+definitions, and the limits of chronological and identical-input diagnostics.
+Professor feedback is advice rather than a requirement to adopt a particular model.
+
+Next priority is an isolated test of inner-fold-excluded comparable-flat premium
+and dispersion features. Outer validation labels remain completely unavailable
+to encoders and fitting; all input-only flat/location groupings are explicitly
+not unique-flat identities. Compare the same original history/target recipe
+with and without these features before changing any other component. Diagnose
+low-rent overprediction and total squared-error contribution rather than focusing
+only on the highest-RMSE or executive-flat subgroup. Neither a public score near
+173 nor the validation-label oracle diagnostic establishes a feasible score for
+our current inputs. The full completed screen and numerical evidence are in
+`docs/PROGRESS.md` and `reports/feedback_results.csv`.
+
+The user has completed the audit/cross-fitting priority. The aggregate audit is now
+available in `reports/information_audit.csv`; `--families crossfit` runs the
+paired mean, distribution and strict-past-statistic controls through the existing
+experiment entry point. Preserve the 5-fold assignments and source snapshots
+locally for report reproducibility. The protocol and relative-price error
+diagnostic are appended to PROGRESS. The two-window seed-42 screen is complete:
+full-interval cross-fitted pairs lost substantially, and strict-past-statistic
+replacement gained only 0.122/0.136 RMSE in the eight-component ensemble. None
+passes the advancement gate. Keep the mainline; no new submission is needed for
+these configurations. Next test unused supplied COE/stock monthly information in
+a bounded market-level study with explicit availability assumptions, followed if
+justified by targeted residual correction or a matched independent learner. Do
+not interpret this result as rejecting every cross-fitting/encoding method.
+
+## Market/learner/correction study closeout — 6 October 2026
+
+The unused supplied COE/stocks study, matched original/augmented XGBoost and
+Ridge comparison, honest OOF residual correction and relative-low-rent mixture
+screen are complete on the recent quarter and sixteen-month window. A bounded
+Ridge extrapolation follow-up is also complete. No configuration passes the
+recent-and-long advancement gate; preserve the current mainline and the fixed
+stacking alternative. Do not schedule second-seed confirmation or generate a
+submission for these rejected configurations. Exact results, limitations and
+50-test QA are appended to the same PROGRESS record and feedback result ledger.
+
+The low-rent event has weak observable ranking signal, but neither tested
+correction improves recent RMSE. Do not claim it is completely unpredictable,
+automatically erroneous, or solved. Raw rows and labels remain retained.
+
+The official external-source/rules investigation identified overlapping public
+HDB rental records; no external rent labels were downloaded or used. Ask the
+instructor to clarify whether test-period rental records are permitted before
+considering any matching experiment. Do not infer how other teams achieved low
+scores. CPI/URA indicators remain optional future work requiring release/revision
+timing checks, not a completed imported-data experiment.
+
+Next actions: start the final report from the accumulated positive/negative
+evidence; specify candidate definitions, category encoding, comparable-group
+identity limitations and macro availability assumptions. Confirm the final
+deadline and team ownership. Resume modeling with a new information hypothesis,
+not repeated tiny weight or threshold searches. The six original directions
+were addressed by audit and bounded experiments; useful low-rent identification
+and permission for overlapping external rental labels remain unresolved.
