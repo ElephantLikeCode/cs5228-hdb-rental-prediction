@@ -5,7 +5,11 @@ Invoked by feedback_experiments.py; never modifies the production recipe.
 from __future__ import annotations
 
 import gc
+import hashlib
+import json
+import re
 import time
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +26,224 @@ try:
     from .modeling import CANDIDATES, fit_model, predict_model, target_offset
 except ImportError:
     from modeling import CANDIDATES, fit_model, predict_model, target_offset
+
+
+PUBLIC_MACRO_URLS = {
+    "cpi": "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751?limit=100000",
+    "ura": "https://data.gov.sg/api/action/datastore_search?resource_id=d_8e4c50283fb7052a391dfb746a05c853&limit=10000",
+}
+
+
+def download_public_macro(directory):
+    """Cache only official aggregate indices, never individual rental records.
+
+    Existing downloads are immutable. Delete/move them explicitly to refresh;
+    experiments identify the original bytes, including the current data vintage.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    receipt = {}
+    for name, url in PUBLIC_MACRO_URLS.items():
+        path = directory / f"{name}.json"
+        if not path.exists():
+            error = None
+            for attempt in range(4):
+                try:
+                    request = urllib.request.Request(url, headers={
+                        "User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+                    with urllib.request.urlopen(request, timeout=45) as response:
+                        payload = response.read()
+                    value = json.loads(payload)
+                    if name == "cpi":
+                        assert any(row["rowText"] == "All Items" for row in value["Data"]["row"])
+                    else:
+                        assert value["success"] and len(value["result"]["records"]) == value["result"]["total"]
+                    path.write_bytes(payload)
+                    break
+                except Exception as exc:
+                    error = exc
+                    if attempt == 3:
+                        raise RuntimeError(f"Official {name} download failed") from error
+                    time.sleep(1)
+        receipt[name] = dict(url=url, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    (directory / "manifest.json").write_text(json.dumps(receipt, indent=2))
+    return receipt
+
+
+def public_macro_tables(directory):
+    """Latest-vintage data with conservative release lags; no future bfill.
+
+    Month-only rentals use information available at the START of the month.
+    CPI is released late the following month, so activate month m at m+2.
+    URA full quarterly statistics are published the following month; activate
+    quarter q at the start of the second month after quarter end. Revisions and
+    2024-base CPI rebasing are NOT reconstructed into original historic vintages.
+    """
+    cpi = json.loads((directory / "cpi.json").read_text())
+    row = next(row for row in cpi["Data"]["row"] if row["rowText"] == "All Items")
+    values = pd.Series({pd.Period(pd.to_datetime(c["key"], format="%Y %b"), freq="M"):
+                        float(c["value"]) for c in row["columns"]}).sort_index()
+    a = pd.DataFrame({"PUBLIC_CPI_LEVEL": values / 100.,
+        "PUBLIC_CPI_YOY": values.pct_change(12, fill_method=None),
+        "PUBLIC_CPI_CHANGE3": values.pct_change(3, fill_method=None)})
+    a.index = (a.index + 2).to_timestamp()
+    ura = json.loads((directory / "ura.json").read_text())["result"]
+    if len(ura["records"]) != ura["total"]:
+        raise ValueError("Incomplete URA API pagination")
+    rows = pd.DataFrame(ura["records"])
+    # The official dataset's All Residential series stops in 2021-Q2.
+    # Use one continuous Non-Landed Whole Island series; never splice indices.
+    selected = rows.loc[rows.property_type.eq("Non-Landed") & rows.locality.eq("Whole Island")]
+    if selected.quarter.duplicated().any() or selected.empty:
+        raise ValueError("Unexpected URA non-landed series")
+    q = pd.PeriodIndex(selected.quarter.str.replace("-", "", regex=False), freq="Q")
+    v = pd.Series(selected["index"].to_numpy(float), index=q).sort_index()
+    b = pd.DataFrame({"PUBLIC_URA_LEVEL": v / 100.,
+        "PUBLIC_URA_YOY": v.pct_change(4, fill_method=None),
+        "PUBLIC_URA_CHANGE1": v.pct_change(fill_method=None)})
+    b.index = (b.index.asfreq("M", "end") + 2).to_timestamp()
+    return {"cpi": a, "ura": b}
+
+
+def align_public_macro(table, query, origin=None):
+    """Backward as-of release join. Freeze forecasts at their shared origin."""
+    dates = pd.to_datetime(query.RENT_APPROVAL_DATE, format="%Y-%m")
+    if origin is not None:
+        dates = dates.clip(upper=pd.Timestamp(origin))
+    keys = pd.DataFrame({"date": dates.to_numpy(), "row": np.arange(len(query))})
+    source = table.sort_index().rename_axis("available").reset_index()
+    merged = pd.merge_asof(keys.sort_values("date"), source, left_on="date", right_on="available")
+    merged = merged.sort_values("row").reset_index(drop=True)
+    result = merged[table.columns].copy()
+    prefix = table.columns[0].rsplit("_", 1)[0]
+    result[prefix + "_MISSING"] = result.isna().mean(axis=1)
+    result[prefix + "_STALE_MONTHS"] = (
+        dates.reset_index(drop=True).dt.year * 12 + dates.reset_index(drop=True).dt.month -
+        merged.available.dt.year * 12 - merged.available.dt.month).fillna(0)
+    return result.fillna(0.)
+
+
+def station_calendar(stations, schedule):
+    """Preserve every supplied row, recording verified versus excluded service.
+
+    The catalog is incomplete for LRT; only supplied legacy LRT rows are used.
+    Duplicate interchange platforms are deduplicated later by physical NAME.
+    Legacy dates are lower-bound flags, not invented historical service dates.
+    """
+    result = stations.copy().reset_index(drop=True)
+    result["effective"] = pd.NaT
+    result["announced"] = pd.NaT
+    result["source"] = "unverified_or_future_excluded"
+    for i, code in enumerate(result.CODE.str.lower()):
+        match = re.fullmatch(r"(ew|ns|ne|cc|dt|cg|te)(\d+)", code)
+        prefix, number = (match.group(1), int(match.group(2))) if match else ("", -1)
+        legacy = (prefix == "ew" and 1 <= number <= 33 or
+                  prefix == "ns" and 1 <= number <= 28 and number != 6 or
+                  prefix == "ne" and 1 <= number <= 17 or
+                  prefix == "cc" and (1 <= number <= 29 and number != 18 or number in (33, 34)) or
+                  prefix == "dt" and 1 <= number <= 35 and number != 4 or
+                  prefix == "cg" and number in (1, 2) or
+                  prefix == "te" and number in (1, 2, 3) or
+                  code in ("bp1", "bp6", "pe4", "ptc", "stc"))
+        if legacy:
+            result.loc[i, ["effective", "announced"]] = pd.Timestamp("2021-01-01")
+            result.loc[i, "source"] = "operational_before_study"
+    for event in schedule["events"]:
+        mask = result.CODE.isin(event["codes"])
+        if mask.sum() != len(event["codes"]):
+            raise ValueError("Opening schedule does not match supplied station codes")
+        result.loc[mask, "effective"] = (pd.Period(event["opening_date"], freq="M") + 1).to_timestamp()
+        result.loc[mask, "announced"] = pd.Timestamp(event["announced_date"])
+        result.loc[mask, "source"] = event["source"]
+    return result
+
+
+def rail_features(query, core, calendar, origin=None, static=False, events=False):
+    """Rental-month service; new line events include already existing interchanges.
+
+    Validation uses only openings with a dated announcement before its origin.
+    Opening months are treated as pre-opening because the rental day is unknown.
+    Fixed-origin static features are a snapshot control, not historic availability.
+    """
+    try:
+        from .features import _facility_features, EARTH_RADIUS_KM
+    except ImportError:
+        from features import _facility_features, EARTH_RADIUS_KM
+    result = pd.DataFrame(index=np.arange(len(query)))
+    months = pd.to_datetime(query.RENT_APPROVAL_DATE, format="%Y-%m").reset_index(drop=True)
+    known = calendar if origin is None else calendar.loc[
+        calendar.source.eq("operational_before_study") | calendar.announced.lt(pd.Timestamp(origin))]
+    for month in sorted(months.unique()):
+        ids = np.flatnonzero(months.eq(month))
+        when = pd.Timestamp(origin) if static else pd.Timestamp(month)
+        open_lines = known.loc[known.effective.le(when)]
+        physical = open_lines.drop_duplicates("NAME")
+        if physical.empty:
+            raise ValueError("No verified service at query date")
+        block = core.iloc[ids][["LATITUDE", "LONGITUDE"]].reset_index(drop=True)
+        features = _facility_features(block, physical.reset_index(drop=True), "MRT")
+        if events:
+            new = open_lines.loc[open_lines.source.ne("operational_before_study")]
+            if len(new):
+                lat = np.radians(block.LATITUDE.to_numpy())[:, None]
+                lon = np.radians(block.LONGITUDE.to_numpy())[:, None]
+                lat2 = np.radians(new.LATITUDE.to_numpy())[None, :]
+                lon2 = np.radians(new.LONGITUDE.to_numpy())[None, :]
+                d = 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(
+                    np.sin((lat2-lat)/2)**2 + np.cos(lat)*np.cos(lat2)*np.sin((lon2-lon)/2)**2, 0, 1)))
+                age = (when.year * 12 + when.month - new.effective.dt.year * 12 - new.effective.dt.month).to_numpy()
+                recent = age < 12
+                features["RAIL_NEW_LINE_ACCESS"] = np.exp(-d/.8).sum(axis=1)
+                features["RAIL_RECENT_LINE_ACCESS"] = (np.exp(-d/.8) * recent).sum(axis=1)
+                features["RAIL_MONTHS_SINCE_NEAREST_NEW_LINE"] = np.minimum(age[d.argmin(axis=1)], 60)
+            else:
+                features["RAIL_NEW_LINE_ACCESS"] = 0.
+                features["RAIL_RECENT_LINE_ACCESS"] = 0.
+                features["RAIL_MONTHS_SINCE_NEAREST_NEW_LINE"] = 60.
+        for column in features:
+            if column not in result:
+                result[column] = "" if column == "NEAREST_MRT" else 0.
+            result.loc[ids, column] = features[column].to_numpy()
+    return result
+
+
+def public_information_predictions(train, valid, X_train, y, X_valid, config, seed,
+                                  task_type, baseline, components, tables, calendar,
+                                  selected=None, monthly_controls=False):
+    """Isolated macro, corrected static rail, dynamic rail and joint ablations."""
+    origin = valid.RENT_APPROVAL_DATE.min()
+    variants, controls = {}, {}
+    extras = {}
+    for name, table in tables.items():
+        extras[name] = (align_public_macro(table, train), align_public_macro(table, valid, origin))
+        variants[name] = (X_train.join(extras[name][0]), X_valid.join(extras[name][1]), "catboost")
+        if monthly_controls:
+            controls[name] = {"monthly": X_valid.join(align_public_macro(table, valid))}
+    ma = pd.concat([pair[0] for pair in extras.values()], axis=1)
+    mb = pd.concat([pair[1] for pair in extras.values()], axis=1)
+    variants["macro_both"] = (X_train.join(ma), X_valid.join(mb), "catboost")
+    if monthly_controls:
+        released = pd.concat([align_public_macro(table, valid) for table in tables.values()], axis=1)
+        controls["macro_both"] = {"monthly": X_valid.join(released)}
+    rail_columns = [c for c in X_train if c.startswith(("DIST_MRT", "COUNT_MRT", "NEAREST_MRT"))]
+    for name, static, events in (("rail_static", True, False), ("rail_dynamic", False, False),
+                                 ("rail_events", False, True)):
+        a = rail_features(train, X_train, calendar, origin if static else None, static, events)
+        b = rail_features(valid, X_valid, calendar, origin, static, events)
+        fit = X_train.drop(columns=rail_columns).join(a)
+        query = X_valid.drop(columns=rail_columns).join(b)
+        variants[name] = (fit, query, "catboost")
+        if monthly_controls and not static:
+            monthly_rail = X_valid.drop(columns=rail_columns).join(
+                rail_features(valid, X_valid, calendar, events=events))
+            controls[name] = {"monthly": monthly_rail}
+        if events:
+            variants["combined"] = (fit.join(ma), query.join(mb), "catboost")
+            if monthly_controls:
+                controls["combined"] = {"monthly": monthly_rail.join(released)}
+    if selected:
+        variants = {name: variant for name, variant in variants.items() if name in selected}
+    return paired_methods(X_train, y, X_valid, config, seed, task_type, baseline,
+                          components, variants, "public", controls)
 
 
 def monthly_market(auxiliary: Path) -> pd.DataFrame:
@@ -79,7 +301,7 @@ def align_market(table, query, origin=None):
 
 
 def paired_methods(X_train, y, X_valid, config, seed, task_type, baseline, components,
-                   variants, prefix):
+                   variants, prefix, query_controls=None):
     predictions, seconds = {}, {}
     for name, (a, b, learner) in variants.items():
         for mode in ("direct", "residual"):
@@ -92,19 +314,25 @@ def paired_methods(X_train, y, X_valid, config, seed, task_type, baseline, compo
             key = f"{prefix}_{name}_{mode}"
             predictions[key] = predict_model(model, b, cfg)
             seconds[key] = time.perf_counter() - clock
+            for label, query in (query_controls or {}).get(name, {}).items():
+                control_key = f"{prefix}_{name}_{label}_{mode}"
+                predictions[control_key] = predict_model(model, query, cfg)
+                seconds[control_key] = seconds[key]
             del model
             gc.collect()
-        direct, residual = (predictions[f"{prefix}_{name}_{m}"] for m in ("direct", "residual"))
-        pair = (direct + residual) / 2
-        cost = sum(seconds[f"{prefix}_{name}_{m}"] for m in ("direct", "residual"))
-        predictions[f"{prefix}_{name}_normal_view"] = pair
-        predictions[f"{prefix}_{name}_replace_seed"] = baseline + (
-            direct - components[("local_trend_direct", seed)][:len(b)] +
-            residual - components[("local_trend_residual", seed)][:len(b)]) / 8
-        # Fixed blend checks complementarity, not an equal-capacity comparison.
-        predictions[f"{prefix}_{name}_blend25"] = .75 * baseline + .25 * pair
-        for suffix in ("normal_view", "replace_seed", "blend25"):
-            seconds[f"{prefix}_{name}_{suffix}"] = cost
+        for label in [None, *(query_controls or {}).get(name, {})]:
+            stem = f"{prefix}_{name}" + (f"_{label}" if label else "")
+            direct, residual = (predictions[f"{stem}_{m}"] for m in ("direct", "residual"))
+            pair = (direct + residual) / 2
+            cost = sum(seconds[f"{stem}_{m}"] for m in ("direct", "residual"))
+            predictions[f"{stem}_normal_view"] = pair
+            predictions[f"{stem}_replace_seed"] = baseline + (
+                direct - components[("local_trend_direct", seed)][:len(b)] +
+                residual - components[("local_trend_residual", seed)][:len(b)]) / 8
+            # Fixed blend checks complementarity, not an equal-capacity comparison.
+            predictions[f"{stem}_blend25"] = .75 * baseline + .25 * pair
+            for suffix in ("normal_view", "replace_seed", "blend25"):
+                seconds[f"{stem}_{suffix}"] = cost
     return predictions, seconds
 
 

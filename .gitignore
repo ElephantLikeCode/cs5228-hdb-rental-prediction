@@ -23,6 +23,16 @@ reports/data_audit.md
 reports/prototype_metrics.json
 submissions/*.csv
 artifacts/
+tmp/
+
+# LaTeX build intermediates; keep the final PDF
+output/pdf/*.aux
+output/pdf/*.log
+output/pdf/*.nav
+output/pdf/*.out
+output/pdf/*.snm
+output/pdf/*.toc
+progress_report/*.log
 
 # Secrets
 .env

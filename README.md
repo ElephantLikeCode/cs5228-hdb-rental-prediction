@@ -16,7 +16,7 @@ retains all labels.
 The pipeline includes canonical category cleanup, core/spatial features,
 strictly past-only comparable rents, adaptive market estimates, rolling
 validation, baseline/feature ablations, grouped errors, EDA and a validated
-50,000-row submission generator. Fifty automated tests cover data contracts,
+50,000-row submission generator. Automated tests cover data contracts,
 feature/validation behavior and output protection.
 
 ### Model comparison — January-March 2025 validation
@@ -113,6 +113,11 @@ the existing raw files byte-for-byte. Raw data is never modified.
 Spatial amenities use the supplied snapshot (MRT status `open`), not historical
 opening dates per lease. This prediction-time availability limitation must be
 disclosed in the report; target-history leakage tests do not resolve it.
+The 6 October opening-calendar audit also found 55 supplied `open` rows outside
+the verified service calendar (future or unverified station-line entries).
+The mainline's MRT fields are therefore supplied-snapshot proxies, not certified
+historically operational service. Research variants reconstruct rental-month
+access and deduplicate interchange entries by station name.
 
 ## Setup from a fresh clone
 
@@ -509,7 +514,8 @@ src/validation.py          Rolling time folds and regression/error metrics
 src/generate_eda.py        Reproducible EDA figures and summaries
 src/run_experiments.py     Baselines, rolling validation, and feature ablations
 src/feedback_experiments.py   Entry point for information audit and feedback-driven experiments
-src/market_experiments.py     Research-only monthly COE/stocks, matched learners and OOF corrections
+src/market_experiments.py     Research-only economic indices, MRT dates, matched learners and OOF corrections
+configs/mrt_openings.json     Official service/announcement dates for recent MRT openings
 src/generate_figures.py    Report-ready experiment and error plots
 src/update_progress.py     Refresh current results in the cumulative progress log
 src/train_final_model.py   Train the selected model and validate its submission
@@ -545,8 +551,70 @@ git switch -c feature/short-description
 Before opening a pull request, run `python src/check_setup.py` and
 `python -m pytest -q`. Keep reusable logic in `src/`, use notebooks only for
 exploration, and never commit course data, credentials, trained models, or
-generated submissions. The adapted progress-report source and its selected
-figures are versioned so that the submitted PDF can be reproduced.
+generated submissions. The adapted progress-report source, selected figures and
+PDF are included in the shared project under the user's 6 October authorization.
+They preserve the submitted progress checkpoint; later experiments belong in the
+cumulative progress log rather than retroactively changing that PDF.
+
+## Official macro indices and MRT opening experiments
+
+Completed 6 October: 36 formal GPU fits across the recent quarter and sixteen-
+month window, with 55 tests passing. No setting met the promotion rule. Corrected
+static rail replacement gained only 0.132/0.017 RMSE, with intervals crossing
+zero; the other variants were negative or similarly small. Monthly released-
+input controls did not change the decision. Mainline/submissions are unchanged;
+full positive and negative evidence is in the existing cumulative PROGRESS log
+and feedback ledger. GPU refits are not bit-deterministic; the same-model controls
+and saved prediction/source hashes support the recorded comparisons.
+
+Use the existing experiment entry point; no separate training codebase is needed:
+
+```bash
+python src/feedback_experiments.py --download-public
+python src/feedback_experiments.py --families public --windows short_recent --task-type GPU --seed 42 --smoke
+python src/feedback_experiments.py --families public --windows short_recent horizon16 --task-type GPU --seed 42 --resume
+python src/feedback_experiments.py --families public --public-variants macro_both rail_events --public-monthly-controls --windows short_recent horizon16 --task-type GPU --seed 42 --resume
+```
+
+The downloader caches only official aggregate CPI and URA private non-landed
+whole-island rental indices under ignored `data/external/official_macro/`.
+Existing snapshots are preserved; downloads from another date may have revised
+values, so compare source hashes before claiming exact numerical reproduction.
+No external individual rental labels are downloaded or matched.
+
+Seven fixed variants test CPI, URA, both indices, corrected static rail access,
+rental-month rail access, rail opening exposure, and the combined features.
+Each uses the same original historical-rent recipe and direct/residual targets.
+Besides paired-head results, the ledger records replacing two of eight mainline
+components and a fixed 25% blend. These are deployment screens; blends are not
+equal-capacity model comparisons. `--public-variants` selects a subset for a
+confirmation run, and `--summarize-runs RUN_ID` verifies predictions and appends
+descriptive address-bootstrap intervals to the existing results table.
+
+At rental-month start, CPI activates two months after its observation month;
+URA activates two months after quarter end. All validation macro values are
+frozen at the forecast origin. Latest downloaded historical vintages are used;
+release lags do not reconstruct the original revisions or CPI rebasing.
+The optional monthly control predicts with the SAME fitted models using indices
+already published and rail service already operational by each rental month.
+This evaluates available contemporaneous covariates for dated transactions;
+it is separately labelled and does not establish a single-origin future forecast.
+Rail features use the first full month after opening and only opening dates
+announced before the validation origin. Unmapped stations stay excluded.
+The static rail control uses an origin snapshot for both fit/query and is not a
+claim of historical availability. Legacy service flags only mean operational
+before the 2021 study, not exact original opening dates. The station catalog
+remains limited to the supplied coordinates, especially its incomplete LRT rows.
+The opening features test predictive association, not a causal rent premium.
+
+Configurations, source snapshots and paired predictions remain local under
+`artifacts/feedback_study/`; aggregate outcomes use the existing
+`reports/feedback_results.csv` and `docs/PROGRESS.md`. To check report plots
+without overwriting archived figures:
+
+```bash
+python src/generate_figures.py --output-dir artifacts/plot_check
+```
 
 ## Course deliverables and next work
 

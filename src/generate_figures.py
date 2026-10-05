@@ -514,9 +514,14 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
             for field in ["TOWN", "FLAT_TYPE"]:
                 frame[field] = normalize_text(frame[field])
             frame["AREA_BAND"] = pd.cut(frame.FLOOR_AREA_SQM, [0, 60, 90, 110, 130, np.inf]).astype(str)
+            frame["RENT_BAND"] = pd.cut(
+                target,
+                [-np.inf, 2500, 3000, 3500, 4000, np.inf],
+                labels=["<=2500", "2501-3000", "3001-3500", "3501-4000", ">4000"],
+            ).astype(str)
             frame["error"], frame["squared_error"] = pred-target, (pred-target)**2
             frame["baseline_squared_error"] = (ref-target)**2
-            for field in ["MONTH", "TOWN", "FLAT_TYPE", "AREA_BAND"]:
+            for field in ["MONTH", "TOWN", "FLAT_TYPE", "AREA_BAND", "RENT_BAND"]:
                 grouped = frame.groupby(field).agg(rows=("error", "size"), bias=("error", "mean"),
                                                    mse=("squared_error", "mean"),
                                                    baseline_mse=("baseline_squared_error", "mean"),
@@ -549,7 +554,10 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
 
 
 def main() -> None:
+    global FIGURES
     parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=Path, default=FIGURES,
+                        help="Write figures to a separate directory for reproduction checks.")
     parser.add_argument("--temporal-only", action="store_true")
     parser.add_argument("--stacking-only", action="store_true",
                         help="Evaluate time-transferred meta weights from saved OOF predictions.")
@@ -561,6 +569,7 @@ def main() -> None:
     parser.add_argument("--bootstrap", action="store_true",
                         help="Add paired address-bootstrap intervals for the two-seed head blend.")
     args = parser.parse_args()
+    FIGURES = args.output_dir
     FIGURES.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", context="notebook")
     if args.stacking_only:
@@ -572,18 +581,19 @@ def main() -> None:
         return
     results = pd.read_csv(REPORTS / "experiment_results.csv")
 
+    baseline_models = {
+        "global_median", "town_flat_type_median", "linear_regression", "ridge",
+        "decision_tree", "random_forest", "hist_gradient_boosting",
+    }
     latest = results.loc[
         (results["fold"] == "2025-01_to_2025-03")
         & (
-            (results["model"] != "catboost")
-            | (results["feature_set"].str.contains("history"))
+            results["model"].isin(baseline_models)
+            | ((results["model"] == "catboost") & (results["feature_set"] == "core"))
         )
     ].copy()
     latest["label"] = latest["model"].str.replace("_", " ").str.title()
-    latest.loc[latest["model"] == "catboost", "label"] = "CatBoost (seed 42)"
-    latest.loc[
-        latest["model"] == "catboost_seed_ensemble", "label"
-    ] = "CatBoost (2-seed ensemble)"
+    latest.loc[latest["model"] == "catboost", "label"] = "CatBoost (core features)"
     latest = latest.sort_values("rmse", ascending=False)
     plt.figure(figsize=(8.5, 4.8))
     ax = sns.barplot(data=latest, x="rmse", y="label", color="#3D7EA6")
@@ -645,8 +655,14 @@ def main() -> None:
     plt.title("Strict spatial ablation (Jan-Mar 2025)")
     save("spatial_ablation.png")
 
-    groups = pd.read_csv(REPORTS / "error_analysis.csv")
-    rent_bands = groups.loc[groups["group_column"] == "RENT_BAND"].copy()
+    groups = pd.read_csv(ROOT / "artifacts" / "temporal_comparison" / "error_groups.csv")
+    rent_bands = groups.loc[
+        (groups["candidate"] == "local_trend_history_diversity_blend")
+        & (groups["window"] == "short_recent")
+        & (groups["group_column"] == "RENT_BAND")
+    ].copy()
+    if rent_bands.empty:
+        raise ValueError("Current-mainline rent-band diagnostics are missing; rerun temporal error groups")
     rent_bands["group_value"] = pd.Categorical(
         rent_bands["group_value"],
         categories=["<=2500", "2501-3000", "3001-3500", "3501-4000", ">4000"],
@@ -658,7 +674,7 @@ def main() -> None:
     ax.bar_label(ax.containers[0], fmt="%.0f", padding=4)
     plt.xlabel("Actual monthly rent band (SGD)")
     plt.ylabel("RMSE (SGD)")
-    plt.title("Selected ensemble error by rent band")
+    plt.title("Current mainline error by rent band (Jan-Mar 2025)")
     save("error_by_rent_band.png")
 
     train = pd.read_csv(ROOT / "data" / "raw" / "train.csv")

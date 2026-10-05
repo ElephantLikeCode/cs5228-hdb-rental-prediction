@@ -9,6 +9,82 @@ from src.feedback_experiments import crossfit_statistics, premium_statistics, pa
 from src.market_experiments import align_market, monthly_market, correction_features, honest_residual_rows
 from src.market_experiments import clip_to_training_range, method_budget
 from src.market_experiments import paired_gain_interval
+from src.market_experiments import align_public_macro, station_calendar, rail_features, public_macro_tables
+
+
+def test_monthly_query_control_reuses_the_same_two_fitted_models(monkeypatch):
+    from src import market_experiments as market
+    fits = []
+    def fake_fit(*args):
+        fits.append(args[2]["residual_target"])
+        return object()
+    monkeypatch.setattr(market, "fit_model", fake_fit)
+    monkeypatch.setattr(market, "predict_model", lambda model, query, cfg: query.signal.to_numpy())
+    fit = pd.DataFrame({"signal": [1., 2.]})
+    frozen = pd.DataFrame({"signal": [10., 20.]})
+    monthly = pd.DataFrame({"signal": [20., 30.]})
+    components = {(f"local_trend_{mode}", 42): np.zeros(2) for mode in ("direct", "residual")}
+    values, _ = market.paired_methods(fit, [1., 2.], frozen, {}, 42, "GPU",
+        np.full(2, 30.), components, {"macro_both": (fit, frozen, "catboost")},
+        "public", {"macro_both": {"monthly": monthly}})
+    assert fits == [False, True]
+    assert values["public_macro_both_normal_view"].tolist() == [10., 20.]
+    assert values["public_macro_both_monthly_normal_view"].tolist() == [20., 30.]
+    assert values["public_macro_both_monthly_replace_seed"].tolist() == [35., 37.5]
+
+
+def test_public_macro_release_and_origin_freeze_ignore_future_values():
+    table = pd.DataFrame({"PUBLIC_CPI_LEVEL": [1., 2., 999.]},
+        index=pd.to_datetime(["2024-11-01", "2025-01-01", "2025-02-01"]))
+    query = pd.DataFrame({"RENT_APPROVAL_DATE": ["2024-10", "2025-01", "2025-03"]})
+    frozen = align_public_macro(table, query, "2025-01")
+    assert frozen.PUBLIC_CPI_LEVEL.tolist() == [0., 2., 2.]
+    changed = table.copy()
+    changed.iloc[-1] = -999.
+    pd.testing.assert_frame_equal(frozen, align_public_macro(changed, query, "2025-01"))
+    assert frozen.PUBLIC_CPI_MISSING.tolist() == [1., 0., 0.]
+
+
+def test_public_macro_tables_activate_only_after_release_month(tmp_path):
+    cpi = {"Data": {"row": [{"rowText": "All Items", "columns": [
+        {"key": "2024 Nov", "value": "100"}, {"key": "2024 Dec", "value": "101"}]}]}}
+    ura = {"result": {"total": 1, "records": [{"quarter": "2024-Q4",
+        "property_type": "Non-Landed", "locality": "Whole Island", "index": "160"}]}}
+    (tmp_path / "cpi.json").write_text(json.dumps(cpi))
+    (tmp_path / "ura.json").write_text(json.dumps(ura))
+    tables = public_macro_tables(tmp_path)
+    assert tables["cpi"].index.min() == pd.Timestamp("2025-01-01")
+    assert tables["ura"].index.min() == pd.Timestamp("2025-02-01")
+
+
+def rail_example():
+    stations = pd.DataFrame({"CODE": ["ns1", "ew1", "te4", "cr1"],
+        "NAME": ["legacy", "legacy", "new", "future"], "STATUS": ["open"]*4,
+        "LATITUDE": [1.3, 1.3, 1.3, 1.3], "LONGITUDE": [103.81, 103.81, 103.8, 103.8]})
+    schedule = {"events": [{"codes": ["te4"], "opening_date": "2021-08-28",
+        "announced_date": "2021-06-30", "source": "official"}]}
+    return station_calendar(stations, schedule)
+
+
+def test_rail_excludes_future_codes_and_deduplicates_interchanges():
+    calendar = rail_example()
+    assert pd.isna(calendar.loc[calendar.CODE.eq("cr1"), "effective"]).all()
+    query = pd.DataFrame({"RENT_APPROVAL_DATE": ["2021-08", "2021-09"]})
+    core = pd.DataFrame({"LATITUDE": [1.3]*2, "LONGITUDE": [103.8]*2})
+    features = rail_features(query, core, calendar, events=True)
+    assert features.NEAREST_MRT.tolist() == ["legacy", "new"]
+    assert features.COUNT_MRT_2P0KM.tolist() == [1, 2]
+    assert features.RAIL_NEW_LINE_ACCESS.iloc[0] == 0.
+    assert features.RAIL_NEW_LINE_ACCESS.iloc[1] == 1.
+
+
+def test_rail_forecast_cannot_use_announcement_after_origin():
+    query = pd.DataFrame({"RENT_APPROVAL_DATE": ["2021-09"]})
+    core = pd.DataFrame({"LATITUDE": [1.3], "LONGITUDE": [103.8]})
+    assert rail_features(query, core, rail_example(), "2021-06").NEAREST_MRT.item() == "legacy"
+    assert rail_features(query, core, rail_example(), "2021-07").NEAREST_MRT.item() == "new"
+    start = pd.DataFrame({"RENT_APPROVAL_DATE": ["2021-01"]})
+    assert rail_features(start, core, rail_example(), "2021-01").NEAREST_MRT.item() == "legacy"
 
 
 def test_specialist_routing_uses_normalised_input_types():

@@ -1343,3 +1343,175 @@ Next priority is instructor clarification of the external-data boundary and
 final-report preparation. A new predictive-information hypothesis should precede
 another large model/weight search. Current mainline remains public 432.14881;
 the retained stacking alternative remains public 432.04286.
+
+### User-directed research closeout — 6 October 2026
+
+The user has declined using public transaction rental labels overlapping the
+competition test period. No such labels were imported or matched. This closes
+that proposed route without requiring instructor clarification and without
+attributing any method to other teams. CPI means an aggregate consumer price
+index; the proposed URA series measures private-residential rents, not individual
+HDB test rents. Neither optional series has been imported or trained.
+
+Low-rent identification is a completed unsuccessful screen, not a requirement
+to keep tuning. Wrong labels, special contracts and unobserved circumstances
+remain hypotheses. Preserve the raw rows and current keep-label mainline.
+Retain recent/long-horizon trade-off experiments for later reconsideration via
+their existing code, settings, scores and local predictions; no rejected final
+CBMs or new submission files are created. The user does not need an urgent
+deadline check at this point. Keep report evidence accumulating in this log.
+
+Read-only inspection confirmed the supplied MRT columns are CODE, NAME, STATUS,
+LATITUDE, LONGITUDE, SUBZONE, PLANNING_AREA and REGION. There is no opening date.
+The pipeline filters STATUS=open once and builds block-level station distances,
+nearest names and radius counts. It does not rebuild these by rental month or
+explicitly estimate opening-before/after rental effects. Static spatial
+association must not be described as a measured causal opening-date effect.
+
+Repository closeout inventory: before this documentation update, outstanding
+tracked edits were .gitignore (+10 lines of temporary/LaTeX-intermediate rules),
+reports/temporal_summary.csv (+16 bridge-window result rows), and
+src/generate_figures.py (rent-band diagnostics and report-chart selection).
+Temporal means time-based validation, not temporary data. These tracked source
+and result changes are pending review/synchronization, not files covered by the
+local-only data/model policy. Existing progress_report/ source/assets and the
+output/pdf/CS5228_Progress_Report.pdf are also untracked; README's assertion that
+they were already versioned was corrected. The report includes student IDs, so
+its publication scope should be explicit. Local-only course data, trained
+models, submission CSVs, detailed artifacts and AI notes remain local-only.
+
+This closeout edits existing documentation only: no directory moves, deletions,
+training, model/configuration changes, commits or pushes. The documentation edits
+themselves remain uncommitted, alongside the pre-existing pending changes.
+
+### Official CPI/URA and MRT service-time experiments — 6 October 2026
+
+The user requested aggregate price/rental indices and MRT opening-time features,
+followed by synchronization of maintained project files. External test-period
+individual rental-label lookup and more low-rent classifier fitting remain out
+of scope. No raw rental rows were removed.
+
+The existing `feedback_experiments.py` entry point now supports `--families public`
+and `--download-public`; reusable logic remains in `market_experiments.py`.
+No extra Python entry point or numbered-stage directory was created.
+`configs/mrt_openings.json` is the new shared configuration. Downloaded JSONs,
+station audits, source snapshots and paired predictions remain ignored/local.
+Exact official URLs, byte hashes and availability assumptions are in KAGGLE_AUDIT.
+
+Inputs: CPI All Items (2024 base) and continuous URA Non-Landed / Whole Island
+indices. The official All Residential series ends at 2021-Q2; do not treat it
+as a complete current series or splice property types. Features include index
+level, annual/short-period change, missingness and publication age. CPI activates
+at observation month +2 and URA at quarter-end month +2. Latest historical
+vintages are used; revisions and CPI rebasing are not reconstructed.
+
+The MRT calendar verifies TEL2, TEL3, TEL4, Punggol Coast and Hume service and
+announcement dates. Month-only rental dates use the first full month after
+opening. Unknown/future codes are excluded; interchange rows are deduplicated
+by physical station name. Legacy flags mean operational before the 2021 study,
+not invented exact opening dates. Coverage is limited to supplied coordinates,
+especially the incomplete LRT catalog. Fifty-five supplied `open` rows fall
+outside the verified service calendar. The January 2025 catalog has 143 physical
+names; filtering and deduplication change nearest distance by over 10 metres for
+1,691/9,464 HDB blocks (17.87%). This combines two repairs, not two isolated
+causal ablations. The unchanged mainline's MRT fields are now explicitly described
+as supplied-snapshot proxies rather than certified operational service.
+
+#### Origin-available screen
+
+Run `878fed7edebe94c5`: seven variants, direct/residual targets, two windows,
+seed 42, fixed 1,600 trees/depth 8: 28 GPU fits. Recent validation is Jan-Mar
+2025 (141,076 train / 8,924 validation); long validation is Dec 2023-Mar 2025
+(102,829 / 47,171). Original past-rent baselines and residual offsets stay fixed.
+Macro values freeze at the validation origin; rail dates must have been announced
+before the origin. The static rail control uses the origin snapshot even during
+fitting. Dynamic rail reconstructs rental-month access; the event variant adds
+distance-decayed new-line access, recent-line access and months since opening.
+Line additions at existing interchanges can affect exposure without a new station.
+
+Below each candidate replaces only the seed-42 direct/residual pair in the frozen
+eight-component ensemble at unchanged 1/8 weights. Separate heads, pairs and
+fixed 25% blends are retained in the existing ledger; blends are not equal-
+capacity comparisons.
+
+| Candidate | Recent RMSE | Sixteen-month RMSE |
+|---|---:|---:|
+| Current mainline | 440.7629 | 483.4345 |
+| CPI | 440.8597 | 483.5572 |
+| URA non-landed rental index | 440.8779 | 483.5280 |
+| Both indices | 440.9309 | 483.7531 |
+| Corrected static rail catalog | 440.6306 | 483.4176 |
+| Rental-month rail access | 440.7152 | 483.5387 |
+| Rail access plus opening exposure | 440.7603 | 483.3522 |
+| Both indices plus opening exposure | 440.9139 | 483.6136 |
+
+The largest recent replacement gain is 0.1322 for corrected static rail,
+address-cluster interval [-0.0378, 0.2993]; its long gain is 0.0169, interval
+[-0.1127, 0.1480]. Event replacement gains 0.0026/0.0823 with both intervals
+crossing zero. Some fixed 25% blends gain up to 0.2556 long-window RMSE, but all
+lose recently. None passes the meaningful promotion gate.
+
+#### Same-model monthly-availability control
+
+For dated cross-sectional transactions, separately test covariates released and
+service operational by EACH rental month. Run `f0d15ed2879e3f3b` trains eight
+GPU heads for joint indices and opening exposure across both windows. The SAME
+fitted models predict both frozen and monthly inputs; no second model is fitted
+for the query control. This is contemporaneous-covariate evaluation, not a
+single-origin future forecast. Publication lags remain; validation rental labels
+never enter features or fitting.
+
+| Same-model replacement | Recent RMSE | Sixteen-month RMSE |
+|---|---:|---:|
+| Joint indices, origin frozen | 440.7983 | 483.7478 |
+| Joint indices, monthly available | 440.7908 | 483.4784 |
+| Opening exposure, origin available | 440.7400 | 483.3659 |
+| Opening exposure, monthly available | 440.7491 | 483.4402 |
+
+Monthly indices gain 0.2694 long-window replacement RMSE relative to their OWN
+frozen predictions, interval [0.1826, 0.3563], but still lose 0.0439 to the mainline
+and lose 0.0279 recently. Recent availability gain is 0.0075, interval [-0.0640,
+0.0790]. Monthly rail inputs lose 0.0092/0.0743 relative to their own origin-
+available models. No setting qualifies for promotion. This does not disprove
+inflation or MRT effects in general, or establish a causal opening-date premium.
+
+Repeated nominal seed-42 GPU fits vary: joint-index recent origin replacement
+changes from 440.9309 to 440.7983. Rebuilt training/frozen-query matrices from
+BOTH original source snapshots have identical hashes; fitting settings, seed,
+raw/auxiliary and external-data hashes also match. Changes around 0.1 require
+caution. CatBoost documents non-deterministic GPU summation:
+https://catboost.ai/docs/en/features/training-on-gpu . Saved predictions reproduce
+all recorded metrics; bit-identical GPU refitting is not promised. Same-model
+query controls isolate availability without refitting noise. Intervals remain
+exploratory evidence in overlapping development windows, not independent tests.
+
+#### Verification and synchronization scope
+
+Total: 36 formal GPU fits, 2,262.12 seconds of per-fit training/prediction time
+plus 85.88 seconds of common feature building. Family runtimes also include
+extra rail construction/control prediction; these are not total wall-clock times.
+Successful GPU smoke runs are excluded from the aggregate ledger. The existing
+feedback table now has 284 cumulative score rows, 126 new (references/pairs/blends
+are score rows, not new fits). No duplicate run/window/method keys, nonfinite core
+metrics, chronological violations or smoke rows were found. Fifty-five tests and
+the environment/data setup check pass. Both runs' original source/data/external
+snapshots and saved predictions were verified. Dedicated `availability_gain`
+columns record paired same-model query-control effects. Source snapshots preserve
+the actual fitting code when reporting helpers are added afterward.
+
+No second-seed promotion study, final retraining or new submission was justified.
+Raw train/test, existing model components and retained submission files remain
+protected by hash checks. User-reported mainline public score remains 432.14881;
+stacking alternative remains 432.04286. Trade-off candidates retain evidence,
+without new final CBMs.
+
+Synchronization includes pending .gitignore, 16 bridge-window temporal-summary
+rows, report plotting code, maintained docs, new research code/config/results,
+and the existing September report source/assets/PDF. All 16 pending rows reproduce
+from saved component predictions (maximum RMSE difference 5.7e-14). Plot generation
+succeeded into separate ignored `artifacts/plot_check/` (five figures), preserving
+archived report assets. The report has 14 frames and all six graphics resolve.
+It stays the September checkpoint; October evidence belongs in this cumulative
+log for the final report. No moves or deletions occurred. Course data, economic
+JSONs, models, submission CSVs, detailed artifacts, build logs and local AI notes
+remain excluded from GitHub.

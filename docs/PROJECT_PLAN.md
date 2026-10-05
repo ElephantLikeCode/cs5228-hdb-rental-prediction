@@ -425,3 +425,51 @@ deadline and team ownership. Resume modeling with a new information hypothesis,
 not repeated tiny weight or threshold searches. The six original directions
 were addressed by audit and bounded experiments; useful low-rent identification
 and permission for overlapping external rental labels remain unresolved.
+
+## User-directed closeout — 6 October 2026
+
+This update supersedes the external-label clarification priority above. The user
+has chosen not to obtain or match public transaction rental labels covering the
+competition test period. Close that route rather than treating permission as a
+blocker. This is a project choice, not a claim about other teams or a newly
+verified course prohibition.
+
+Keep the mainline and stacking alternative unchanged. Retain code, configurations,
+scores and saved predictions for recent/long-window trade-off candidates as
+research alternatives, not promoted submission models. Rejected candidates were
+not saved as new final CBMs. Do not prioritize further low-rent classifier tuning
+without a new observable signal; incorrect labels and unobserved contract terms
+remain possible explanations, not established facts. CPI (general price inflation)
+and URA private-residential rental indices remain optional aggregate covariates,
+not transaction-label lookup, and have not been imported or tested.
+
+No urgent final-report deadline action or new training is scheduled in this
+closeout. Continue accumulating evidence for later reporting. MRT opening-date
+features remain unimplemented: the supplied table has status but no opening-date
+column, and the current pipeline uses a static open-station snapshot.
+
+## CPI/URA and MRT validation closeout — 6 October 2026
+
+The requested aggregate-index and MRT-opening implementation is complete in the
+existing experiment pipeline. Both origin-frozen and same-model monthly-input
+controls were validated in two windows (36 formal GPU fits; 55 tests pass).
+Definitions, results, timing assumptions and GPU refit variation are appended
+to PROGRESS and the existing feedback ledger. Corrected static rail gains only
+0.132/0.017; other settings lose or show similarly tiny gains. No setting passes
+the promotion gate. Retain the mainline, stacking alternative and trade-off
+evidence; do not generate another submission for these configurations.
+
+Earlier "CPI/URA not imported" and "MRT dates not implemented" statuses are
+superseded by this completed research. The selected production recipe still
+uses the supplied spatial snapshot as a proxy; its operational-status limitation
+is explicit. No external test-period individual rental labels or further low-
+rent classifier fitting were used.
+
+Synchronize maintained code/configuration, summaries, cumulative docs and the
+September report source/assets/PDF as authorized. Raw data, index JSONs, models,
+submission CSVs, detailed predictions, build intermediates and local AI notes
+stay local. Preserve the report as its submitted checkpoint; accumulate October
+evidence for later reporting. Future modeling needs a new predictive hypothesis.
+If revisiting transit, assess commuting/connectivity or anticipation features
+with explicit availability checks; opening-exposure results neither establish
+a causal premium nor reject every transit feature.

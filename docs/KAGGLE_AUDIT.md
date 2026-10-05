@@ -116,3 +116,62 @@ The 2023 competition is a related HDB rent/RMSE task, not a verified identical
 dataset. Its public winner scored 477.52195 and final private winner 478.81397;
 the older public/private scores cannot establish a noise floor for this edition.
 Source: https://www.kaggle.com/competitions/cs5228-2310-final-project/leaderboard
+
+### Project decision — 6 October 2026
+
+The user declines the test-period public transaction-label matching route.
+Do not download or match such rental labels for this project. The unresolved
+permission question is therefore no longer an action item. This decision does
+not establish how any other team obtained its score. Aggregate CPI/URA inputs
+are a separate optional proposal, subject to availability checks before use.
+
+### Aggregate indices and operating rail calendar — 6 October 2026
+
+The user's subsequent request authorized importing aggregate price/rental indices
+and testing MRT service timing. Official aggregate snapshots are now cached under
+ignored `data/external/official_macro/`; no individual external rental records
+were retrieved. Sources:
+
+- CPI All Items, 2024 base, monthly: SingStat table M213751,
+  https://tablebuilder.singstat.gov.sg/table/TS/M213751 and its official tabledata
+  API. The downloaded All Items row has 788 months, Jan 1961-Aug 2026.
+  Original JSON SHA-256:
+  `90d24f5623c3134349466b3accbb5c8718cbdc07427dcb556a8cd15e7dd0d372`.
+- URA private residential rental index, official data.gov.sg dataset
+  https://data.gov.sg/datasets/d_8e4c50283fb7052a391dfb746a05c853/view .
+  The All Residential series in this download ends at 2021-Q2. Use the continuous
+  Non-Landed / Whole Island series instead: 90 quarters, 2004-Q1 through 2026-Q2;
+  do not splice property types. The index covers private properties, not HDB.
+  The dataset is available under the Singapore Open Data Licence.
+  Original JSON SHA-256:
+  `f7efb8468f39624ac7a63db059197dc7cf2bbfda060495bd54453c135a509b85`.
+
+CPI is normally published on the 23rd of the next month or next working day:
+https://www.singstat.gov.sg/find-data/explore-data-themes/economy-prices/consumer-price-index/our-data-explained .
+The conservative month-start join activates CPI at observation month +2 and
+URA at quarter-end month +2, after the usual following-month release. URA's
+2024-Q4 release was 24 January 2025:
+https://www.ura.gov.sg/news/media/pr25-05/ .
+These are latest-vintage series, not reconstructed historical vintages; CPI
+rebasing and index revisions remain limitations. Single-origin forecasts freeze
+indices at the origin. Separately labelled monthly controls use only covariates
+released by each rental month; this changes information availability and must
+not be reported as the same single-origin forecast.
+
+`configs/mrt_openings.json` records verified TEL2 (28 Aug 2021), TEL3 (13 Nov
+2022), TEL4 (23 Jun 2024), Punggol Coast (10 Dec 2024) and Hume (28 Feb 2025)
+service dates and dated official announcement sources. Only the first full
+month after service begins is treated as open. The origin-available variant
+excludes opening dates announced after the origin. Monthly controls reconstruct
+service at each query month and are labelled separately. Legacy flags mean
+operational before 2021, not fabricated exact opening dates. Unknown/future codes
+stay excluded; interchanges are deduplicated by physical station name. This is
+an audit of the supplied catalog, not a complete reconstruction of every LRT stop.
+
+Of 243 supplied station-line rows, 150 are verified legacy rows and 26 belong
+to the dated opening events. Sixty-seven rows are excluded; 55 of these were
+supplied as `open`. The January 2025 verified catalog has 143 physical station
+names. Compared with the original supplied-snapshot distances, nearest distance
+changes by over 10 metres for 1,691 of 9,464 HDB blocks (17.87%). This comparison
+combines operating-service filtering and interchange deduplication; it does not
+attribute the change to a single repair or establish a causal rental premium.

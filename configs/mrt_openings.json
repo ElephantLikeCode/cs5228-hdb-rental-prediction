@@ -1,0 +1,11 @@
+{
+  "description": "Station-line service dates for the 2021-onward study. Legacy routes are known operational before 2021; this is a lower-bound flag, not their actual opening date. Unmapped codes are excluded, regardless of supplied STATUS. Use first full month after service starts. No projected future opening is treated as actual.",
+  "legacy_source": "https://www.lta.gov.sg/content/ltagov/en/getting_around/public_transport/rail_network.html",
+  "events": [
+    {"codes": ["te4", "te5", "te6", "te7", "te8", "te9"], "opening_date": "2021-08-28", "announced_date": "2021-06-30", "source": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2021/6/news-release/TEL2_to_welcome_commuters.html"},
+    {"codes": ["te11", "te12", "te13", "te14", "te15", "te16", "te17", "te18", "te19", "te20", "te22"], "opening_date": "2022-11-13", "announced_date": "2022-10-07", "source": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2022/10/news-releases/thomson---east-coast-line-stage-3-to-open-for-passenger-service-.html"},
+    {"codes": ["te23", "te24", "te25", "te26", "te27", "te28", "te29"], "opening_date": "2024-06-23", "announced_date": "2024-03-05", "source": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2024/3/news-releases/TEL4_to_welcome_commuters.html"},
+    {"codes": ["ne18"], "opening_date": "2024-12-10", "announced_date": "2024-10-10", "source": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2024/10/news-releases/punggol_coast_station_to_open_for_passenger_service.html"},
+    {"codes": ["dt4"], "opening_date": "2025-02-28", "announced_date": "2025-01-24", "source": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2025/1/news-releases/hume_station_to_open.html"}
+  ]
+}

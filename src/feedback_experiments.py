@@ -25,13 +25,15 @@ try:
     from .modeling import CANDIDATES, build_features, build_training_features, fit_model, predict_model
     from .validation import regression_metrics
     from .market_experiments import (monthly_market, market_predictions, independent_predictions,
-                                     correction_predictions, guarded_ridge_predictions, method_budget, paired_gain_interval)
+                                     correction_predictions, guarded_ridge_predictions, method_budget, paired_gain_interval,
+                                     download_public_macro, public_macro_tables, station_calendar, public_information_predictions)
 except ImportError:
     from features import build_block_lookup, normalize_text, make_core_features
     from modeling import CANDIDATES, build_features, build_training_features, fit_model, predict_model
     from validation import regression_metrics
     from market_experiments import (monthly_market, market_predictions, independent_predictions,
-                                   correction_predictions, guarded_ridge_predictions, method_budget, paired_gain_interval)
+                                   correction_predictions, guarded_ridge_predictions, method_budget, paired_gain_interval,
+                                   download_public_macro, public_macro_tables, station_calendar, public_information_predictions)
 
 ROOT = Path(__file__).resolve().parents[1]
 WINDOWS = {
@@ -398,6 +400,10 @@ def diagnostics(raw, y, ids, prediction, method, window):
 
 
 def run(args):
+    public_dir = ROOT / "data/external/official_macro"
+    if args.download_public:
+        print(json.dumps(download_public_macro(public_dir), indent=2))
+        return
     if args.summarize_runs:
         summarize_runs(args.summarize_runs)
         return
@@ -422,6 +428,16 @@ def run(args):
         auxiliary_sha256={p.name: file_hash(p) for p in sorted((ROOT / "data/raw/auxiliary").glob("*.csv"))},
         python_version=platform.python_version(),
         protocol="fixed_budget_chronological_frozen_mainline")
+    public_tables, calendar = None, None
+    if "public" in args.families:
+        public_files = [public_dir / "cpi.json", public_dir / "ura.json", ROOT / "configs/mrt_openings.json"]
+        identity["public_sha256"] = {str(p.relative_to(ROOT)): file_hash(p) for p in public_files}
+        identity["public_variants"] = args.public_variants
+        identity["public_monthly_controls"] = args.public_monthly_controls
+        identity["public_availability"] = "macro_origin_frozen_cpi_lag2_ura_quarter_end_plus2_rail_announced_before_origin"
+        public_tables = public_macro_tables(public_dir)
+        calendar = station_calendar(pd.read_csv(ROOT / "data/raw/auxiliary/sg-mrt-stations.csv"),
+                                    json.loads((ROOT / "configs/mrt_openings.json").read_text()))
     run_id = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
     folder = ROOT / "artifacts/feedback_study" / run_id
     folder.mkdir(parents=True, exist_ok=True)
@@ -435,6 +451,14 @@ def run(args):
         destination = snapshot / name
         if not destination.exists():
             shutil.copy2(ROOT / "src" / name, destination)
+    if public_tables is not None:
+        for path in public_files:
+            destination = snapshot / path.name
+            if not destination.exists():
+                shutil.copy2(path, destination)
+        calendar.to_csv(folder / "station_calendar_audit.csv", index=False)
+        for name, table in public_tables.items():
+            table.to_csv(folder / f"public_{name}_features.csv", index_label="available")
     lookup = build_block_lookup(ROOT / "data/raw/auxiliary")
     market_table = monthly_market(ROOT / "data/raw/auxiliary") if set(args.families) & {"market", "learners", "ridge_guarded"} else None
     if market_table is not None:
@@ -465,7 +489,7 @@ def run(args):
             raise ValueError("Screen requires the unaugmented normal-history view")
         feature_seconds = time.perf_counter() - start_clock
         durations = {"mainline": 0.}
-        if set(args.families) & {"market", "learners", "ridge_guarded"}:
+        if set(args.families) & {"market", "learners", "ridge_guarded", "public"}:
             for mode in ("direct", "residual"):
                 predictions[f"matched_{mode}"] = components[(f"local_trend_{mode}", args.seed)][:len(valid)]
                 durations[f"matched_{mode}"] = 0.
@@ -511,6 +535,11 @@ def run(args):
                 elif family == "ridge_guarded":
                     estimates, method_seconds = guarded_ridge_predictions(train, valid,
                         X_train, fit_y, X_valid, config, baseline, market_table, folder, window)
+                elif family == "public":
+                    estimates, method_seconds = public_information_predictions(train, valid,
+                        X_train, fit_y, X_valid, config, args.seed, args.task_type,
+                        baseline, components, public_tables, calendar, args.public_variants,
+                        args.public_monthly_controls)
                 elif family == "specialists":
                     estimates = {"flat_specialists": specialist_predictions(train, fit_y, valid,
                         X_train, X_valid, config, args.seed, args.task_type, baseline)}
@@ -536,7 +565,7 @@ def run(args):
             reference = "mainline"
             if name.startswith("crossfit_") and not name.endswith("replace_seed"):
                 reference = "matched_normal_view" if name.endswith("normal_view") else "matched_" + name.rsplit("_", 1)[1]
-            if name.startswith(("market_", "learner_")) and not name.endswith(("replace_seed", "blend25")):
+            if name.startswith(("market_", "learner_", "public_")) and not name.endswith(("replace_seed", "blend25")):
                 reference = "matched_normal_view" if name.endswith("normal_view") else "matched_residual" if "ridge" in name else "matched_" + name.rsplit("_", 1)[1]
             matched_gain = regression_metrics(valid_y, predictions[reference])["rmse"] - scores["rmse"]
             encoding_gain = np.nan
@@ -548,7 +577,7 @@ def run(args):
                 feature_group = "frozen_local_trend_and_stale_hierarchical"
             elif name.startswith("crossfit_"):
                 feature_group += "+" + name.removeprefix("crossfit_").rsplit("_", 1)[0]
-            elif name.startswith(("market_", "learner_", "correction_")):
+            elif name.startswith(("market_", "learner_", "correction_", "public_")):
                 feature_group += "+" + name
             learner, trees = method_budget(name)
             all_rows.append(dict(run_id=run_id, window=window, method=name, **scores,
@@ -563,7 +592,10 @@ def run(args):
                 crossfit_feature_seconds=crossfit_feature_seconds,
                 data_sha256=identity["data_sha256"], code_sha256=identity["code_sha256"],
                 protocol=identity["protocol"], smoke=args.smoke))
-            all_rows[-1]["availability"] = ("origin_only" if "origin_only" in name else
+            all_rows[-1]["availability"] = ("rental_month_released_latest_vintage_not_single_origin_forecast"
+                if name.startswith("public_") and "_monthly_" in name else
+                identity["public_availability"] if name.startswith("public_") else
+                "origin_only" if "origin_only" in name else
                 "supplied_snapshot_previous_month" if name.startswith("market_") or "xgb_market" in name or "ridge_market" in name or "guarded_market" in name else
                 "past_training_labels_only")
             all_groups.extend(diagnostics(raw, valid_y, ids, prediction, name, window))
@@ -605,6 +637,9 @@ def summarize_runs(run_ids):
         for name, expected in config["auxiliary_sha256"].items():
             if file_hash(ROOT / "data/raw/auxiliary" / name) != expected:
                 raise ValueError("Saved auxiliary fingerprint changed")
+        for name, expected in config.get("public_sha256", {}).items():
+            if file_hash(folder / "source" / Path(name).name) != expected:
+                raise ValueError("Saved public-information fingerprint changed")
         rows = ledger.loc[ledger.run_id.eq(run_id)]
         if config["smoke"] or rows.empty:
             raise ValueError("Only recorded formal runs can be summarized")
@@ -630,6 +665,12 @@ def summarize_runs(run_ids):
                 if row.method.endswith(("replace_seed", "blend25")) or row.method.startswith("correction_"):
                     lower, upper = paired_gain_interval(raw, ids, y.iloc[ids].to_numpy(), baseline, prediction)
                     ledger.loc[index, ["paired_gain_lower", "paired_gain_upper"]] = [lower, upper]
+                if "_monthly_" in row.method:
+                    fixed_name = row.method.replace("_monthly_", "_")
+                    fixed = estimates[fixed_name]
+                    lower, upper = paired_gain_interval(raw, ids, y.iloc[ids].to_numpy(), fixed, prediction)
+                    ledger.loc[index, ["availability_gain", "availability_gain_lower", "availability_gain_upper"]] = [
+                        regression_metrics(y.iloc[ids], fixed)["rmse"] - scores["rmse"], lower, upper]
             print(f"VERIFIED {run_id}/{window}: source, data, predictions and RMSE", flush=True)
     # Repair the generic base-budget field in older research ledgers. This is
     # metadata only; original run-local files and source snapshots are preserved.
@@ -644,7 +685,11 @@ def summarize_runs(run_ids):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--windows", nargs="+", choices=list(WINDOWS), default=["short_recent", "horizon16"])
-    parser.add_argument("--families", nargs="+", choices=["nearest", "specialists", "mixture", "crossfit", "market", "learners", "correction", "ridge_guarded"], default=["nearest", "specialists", "mixture"])
+    parser.add_argument("--families", nargs="+", choices=["nearest", "specialists", "mixture", "crossfit", "market", "learners", "correction", "ridge_guarded", "public"], default=["nearest", "specialists", "mixture"])
+    parser.add_argument("--download-public", action="store_true", help="Cache official aggregate CPI/URA data; existing snapshots are preserved")
+    parser.add_argument("--public-variants", nargs="+", choices=["cpi", "ura", "macro_both", "rail_static", "rail_dynamic", "rail_events", "combined"], help="Optional subset for confirmation runs")
+    parser.add_argument("--public-monthly-controls", action="store_true",
+                        help="Also predict from per-rental-month released covariates using the SAME fitted models; distinguish this from a single-origin forecast")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--task-type", choices=["CPU", "GPU"], default="GPU")
     parser.add_argument("--smoke", action="store_true")
