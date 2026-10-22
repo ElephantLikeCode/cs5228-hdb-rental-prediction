@@ -1,0 +1,33 @@
+{
+  "raw_sha256": {
+    "train": "6d7a417de72112361f8353659ba6fe44a442b07465b488aff1b03f7ec1ea3ba6",
+    "test": "dfc407406d957bbf7c2f005e5d9852b1bfc6546cd4186f07e6824d8e03e64cfc"
+  },
+  "train_rows": 150000,
+  "test_rows": 50000,
+  "train_start": "2021-01",
+  "train_end": "2025-03",
+  "test_start": "2025-03",
+  "test_end": "2026-07",
+  "recent_rmse": 440.7628634143297,
+  "recent_mae": 316.5490833184188,
+  "recent_bias": 0.787673682590134,
+  "recent_n": 8924,
+  "observed_low_band_sse_percent": 52.23202601754423,
+  "paper_source_tables": [
+    "experiment_results.csv",
+    "temporal_summary.csv",
+    "feedback_results.csv",
+    "kaggle_submissions.csv"
+  ],
+  "mainline_prediction_sources": [
+    "b7e278256574ec9f",
+    "2810d7d2d6aad313",
+    "48207f1d7f1f4b2b",
+    "2aa20239ba5b20c8",
+    "58da9ef0cc669e85",
+    "6f785f9b3af80510",
+    "69be94a98ae84052",
+    "826216b5d1bdcf6f"
+  ]
+}

@@ -618,13 +618,19 @@ python src/generate_figures.py --output-dir artifacts/plot_check
 
 ## Course deliverables and next work
 
-Canvas rechecked on 21 September 2026:
+Canvas project page, policies, announcements and assignment list rechecked read-only on 23 October 2026:
 
 - Methodological quality 60%, report quality 30%, reproducibility 10%.
 - Progress report: approximately 10-15 slides as PDF; final 1-2 slides describe
   next steps. The page says Sunday 4 October (not a hard deadline).
 - Final report: at most eight main-text pages, excluding references/appendix,
   plus code or a GitHub link and member workload breakdown.
+- The final PDF should use scientific-paper form and include the team name,
+  all member names and student IDs. Tables/plots count toward the eight pages;
+  the main argument must be understandable without the appendix.
+- The 8 October announcement confirms no final presentation and that Kaggle
+  score is not the grading criterion. Group-project AI assistance is permitted
+  with appropriate documentation, as stated on the course Policies page.
 - The final deadline remains the placeholder `Nov XX, 11.59 pm`; do not treat the
   former local 6 November date, or the Kaggle closing date, as a confirmed course deadline.
 - Source: https://canvas.nus.edu.sg/courses/93866/pages/project
@@ -642,6 +648,44 @@ The title page lists all four team members and their student IDs. Before
 submission, let every member confirm the spelling and ID pairing, and review
 the claims and AI declaration.
 
+### Final report working draft
+
+The English paper is `output/pdf/CS5228_Final_Report.pdf`. The official Canvas
+LaTeX template was downloaded and verified against the existing course ZIP
+(SHA-256 `ab2974691f767969dd6b2b1de18217ccaa7829f4439c5232a3fbbaa03bbfda54`).
+Its unchanged `IEEEtran.cls` is bundled under `final_report/` so the report can
+compile independently of the ignored template archive.
+
+Edit the single evolving `final_report/main.tex` and `references.bib`. Figures
+and numeric table fragments are under `final_report/figures/` and `generated/`.
+The draft prioritises local temporal evaluation and subgroup interpretation;
+Kaggle scores are supplementary historical observations. It currently has
+seven pages containing main text and references, plus one appendix page.
+Workload attribution is explicitly reserved in Appendix B and remains unfilled.
+It is a review draft, not a final submission or an assertion of team approval.
+
+Compile the committed text, figures and tables in the built-in LaTeX editor,
+or on Windows with existing MiKTeX/TeX tools:
+
+```powershell
+./final_report/build.ps1
+```
+
+This uses `pdflatex` and `bibtex`, without requiring latexmk/Perl. On Overleaf,
+upload the contents of `final_report/` and choose `main.tex` as the main file.
+To regenerate the paper's figures/tables from local course data and the existing
+temporal prediction caches, after following the earlier cache-generation steps:
+
+```bash
+python final_report/prepare_report.py
+```
+
+That command reads existing evidence and trains no models. Cached predictions,
+course data, downloaded historical example reports and compiler intermediates
+stay local. The report source, aggregate tables/figures and final draft PDF are
+maintained in Git. Future project changes should revise this same report and
+append the existing progress log rather than create another report version.
+
 No further experiments are scheduled by this closeout. When the team resumes:
 
 1. Reproduce setup/tests and agree on member ownership.
@@ -649,7 +693,7 @@ No further experiments are scheduled by this closeout. When the team resumes:
    monthly/town/flat-type errors before tuning against public scores.
 3. Maintain one mainline and, only when justified, a complementary final candidate;
    preserve both outlier-policy submissions as historical evidence.
-4. Prepare the final report from existing EDA, baselines, ablations, failures and instructor feedback.
+4. Review and revise the existing final-report draft as further evidence becomes available.
 5. Verify the final deadline and freeze/reproduce the final pipeline before delivery.
 
 Keep one cumulative `docs/PROGRESS.md`, one main results table here, and the

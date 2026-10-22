@@ -33,6 +33,14 @@ output/pdf/*.out
 output/pdf/*.snm
 output/pdf/*.toc
 progress_report/*.log
+final_report/*.aux
+final_report/*.bbl
+final_report/*.blg
+final_report/*.log
+final_report/*.out
+final_report/*.synctex.gz
+final_report/*.fdb_latexmk
+final_report/*.fls
 
 # Secrets
 .env

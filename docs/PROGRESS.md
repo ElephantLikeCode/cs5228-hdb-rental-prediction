@@ -1515,3 +1515,101 @@ It stays the September checkpoint; October evidence belongs in this cumulative
 log for the final report. No moves or deletions occurred. Course data, economic
 JSONs, models, submission CSVs, detailed artifacts, build logs and local AI notes
 remain excluded from GitHub.
+
+## Final scientific-report draft -- 23 October 2026
+
+The user authorised a complete first draft, requested all generated project
+materials remain in the unique D-drive workspace, and clarified that local
+evaluation should lead the narrative. Workload attribution belongs in its
+eventual appendix position but must remain unassigned until the team provides it.
+
+### Requirements verified from Canvas
+
+The Chrome course page, project page, Policies, 8 October feedback announcement
+and Assignments list were read through the supported browser interface. Canvas
+was not edited and nothing was posted or submitted. Direct sources:
+
+- Project: https://canvas.nus.edu.sg/courses/93866/pages/project
+- Policies: https://canvas.nus.edu.sg/courses/93866/pages/policies
+- Feedback: https://canvas.nus.edu.sg/courses/93866/discussion_topics/501350
+
+The final deliverable is a scientific-paper PDF, at most eight main-text pages
+including figures/tables, excluding references and a sparingly used appendix.
+The body must stand alone. Names, student IDs and team name are required;
+workload attribution may be placed in the appendix. PDF plus code is uploaded
+to Canvas as a ZIP, with a GitHub link allowed instead of packaged source.
+Methodology/report/reproducibility weights remain 60/30/10. No final presentation
+is required. The final date remains a placeholder (`Xxx, Nov XX, 11.59 pm`), and
+no Final Report entry was visible in Assignments. No deadline was invented.
+The Policies page explicitly permits group-project AI use with documentation;
+the paper contains a factual assistance statement, not a new uploaded AI log.
+
+### Template, writing guidance and structure
+
+Downloaded the official Canvas file 9565679 via its Download templates button.
+Its SHA-256 matches the previous course archive exactly:
+`ab2974691f767969dd6b2b1de18217ccaa7829f4439c5232a3fbbaa03bbfda54`.
+The ZIP and downloaded example report remain under ignored `templates/`.
+The official IEEEtran conference class is copied unchanged into `final_report/`.
+The unmodified example compiled in the built-in LaTeX editor before authoring.
+
+Searched public writing skills and applied the repository-to-paper, citation
+verification and writing guidance from KalarisLabs' MIT-licensed ml-paper-writing:
+https://github.com/KalarisLabs/research-agent-skills/tree/main/skills/ml-paper-writing
+Read its SKILL.md and the required repository, writing, template and checklist
+references. The user's approved course-report scope overrides conference-specific
+anonymisation, template and intermediate-approval defaults. No new plugin or
+global skill installation, model fitting or unrequested external account access
+was required. Guidance influenced claim/evidence organisation and citation checks;
+all scientific results come from this project, not the skill's example facts.
+
+Two public previous-course reports informed structure and concise interpretation:
+https://ltdk.me/assets/docs/CS5228.pdf and
+https://github.com/ParasharaRamesh/Home-sweet-home/blob/main/report.pdf .
+Their editions/data/validation differ. No text, experiment numbers, code or
+unjustified duplicate-removal rule was adopted as current-project evidence.
+
+The single evolving source is `final_report/main.tex`, with these sections:
+Introduction; Data Understanding and Preparation; Methods; Experimental Design;
+Results and Interpretation; Limitations and Reproducibility; Conclusion.
+Appendix A maps reproducibility and baseline settings, Appendix B reserves
+workload attribution, and Appendix C documents AI assistance/draft status.
+Names/IDs match the archived progress-report source in surname-first order.
+Group 44 is retained as the team identifier; no new team nickname is invented.
+
+### Evidence and maintenance
+
+`final_report/prepare_report.py` reads existing source tables and verified frozen
+predictions, produces three vector figures and five aggregate numeric tables,
+and writes `generated/evidence.json`. No training is performed. The recent
+mainline RMSE/MAE/bias recompute as 440.762863/316.549083/+0.787674. All 8,924
+validation rows remain. The low actual-rent band contributes 52.2320% of SSE.
+The raw file audit, not the course overview, establishes train Jan 2021-Mar 2025
+and test Mar 2025-Jul 2026, including the observable March overlap. Historical
+early-stopping results are separated from fixed-budget comparisons. The older
+annual regression, overlapping development windows, one-seed screens, revised
+macro vintages and static mainline MRT limitations remain explicit. Recorded
+public scores are secondary and are not described as newly checked ranks.
+
+Research BibTeX entries were retrieved from NeurIPS and Crossref, with titles,
+authors and publication details checked against publication/arXiv/author sources.
+Official course, CPI, URA and LTA sources support the corresponding references.
+No fabricated citation or unverified experimental result is used.
+
+`final_report/build.ps1` compiles the stable
+`output/pdf/CS5228_Final_Report.pdf` using existing pdflatex/BibTeX. Local latexmk
+cannot run without Perl, so no new installation was attempted; the direct build
+and built-in editor compiler both succeed. Build artifacts and page previews
+remain under ignored `artifacts/`. The paper has eight total pages: main text
+ends on page seven, with references on that page and appendices on page eight.
+All pages were rendered for visual review; remaining intentional placeholders
+are the workload entries and team review status. Fifty-five existing tests pass.
+The selected model, raw data and competition submissions are unchanged.
+
+Report source/class, references, preparation/build commands, derived aggregate
+assets and draft PDF are in scope for GitHub maintenance, alongside this
+cumulative entry, README and the requirements audit. Course files, example PDFs,
+detailed predictions, compiler intermediates and local AI notes remain excluded.
+Next work is team review and eventual workload completion, followed by edits to
+this same paper as new project evidence becomes available; this draft has not
+been submitted to Canvas.

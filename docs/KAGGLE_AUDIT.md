@@ -175,3 +175,28 @@ names. Compared with the original supplied-snapshot distances, nearest distance
 changes by over 10 metres for 1,691 of 9,464 HDB blocks (17.87%). This comparison
 combines operating-service filtering and interchange deduplication; it does not
 attribute the change to a single repair or establish a causal rental premium.
+
+## Canvas final-report verification -- 23 October 2026
+
+Read the project page, Policies, 8 October feedback announcement and Assignments
+through Chrome with no edits/posts/submissions. The official scientific-paper
+template ZIP (Canvas file 9565679) was downloaded; SHA-256 is
+`ab2974691f767969dd6b2b1de18217ccaa7829f4439c5232a3fbbaa03bbfda54`.
+It matches the previously cached ZIP. Word and LaTeX templates are supplied;
+the draft uses the unchanged IEEEtran conference class.
+
+The PDF body limit is eight pages including figures/tables, excluding references
+and a sparse appendix. Names/IDs and team name are required; workload attribution
+may be in the appendix. Submit report plus code to Canvas as a ZIP, or include
+a repository link in place of code. Methodology/report/reproducibility weights
+are 60/30/10. The 8 October announcement confirms no presentation and that Kaggle
+score is not the grading criterion. The Policies page explicitly permits AI for
+the group project with appropriate documentation. These are verified course
+requirements, not a policy invented by the assistant or imported from a skill.
+
+The project page still gives `Xxx, Nov XX, 11.59 pm`. No Final Report assignment
+is visible yet; the deadline remains unconfirmed. Latest announcements inspected
+do not supply a replacement date. Sources:
+https://canvas.nus.edu.sg/courses/93866/pages/project ,
+https://canvas.nus.edu.sg/courses/93866/pages/policies , and
+https://canvas.nus.edu.sg/courses/93866/discussion_topics/501350 .

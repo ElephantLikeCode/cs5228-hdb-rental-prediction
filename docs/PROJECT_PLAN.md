@@ -473,3 +473,25 @@ evidence for later reporting. Future modeling needs a new predictive hypothesis.
 If revisiting transit, assess commuting/connectivity or anticipation features
 with explicit availability checks; opening-exposure results neither establish
 a causal premium nor reject every transit feature.
+
+## Final report draft -- 23 October 2026
+
+The initial scientific-paper draft now exists at
+`output/pdf/CS5228_Final_Report.pdf`, with the single evolving source under
+`final_report/`. Use the verified official Canvas IEEEtran format. Local temporal
+evaluation, subgroup interpretation and limitations lead; public scores are
+supplementary. The current eight-page PDF includes the main text through page
+seven and an appendix page, within the eight-page body limit.
+
+Workload attribution is reserved in Appendix B, without assigning responsibilities
+or percentages. Confirm that information with the team later. All four
+surname-first names and student IDs match the progress-report source. Complete
+team review before submission; no new submission or training is scheduled.
+The course policy's AI-documentation requirement is addressed by a concise
+report statement; the local AI log stays ignored. The final deadline remains
+unconfirmed in the page and assignment list checked today.
+
+Future experiments should revise this same report and append PROGRESS, preserving
+the distinctions between historical early-stopping references, fixed-budget
+results, one-seed research screens and untested proposals. Regenerate only the
+relevant aggregate figures/tables when underlying evidence changes.
