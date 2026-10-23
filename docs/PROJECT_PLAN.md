@@ -495,3 +495,13 @@ Future experiments should revise this same report and append PROGRESS, preservin
 the distinctions between historical early-stopping references, fixed-budget
 results, one-seed research screens and untested proposals. Regenerate only the
 relevant aggregate figures/tables when underlying evidence changes.
+
+### Report review revision -- 23 October 2026
+
+The initial eight-total-page count above is superseded: the revised paper has
+seven main-text pages, one reference page and one appendix page. It adopts the
+review's formatting fixes and research-decision narrative, adds a component
+diagram and observable-flat-type errors from frozen predictions, and keeps local
+development evidence primary. Workload remains reserved for the team. No models,
+raw data or selected submissions were changed. The cumulative PROGRESS record
+documents the disposition of all 41 review points.

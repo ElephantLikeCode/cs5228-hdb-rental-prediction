@@ -4,6 +4,12 @@ Private group-project repository for predicting Singapore HDB monthly rent.
 The evaluation metric is RMSE, and chronological validation is the primary
 local evaluation method.
 
+Quick navigation: [setup](#setup-from-a-fresh-clone),
+[run the selected model](#reproduce-the-current-result),
+[repository map](#repository-structure),
+[final paper and build instructions](#final-report-working-draft),
+and [cumulative research decisions](docs/PROGRESS.md).
+
 ## Current mainline and retained reference
 
 The mainline is the **local-trend/history-diversity CatBoost ensemble**: a
@@ -517,7 +523,7 @@ src/feedback_experiments.py   Entry point for information audit and feedback-dri
 src/market_experiments.py     Research-only economic indices, MRT dates, matched learners and OOF corrections
 configs/mrt_openings.json     Official service/announcement dates for recent MRT openings
 src/generate_figures.py    Report-ready experiment and error plots
-src/update_progress.py     Refresh current results in the cumulative progress log
+src/update_progress.py     Refresh the historical early-stopping reference block only
 src/train_final_model.py   Train the selected model and validate its submission
 reports/temporal_comparison.csv   Current fixed-budget per-fit evidence
 reports/temporal_summary.csv      Matched-seed and fixed-blend comparisons
@@ -528,6 +534,11 @@ reports/kaggle_submissions.csv    Only actually submitted public scores
 progress_report/main.tex          Editable source for the 14-slide progress report
 progress_report/assets/           NUS logo and the five figures used by the report
 output/pdf/CS5228_Progress_Report.pdf   Submission-ready progress-report PDF
+final_report/main.tex             Single evolving final scientific-paper source
+final_report/prepare_report.py    Derive paper figures/tables from frozen evidence
+final_report/figures/             Vector plots committed for standalone compilation
+final_report/generated/           Aggregate evidence and generated table fragments
+output/pdf/CS5228_Final_Report.pdf     Current final-report draft for team review
 tests/                     Automated data, feature, and validation tests
 requirements.txt           Exact verified direct dependencies
 ```
@@ -660,7 +671,7 @@ Edit the single evolving `final_report/main.tex` and `references.bib`. Figures
 and numeric table fragments are under `final_report/figures/` and `generated/`.
 The draft prioritises local temporal evaluation and subgroup interpretation;
 Kaggle scores are supplementary historical observations. It currently has
-seven pages containing main text and references, plus one appendix page.
+seven main-text pages, one reference page and one appendix page (nine total).
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
@@ -679,6 +690,18 @@ temporal prediction caches, after following the earlier cache-generation steps:
 ```bash
 python final_report/prepare_report.py
 ```
+
+Compiling the committed report does not require training data or local caches.
+Regenerating its evidence does: frozen sources are checked against prediction
+and data hashes, and the selected metric is protected by an explicit check.
+GPU retraining is not expected to reproduce every bit. To report a fresh run,
+review its provenance, refresh the source manifest using the documented workflow,
+and update the report's protected metric and claims together. Do not bypass checks
+to make an unrelated cache appear to be the original evidence. A clean-machine
+full retraining was not performed during this report-only revision.
+
+The figure generator requires Times New Roman (installed by default on Windows);
+install an authorised copy on other systems or use the committed vector figures.
 
 That command reads existing evidence and trains no models. Cached predictions,
 course data, downloaded historical example reports and compiler intermediates

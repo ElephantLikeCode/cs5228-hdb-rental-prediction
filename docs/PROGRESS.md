@@ -1613,3 +1613,35 @@ detailed predictions, compiler intermediates and local AI notes remain excluded.
 Next work is team review and eventual workload completion, followed by edits to
 this same paper as new project evidence becomes available; this draft has not
 been submitted to Canvas.
+
+## Final paper review revision -- 23 October 2026
+
+Applied the user's instruction to select from the 41-point review and improve
+the existing paper. No new model fitting, dataset edits or promotion occurred.
+The selected local RMSE/MAE/bias remain 440.762863/316.549083/+0.787674.
+
+Review disposition (numbers refer to the review in this conversation):
+
+| Points | Decision and implementation |
+|---|---|
+| 1-4 | Adopt research-decision framing and course page counting; retain truthful workload placeholder and Group 44 identifier. |
+| 5-12 | Fix clipped axis title; use installed Times New Roman at 8pt for plot labels/legends; grouped bars replace non-temporal connected lines; use labelled panels, thousand counts and a protected legend; retain subdued colours and official 10pt/Letter/two-column class. Show page numbers consistently, remove policy footnote in favour of a verified bibliography entry, shorten captions and remove the appendix's broken template-description sentence. |
+| 13-19 | Shorten abstract; answer RQ1-3 explicitly; add research-decision table and an eight-component TikZ diagram; define reference/diversity/trend/stacking candidates and seed-averaged heads; distinguish empirical budgets from pragmatic smoothing choices. Preserve the professor's individual-flat identity caveat. |
+| 20-25 | Explain task-dependent model selection and retained robustness reference; discuss older-year MAE 455.20 to 454.38 despite RMSE regression; distinguish historical early stopping from fixed-budget comparisons, acknowledge total-compute differences, and add selected-model reference plus B/R/C application modes to research table. Negative screens are interpreted as bounded hypotheses rather than universal algorithm rejection. |
+| 26-30 | Recompute observable-flat-type counts/RMSE/bias/SSE shares from the same frozen predictions; qualify the tiny one-room sample and target-conditioned bias interpretation; distinguish rail semantic correction from score gains; retain development-window reuse disclosure and explain stopping. No new causal or irreducible-error claim. |
+| 31-32 | Compress Kaggle to a supplementary selected-versus-stacking observation and short outlier sensitivity note; remove historical score procession and other-team speculation. Clarify that inputs are visible but labels/public membership are hidden. |
+| 33-39 | Preserve existing directories, add final-report paths and README navigation; clarify historical refresh script's docstring/map label; document standalone compilation versus cache regeneration, GPU variation and protected source manifests. Workload/team review and teacher access to the private repository remain pre-submission tasks, not invented completed checks. |
+| 40-41 | Retain previously reviewed public reports/ML-writing guidance as presentation references; use course rules over conference defaults. No unverified citation expansion, global skill install or new experiment was needed. |
+
+The revised PDF has seven body pages, a separate balanced reference page and one
+appendix page (nine total); the course limit is eight body pages excluding the
+last two categories. Main source/class and stable PDF path are retained. New
+aggregate flat_type_evidence.csv and flat_types.tex live in the existing generated
+directory. Figures/tables regenerate only from verified retained predictions;
+course data, CBMs, submission CSVs and detailed artifacts remain local.
+
+Validation: report assets regenerate successfully; the protected mainline metric
+and data hashes match the original evidence. Direct LaTeX/BibTeX compilation
+succeeds, with no overfull boxes or unresolved references. Page images and embedded
+fonts are reviewed after the final layout pass. Team workload remains intentionally
+unfilled; this revision is not a Canvas submission or clean-machine GPU retrain.

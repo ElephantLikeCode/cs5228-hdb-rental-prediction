@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib import font_manager, ticker
 import numpy as np
 import pandas as pd
 
@@ -39,9 +40,11 @@ def tex_table(name, header, rows, alignment):
 def main():
     for directory in ("figures", "generated"):
         (HERE / directory).mkdir(exist_ok=True)
-    plt.rcParams.update({"font.family": "serif", "font.size": 8,
+    # Follow the course template at final publication size; never silently fall back.
+    font_manager.findfont("Times New Roman", fallback_to_default=False)
+    plt.rcParams.update({"font.family": "Times New Roman", "font.size": 8,
         "axes.spines.top": False, "axes.spines.right": False,
-        "axes.labelsize": 8, "legend.fontsize": 7, "pdf.fonttype": 42})
+        "axes.labelsize": 8, "legend.fontsize": 8, "pdf.fonttype": 42})
     raw = pd.read_csv(ROOT / "data/raw/train.csv")
     test = pd.read_csv(ROOT / "data/raw/test.csv")
     summary = pd.read_csv(ROOT / "reports/temporal_summary.csv")
@@ -65,6 +68,16 @@ def main():
         [[str(k).replace("<=", r"$\leq$").replace(">", r"$>$"), int(v.rows), f"{v.rmse:.1f}",
           f"{v.bias:+.1f}", f"{v.sse_percent:.1f}"] for k,v in groups.iterrows()], "lrrrr")
 
+    # Observable groups complement the outcome-defined bands; no label-based routing.
+    flat_groups = q.groupby("flat").agg(rows=("error", "size"),
+        mse=("squared_error", "mean"), sse=("squared_error", "sum"), bias=("error", "mean"))
+    flat_groups["rmse"] = np.sqrt(flat_groups.mse)
+    flat_groups["sse_percent"] = flat_groups.sse / q.squared_error.sum() * 100
+    flat_groups.reset_index().to_csv(HERE / "generated/flat_type_evidence.csv", index=False)
+    tex_table("flat_types", ["Observed flat type", "$n$", "RMSE", "Bias", "SSE (\\%)"],
+        [[k.replace(" ", "-"), int(v.rows), f"{v.rmse:.1f}", f"{v.bias:+.1f}",
+          f"{v.sse_percent:.1f}"] for k,v in flat_groups.iterrows()], "lrrrr")
+
     # Descriptive training data, not an estimate of the effect of calendar time.
     a = raw.assign(month=pd.to_datetime(raw.RENT_APPROVAL_DATE), flat=normalize_text(raw.FLAT_TYPE))
     trend = a.groupby(["month", "flat"]).MONTHLY_RENT.median().unstack()
@@ -75,10 +88,13 @@ def main():
     axes[0].set(xlabel="Approval month", ylabel="Median monthly rent (SGD)")
     axes[0].xaxis.set_major_locator(mdates.YearLocator())
     axes[0].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    axes[0].legend(ncol=2, loc="upper left", frameon=False)
+    handles, names = axes[0].get_legend_handles_labels()
+    fig.legend(handles, names, ncol=5, loc="outside upper center", frameon=False)
     axes[1].hist(y, bins=np.arange(250, 8001, 250), color=COLORS[0], edgecolor="white", linewidth=.35)
     axes[1].set(xlabel="Monthly rent (SGD)", ylabel="Training transactions")
-    axes[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    axes[1].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
+    for ax, label in zip(axes, ("(a)", "(b)")):
+        ax.set_title(label, loc="left", fontsize=8)
     fig.savefig(HERE / "figures/data_profile.pdf")
     plt.close(fig)
 
@@ -86,7 +102,7 @@ def main():
     x = np.arange(len(groups)); width=.34
     ax.bar(x-width/2, groups.row_percent, width, label="Share of rows", color=COLORS[0])
     ax.bar(x+width/2, groups.sse_percent, width, label="Share of squared error", color=COLORS[1], hatch="//")
-    ax.set_xticks(x, groups.index.astype(str), rotation=20)
+    ax.set_xticks(x, ["\u2264 2500", "2501-3000", "3001-3500", "3501-4000", ">4000"], rotation=20)
     ax.set(xlabel="Actual monthly rent band (SGD)", ylabel="Share (%)")
     ax.legend(frameon=False)
     fig.savefig(HERE / "figures/error_concentration.pdf")
@@ -101,18 +117,18 @@ def main():
         z = summary[summary.window.eq(window)].set_index("candidate")
         rows.append([label, int(z.loc[MAIN,"rows"]), *[f"{z.loc[c,'rmse']:.2f}" for c in candidates]])
     tex_table("temporal", ["Validation interval", "$n$", "Adaptive (4)", "Diversity (8)", "Local trend (8)"], rows, "lrrrr")
-    fig, ax = plt.subplots(figsize=(3.4, 2.1), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(3.5, 2.35), constrained_layout=True)
     for i, (candidate,label) in enumerate(zip(candidates[1:],labels[1:])):
         gains = []
         for window in windows:
             z=summary[summary.window.eq(window)].set_index("candidate")
             gains.append(z.loc[candidates[0], "rmse"]-z.loc[candidate,"rmse"])
-        ax.plot(range(4), gains, marker=["o", "s"][i], label=label, color=COLORS[i],
-                linestyle=["--", "-"][i])
+        ax.bar(np.arange(4) + (i-.5)*.34, gains, width=.34, label=label,
+               color=COLORS[i], hatch=["", "//"][i])
     ax.axhline(0, color="0.6", linewidth=.7)
     ax.set_xticks(range(4), ["Recent\nquarter", "Recent\nyear", "Older\nyear", "16-month\nwindow"])
-    ax.set(ylabel="RMSE reduction versus adaptive ensemble (SGD)")
-    ax.legend(frameon=False, loc="lower left")
+    ax.set(ylabel="RMSE improvement (SGD)", ylim=(-12, 8))
+    ax.legend(frameon=False, loc="upper right")
     fig.savefig(HERE / "figures/temporal_tradeoff.pdf")
     plt.close(fig)
 
@@ -145,11 +161,13 @@ def main():
         ("878fed7edebe94c5","public_rail_static_replace_seed","Corrected static MRT"),
         ("878fed7edebe94c5","public_rail_events_replace_seed","MRT opening exposure"),
         ("f0d15ed2879e3f3b","public_macro_both_monthly_replace_seed","Monthly-available CPI+URA")]
-    rows=[]
+    reference = summary[summary.candidate.eq(MAIN)].set_index("window")
+    rows=[["Selected model", "--", *[f"{reference.loc[w,'rmse']:.3f}" for w in ("short_recent","horizon16")]]]
     for run,method,label in variants:
         z=feedback[feedback.run_id.eq(run)&feedback.method.eq(method)].set_index("window")
-        rows.append([label,*[f"{z.loc[w,'rmse']:.3f}" for w in ("short_recent","horizon16")]])
-    tex_table("research",["Candidate applied to mainline", "Recent", "16-month"],rows,"lrr")
+        mode = "B" if "blend25" in method else "C" if "shrink25" in method else "R"
+        rows.append([label,mode,*[f"{z.loc[w,'rmse']:.3f}" for w in ("short_recent","horizon16")]])
+    tex_table("research",["Candidate", "Use", "Recent", "16-month"],rows,"llrr")
 
     facts={"raw_sha256":{n:hashlib.sha256((ROOT/'data/raw'/f'{n}.csv').read_bytes()).hexdigest() for n in ("train","test")},
         "train_rows":len(raw),"test_rows":len(test),"train_start":raw.RENT_APPROVAL_DATE.min(),

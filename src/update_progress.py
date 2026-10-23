@@ -1,4 +1,8 @@
-"""Update current validated results inside the single cumulative progress file."""
+"""Refresh the historical early-stopping reference block in the cumulative log.
+
+This does not select the production model or refresh fixed-budget mainline scores.
+Current selection lives in configs/model.json and reports/temporal_summary.csv.
+"""
 
 from __future__ import annotations
 
