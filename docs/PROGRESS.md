@@ -1687,3 +1687,10 @@ rendered pages are inspected for clipping, placement and readability, with no
 overfull boxes or unresolved references. Fonts, model configuration, training
 code, original course data and competition CSVs retain their previous scope.
 Workload completion, actual team approval and course submission remain pending.
+
+Follow-up wording correction (23 October 2026): explicitly map the local-trend
+increment to each validation window: recent quarter 0.13, recent year 0.13,
+sixteen months 0.40 and older year 0.74 RMSE. This removes the ambiguous
+"respectively" ordering; recorded metrics, tables and selected predictions do
+not change. The same PDF is rebuilt and its affected page and page count checked.
+Workload attribution remains reserved.

@@ -184,7 +184,7 @@ In Table~\ref{tab:baselines}, town/type medians outperform the global median, fo
 The detailed-comparable two-seed model reaches 448.06 under historical early stopping. Later fixed-budget adaptive direct/residual averaging gives 445.52 on the same recent rows. These milestones use different protocols. Table~\ref{tab:temporal} supplies the controlled fixed-budget evidence for subsequent selection.
 
 \subsection{Recent gains and an older-period regression}
-History diversity reduces adaptive-reference RMSE by 4.63 on the recent quarter, 2.65 on the recent year and 2.81 on sixteen months, but worsens the older year by 10.55. Adding local trends improves diversity by another 0.13, 0.13, 0.74 and 0.40 respectively. The selected recipe therefore still loses 9.81 versus the adaptive reference on the older year. Its older bias is +82.72 SGD, compared with +8.89 for the adaptive reference. Improvement is conditional on market period.
+History diversity reduces adaptive-reference RMSE by 4.63 on the recent quarter, 2.65 on the recent year and 2.81 on sixteen months, but worsens the older year by 10.55. Adding local trends further reduces RMSE by 0.13 on the recent quarter, 0.13 on the recent year, 0.40 on sixteen months and 0.74 on the older year. The selected recipe therefore still loses 9.81 versus the adaptive reference on the older year. Its older bias is +82.72 SGD, compared with +8.89 for the adaptive reference. Improvement is conditional on market period.
 
 \begin{figure}[t]
 \centering\includegraphics[width=\columnwidth]{figures/temporal_tradeoff.pdf}
