@@ -37,6 +37,11 @@ def tex_table(name, header, rows, alignment):
     (HERE / "generated" / f"{name}.tex").write_text("\n".join(lines), encoding="utf-8")
 
 
+def signed_bias(value):
+    """Format report bias to one decimal without a misleading signed zero."""
+    return "0.0" if round(float(value), 1) == 0 else f"{value:+.1f}"
+
+
 def main():
     for directory in ("figures", "generated"):
         (HERE / directory).mkdir(exist_ok=True)
@@ -48,6 +53,7 @@ def main():
     raw = pd.read_csv(ROOT / "data/raw/train.csv")
     test = pd.read_csv(ROOT / "data/raw/test.csv")
     summary = pd.read_csv(ROOT / "reports/temporal_summary.csv")
+    comparisons = pd.read_csv(ROOT / "reports/temporal_comparison.csv")
     feedback = pd.read_csv(ROOT / "reports/feedback_results.csv")
     y = raw.MONTHLY_RENT
     ids, prediction, _, _ = frozen_baseline("short_recent", raw, y, return_components=True)
@@ -65,8 +71,8 @@ def main():
     groups["sse_percent"] = groups.sse / q.squared_error.sum() * 100
     groups.reset_index().to_csv(HERE / "generated/rent_band_evidence.csv", index=False)
     tex_table("rent_bands", ["Actual rent", "$n$", "RMSE", "Bias", "SSE (\\%)"],
-        [[str(k).replace("<=", r"$\leq$").replace(">", r"$>$"), int(v.rows), f"{v.rmse:.1f}",
-          f"{v.bias:+.1f}", f"{v.sse_percent:.1f}"] for k,v in groups.iterrows()], "lrrrr")
+        [[str(k).replace("<=", r"$\leq$").replace(">", r"$>$"), f"{int(v.rows):,}", f"{v.rmse:.1f}",
+          signed_bias(v.bias), f"{v.sse_percent:.1f}"] for k,v in groups.iterrows()], "lrrrr")
 
     # Observable groups complement the outcome-defined bands; no label-based routing.
     flat_groups = q.groupby("flat").agg(rows=("error", "size"),
@@ -75,7 +81,7 @@ def main():
     flat_groups["sse_percent"] = flat_groups.sse / q.squared_error.sum() * 100
     flat_groups.reset_index().to_csv(HERE / "generated/flat_type_evidence.csv", index=False)
     tex_table("flat_types", ["Observed flat type", "$n$", "RMSE", "Bias", "SSE (\\%)"],
-        [[k.replace(" ", "-"), int(v.rows), f"{v.rmse:.1f}", f"{v.bias:+.1f}",
+        [[k.replace(" ", "-"), f"{int(v.rows):,}", f"{v.rmse:.1f}", signed_bias(v.bias),
           f"{v.sse_percent:.1f}"] for k,v in flat_groups.iterrows()], "lrrrr")
 
     # Descriptive training data, not an estimate of the effect of calendar time.
@@ -115,8 +121,14 @@ def main():
     rows = []
     for window, label in zip(windows, window_labels):
         z = summary[summary.window.eq(window)].set_index("candidate")
-        rows.append([label, int(z.loc[MAIN,"rows"]), *[f"{z.loc[c,'rmse']:.2f}" for c in candidates]])
-    tex_table("temporal", ["Validation interval", "$n$", "Adaptive (4)", "Diversity (8)", "Local trend (8)"], rows, "lrrrr")
+        # Obtain cutoffs from the executed fits rather than infer them from labels.
+        cutoffs = comparisons.loc[comparisons.window.eq(window), "train_end"].unique()
+        if len(cutoffs) != 1:
+            raise ValueError(f"Ambiguous training cutoff for {window}: {cutoffs}")
+        rows.append([label, cutoffs[0], f"{int(z.loc[MAIN,'rows']):,}",
+                     *[f"{z.loc[c,'rmse']:.2f}" for c in candidates]])
+    tex_table("temporal", ["Validation interval", "Train through", "$n$", "Adaptive (4)",
+                           "Diversity (8)", "Local trend (8)"], rows, "llrrrr")
     fig, ax = plt.subplots(figsize=(3.5, 2.35), constrained_layout=True)
     for i, (candidate,label) in enumerate(zip(candidates[1:],labels[1:])):
         gains = []
@@ -175,8 +187,13 @@ def main():
         "test_end":test.RENT_APPROVAL_DATE.max(),"recent_rmse":float(np.sqrt(np.mean(q.error**2))),
         "recent_mae":float(np.mean(abs(q.error))),"recent_bias":float(q.error.mean()),
         "recent_n":len(q),"observed_low_band_sse_percent":float(groups.iloc[0].sse_percent),
-        "paper_source_tables":["experiment_results.csv","temporal_summary.csv","feedback_results.csv","kaggle_submissions.csv"],
-        "mainline_prediction_sources":pd.read_csv(ROOT/'reports/stacking_sources.csv').query("window == 'short_recent'").run_id.tolist()}
+        "paper_source_tables":["experiment_results.csv","temporal_summary.csv","temporal_comparison.csv",
+                               "feedback_results.csv","kaggle_submissions.csv"],
+        "mainline_prediction_sources":pd.read_csv(ROOT/'reports/stacking_sources.csv').query("window == 'short_recent'").run_id.tolist(),
+        "selected_vs_adaptive_gain_intervals":summary.loc[
+            summary.candidate.eq(MAIN) & summary.window.isin(windows),
+            ["window", "baseline_candidate", "rmse_improvement", "address_bootstrap_replicates",
+             "gain_ci_lower", "gain_ci_upper"]].to_dict("records")}
     if not np.isclose(facts["recent_rmse"],440.7628634143297,atol=1e-7): raise ValueError("Mainline changed")
     (HERE / "generated/evidence.json").write_text(json.dumps(facts,indent=2),encoding="utf-8")
     print(json.dumps(facts,indent=2))

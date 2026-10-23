@@ -17,6 +17,7 @@
   "paper_source_tables": [
     "experiment_results.csv",
     "temporal_summary.csv",
+    "temporal_comparison.csv",
     "feedback_results.csv",
     "kaggle_submissions.csv"
   ],
@@ -29,5 +30,39 @@
     "6f785f9b3af80510",
     "69be94a98ae84052",
     "826216b5d1bdcf6f"
+  ],
+  "selected_vs_adaptive_gain_intervals": [
+    {
+      "window": "short_recent",
+      "baseline_candidate": "hierarchical_market_blend",
+      "rmse_improvement": 4.755616400648762,
+      "address_bootstrap_replicates": 1000.0,
+      "gain_ci_lower": 3.642551947699281,
+      "gain_ci_upper": 5.865757435764197
+    },
+    {
+      "window": "horizon16",
+      "baseline_candidate": "hierarchical_market_blend",
+      "rmse_improvement": 3.2075866520853538,
+      "address_bootstrap_replicates": 1000.0,
+      "gain_ci_lower": 2.57482339959824,
+      "gain_ci_upper": 3.869009606606512
+    },
+    {
+      "window": "long_recent",
+      "baseline_candidate": "hierarchical_market_blend",
+      "rmse_improvement": 2.7832866430504737,
+      "address_bootstrap_replicates": 1000.0,
+      "gain_ci_lower": 2.1120394057322955,
+      "gain_ci_upper": 3.4106043207275403
+    },
+    {
+      "window": "long_older",
+      "baseline_candidate": "hierarchical_market_blend",
+      "rmse_improvement": -9.810714121726733,
+      "address_bootstrap_replicates": 1000.0,
+      "gain_ci_lower": -11.084382397595864,
+      "gain_ci_upper": -8.5897089635389
+    }
   ]
 }

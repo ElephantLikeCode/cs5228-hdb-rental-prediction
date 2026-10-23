@@ -675,6 +675,13 @@ seven main-text pages, one reference page and one appendix page (nine total).
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
+The focused review adds recorded address-cluster gain intervals, explicit
+training cutoffs and fixed rental-history evaluation, and definitions of the
+low-rent detector and nearest-comparable/specialist/mixture candidates. The
+main temporal table appears beside the main results. PROGRESS records the
+disposition of all fourteen suggestions; workload completion and team review
+remain pending. The official template and seven-page body are retained.
+
 Compile the committed text, figures and tables in the built-in LaTeX editor,
 or on Windows with existing MiKTeX/TeX tools:
 

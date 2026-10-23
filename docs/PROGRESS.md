@@ -1645,3 +1645,45 @@ and data hashes match the original evidence. Direct LaTeX/BibTeX compilation
 succeeds, with no overfull boxes or unresolved references. Page images and embedded
 fonts are reviewed after the final layout pass. Team workload remains intentionally
 unfilled; this revision is not a Canvas submission or clean-machine GPU retrain.
+
+## Focused final-paper evidence review -- 23 October 2026
+
+Reviewed the fourteen follow-up suggestions and applied the useful changes to
+the existing report. This is a report clarification using retained experiment
+evidence; no training, promotion or new competition submission was performed.
+
+| Review points | Disposition |
+|---|---|
+| 1 | Retain the research narrative and existing structure; no wholesale rewrite. |
+| 2 | Add selected-versus-adaptive RMSE gain 4.76 with recorded 95% paired cluster interval [3.64, 5.87], and older-year gain -9.81 with interval [-11.08, -8.59]. Existing source metrics, 1,000 resamples and development-window caveats remain explicit. |
+| 3 | Add each executed fit's training cutoff to the temporal table; state January 2021 training start and fixed models/rental-label histories throughout scoring. No validation rent is assimilated. Cutoffs derive from temporal_comparison.csv. |
+| 4 | Identify the depth-4, 600-tree CatBoost low-event detector, learning rate .04 and L2 20; document 35,239 Jan-Dec 2024 earlier-origin OOF rows, observable/base-prediction inputs and Jan-Mar 2025 evaluation. Distinguish it from the rent-band routing classifier. |
+| 5 | Define the 64-neighbour same-type comparable method, recency weighting and reported constant-market variant; define specialist groups/fallback and the three rent-band experts with predicted routing. Preserve the fixed 25% application rule. |
+| 6 | Clarify that retaining the supplied MRT snapshot preserves the recorded offline recipe; it does not establish historical operational availability. Corrected-calendar results remain separate. |
+| 7 | Explain acceptance of eight rather than four components for recent/task-period gains, retaining the simpler reference and the older-window failure. No equal-compute or universal-dominance claim. |
+| 8 | Define month indices, horizon, market baseline/slope, floor-area units and 0.1 sqm comparable keys against the implementation. |
+| 9-10 | Replace internal mainline/gate/screen wording in the paper; compress repeated framing and caveats while preserving limitations, methodological distinctions and negative evidence. The acceptance threshold is explicitly operational, not a significance level. |
+| 11 | Move the temporal table earlier in the source and use a top float; it now appears on page 5 beside the principal results instead of page 6. Keep legible standard table fonts. |
+| 12 | Format row counts with separators and round signed zero bias to 0.0. Retain additional RMSE digits only for the small-gain research comparisons and recorded competition values. |
+| 13 | Keep the unchanged official class, fonts, subdued colours, separate references and seven body pages. No padding or type-size reduction. |
+| 14 | Keep workload attribution and team-review status pending, as instructed. Teacher access to a private repository remains a submission-time check, not an asserted completed action. |
+
+An additional implementation check corrected the earlier description of the
+main ensemble bootstrap: generate_figures.py groups the recorded raw
+town/block/street strings, not canonicalised addresses. The paper now discloses
+that formatting variants can split one building across keys. Recorded intervals
+are preserved rather than relabelled as a new bootstrap experiment.
+
+The existing aggregate evidence.json now records the four selected-versus-adaptive
+gain intervals and the additional cutoff-source table. Numerical table generation
+handles signed zero and count formatting; no new experiment/report directories
+were introduced. README describes the clarification. The draft remains seven
+body pages, one reference page and one appendix page (nine PDF pages total).
+
+Validation: the asset generator rechecks original raw-data and frozen-prediction
+hashes, all 8,924 scoring rows and RMSE/MAE/bias
+440.762863/316.549083/+0.787674. Direct pdflatex/BibTeX compilation succeeds;
+rendered pages are inspected for clipping, placement and readability, with no
+overfull boxes or unresolved references. Fonts, model configuration, training
+code, original course data and competition CSVs retain their previous scope.
+Workload completion, actual team approval and course submission remain pending.
