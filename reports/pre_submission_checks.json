@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-29",
+  "bootstrap_replicates": 1000,
+  "seed": 42,
+  "scope": "Paired development-sample sensitivity; no new model fit or promotion. Canonical keys use production normalize_text.",
+  "windows": [
+    {
+      "window": "short_recent",
+      "rows": 8924,
+      "gain": 4.755616400648762,
+      "selected_source_runs": [
+        "b7e278256574ec9f",
+        "2810d7d2d6aad313",
+        "48207f1d7f1f4b2b",
+        "2aa20239ba5b20c8",
+        "58da9ef0cc669e85",
+        "6f785f9b3af80510",
+        "69be94a98ae84052",
+        "826216b5d1bdcf6f"
+      ],
+      "raw": {
+        "clusters": 6133,
+        "ci95": [
+          3.6425519476992805,
+          5.865757435764198
+        ]
+      },
+      "canonical": {
+        "clusters": 5211,
+        "ci95": [
+          3.6216071711367874,
+          5.846693454065747
+        ]
+      }
+    },
+    {
+      "window": "long_recent",
+      "rows": 35158,
+      "gain": 2.7832866430504737,
+      "selected_source_runs": [
+        "46a825834bd035ea",
+        "367939d65163d610",
+        "b6301310991466da",
+        "c04867cc1513a2fb",
+        "f6a2e202925b7fdb",
+        "c188ba6cddf1fc34",
+        "2b0de3d5be5a5526",
+        "b1ca2fad570da351"
+      ],
+      "raw": {
+        "clusters": 12648,
+        "ci95": [
+          2.11203940573224,
+          3.4106043207275403
+        ]
+      },
+      "canonical": {
+        "clusters": 8500,
+        "ci95": [
+          2.1484273627425834,
+          3.4800846020789264
+        ]
+      }
+    },
+    {
+      "window": "long_older",
+      "rows": 35882,
+      "gain": -9.810714121726733,
+      "selected_source_runs": [
+        "add0bac3bf1363e9",
+        "b81c71280ae0f05c",
+        "f2a094d814bfe2f0",
+        "d3b16c9ef09bb58a",
+        "d52fa0e067796c37",
+        "50ba785b9a0eb5fb",
+        "117b4097b62ec684",
+        "21440b00a87b977d"
+      ],
+      "raw": {
+        "clusters": 12749,
+        "ci95": [
+          -11.084382397595865,
+          -8.5897089635389
+        ]
+      },
+      "canonical": {
+        "clusters": 8573,
+        "ci95": [
+          -11.12255264157964,
+          -8.592061674977586
+        ]
+      }
+    },
+    {
+      "window": "horizon16",
+      "rows": 47171,
+      "gain": 3.2075866520853538,
+      "selected_source_runs": [
+        "dcd9e976ce0d3e81",
+        "17b08e20e4c12695",
+        "3b46461788f418a3",
+        "41e09b2905acee11",
+        "64487fc64e639a16",
+        "b1a655e71bf86071",
+        "65965fac873d2021",
+        "a065741d19505c45"
+      ],
+      "raw": {
+        "clusters": 13934,
+        "ci95": [
+          2.574823399598185,
+          3.8690096066065123
+        ]
+      },
+      "canonical": {
+        "clusters": 8865,
+        "ci95": [
+          2.538982339510723,
+          3.8434883162633406
+        ]
+      }
+    }
+  ]
+}

@@ -1694,3 +1694,42 @@ sixteen months 0.40 and older year 0.74 RMSE. This removes the ambiguous
 "respectively" ordering; recorded metrics, tables and selected predictions do
 not change. The same PDF is rebuilt and its affected page and page count checked.
 Workload attribution remains reserved.
+
+## Pre-submission acceptance -- 29 October 2026
+
+Completed the user-authorised A-category closeout. Canvas Overview lists Friday
+6 November 2026, 23:59 Singapore time, despite the Project page placeholder.
+Source: https://canvas.nus.edu.sg/courses/93866/pages/overview . README and the
+current plan now use that deadline; historical uncertainty entries are retained.
+
+Corrected the primary reproduction sequence to include local_trend_direct and
+local_trend_residual alongside the four reference/diversity candidates. Removed
+the historical-only progress refresh from this current-result sequence.
+
+Independent local clone under ignored tmp/submission_acceptance, with a new
+Python 3.12 virtual environment and requirements installed afresh: installation,
+pip check, all 55 tests and all nine data/checksum/schema checks pass. The clone
+starts without original experiment caches. Its five-tree local-trend GPU
+validation run scores RMSE 698.938768, MAE 560.424343 on 8,924 rows; these are
+smoke scores, not model-selection evidence. Its full-input eight-component
+five-tree GPU submission workflow completes in 126.63 seconds, including model
+save/reload checks and CSV validation for all 50,000 ordered IDs. Clone PDF
+compilation succeeds without prediction caches. Full-budget historical runs and
+another physical machine were not retested. An initial check launched before
+installation finished failed on missing packages; the post-install checks pass.
+Local environment snapshot and all smoke outputs remain inside the ignored clone.
+
+Added final_report/check_statistics.py and aggregate
+reports/pre_submission_checks.json for reproducible canonical-address bootstrap
+sensitivity on the frozen predictions. At 1,000 resamples with seed 42, intervals
+are recent quarter [3.6216,5.8467], recent year [2.1484,3.4801], older year
+[-11.1226,-8.5921], sixteen months [2.5390,3.8435]. Gain directions and selection
+conclusions are unchanged; canonical keys merge formatting variants. The paper
+retains the original intervals and adds this sensitivity check explicitly.
+
+All eight production CBM hashes and the final submission hash match metadata.
+No model promotion or production submission change. Review retains older-window
+regression, development-window reuse, differing experimental budgets, weak
+low-rent detection and temporal availability limitations. Workload, team approval
+and teacher repository access remain pending user/team decisions. The paper
+continues to use seven body pages plus references and appendix; no Canvas upload.

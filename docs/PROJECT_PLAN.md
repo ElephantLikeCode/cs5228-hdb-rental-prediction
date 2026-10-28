@@ -257,7 +257,7 @@ they are superseded, not official deadlines.
 | Before / around 4 Oct | Prepare 10-15 slide progress-report PDF from existing evidence |
 | Sun 4 Oct | Canvas progress-report target; explicitly not a hard deadline |
 | After progress feedback | Resume stability/model experiments when requested; maintain one mainline and justified alternative |
-| Final report deadline | Canvas still says `Nov XX, 11.59 pm`; exact date unconfirmed |
+| Final report deadline | Fri 6 Nov 2026, 23:59 Singapore time; Canvas Overview, checked 29 Oct |
 | Before confirmed final deadline | Reserve time for freezing, clean reproduction, report review and packaging |
 
 ## 9. Current checkpoint and deferred queue

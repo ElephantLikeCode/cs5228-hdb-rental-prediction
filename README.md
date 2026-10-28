@@ -181,15 +181,21 @@ and packages.
 
 ## Reproduce the current result
 
+The sequence below includes all six component candidates needed for the selected
+ensemble and its four-component reference. Full-size runs are expensive; for an
+isolated end-to-end smoke test use a separate checkout and run
+`python src/train_final_model.py --task-type GPU --iterations 5 --model-prefix acceptance_smoke --submission submissions/acceptance_smoke.csv --metadata reports/acceptance_smoke_metadata.json`.
+This exercises all eight configured components and output validation, but its
+scores are not evidence of final model quality.
+
 Run from the repository root:
 
 ```bash
 python src/data_audit.py
 python -m pytest -q
 python src/generate_eda.py
-python src/run_experiments.py --compare-candidates --candidates hierarchical market_residual horizon_direct horizon_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --task-type GPU --resume
+python src/run_experiments.py --compare-candidates --candidates hierarchical market_residual horizon_direct horizon_residual local_trend_direct local_trend_residual --windows short_recent long_recent long_older horizon16 --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU --resume
 python src/generate_figures.py --temporal-only --reference-candidate hierarchical_market_blend --bootstrap --error-groups
-python src/update_progress.py
 python src/train_final_model.py --task-type GPU
 ```
 
@@ -642,8 +648,10 @@ Canvas project page, policies, announcements and assignment list rechecked read-
 - The 8 October announcement confirms no final presentation and that Kaggle
   score is not the grading criterion. Group-project AI assistance is permitted
   with appropriate documentation, as stated on the course Policies page.
-- The final deadline remains the placeholder `Nov XX, 11.59 pm`; do not treat the
-  former local 6 November date, or the Kaggle closing date, as a confirmed course deadline.
+- Final report deadline: **Friday 6 November 2026, 23:59 Singapore time**, listed
+  in the Canvas Overview project table (checked 29 October). The Project page
+  still contains a placeholder; the Overview supplies the date.
+- Deadline source: https://canvas.nus.edu.sg/courses/93866/pages/overview
 - Source: https://canvas.nus.edu.sg/courses/93866/pages/project
 
 The current 14-slide draft is `output/pdf/CS5228_Progress_Report.pdf`. Edit
@@ -710,11 +718,25 @@ full retraining was not performed during this report-only revision.
 The figure generator requires Times New Roman (installed by default on Windows);
 install an authorised copy on other systems or use the committed vector figures.
 
+`python final_report/check_statistics.py` repeats the 1,000-resample raw versus
+canonical-address sensitivity check using the protected stacking source manifest
+and paired reference predictions. Results are in `reports/pre_submission_checks.json`.
+It needs the original local prediction caches; no model is retrained.
+
 That command reads existing evidence and trains no models. Cached predictions,
 course data, downloaded historical example reports and compiler intermediates
 stay local. The report source, aggregate tables/figures and final draft PDF are
 maintained in Git. Future project changes should revise this same report and
 append the existing progress log rather than create another report version.
+
+Acceptance check (29 October 2026): a local clone with a fresh Python 3.12 venv
+installs the pinned requirements, passes `pip check`, 55 tests and the nine-file
+data audit. Without original caches it completes a five-tree GPU validation run
+and the eight-component five-tree workflow on all 50,000 test inputs (126.63 s),
+including model reload and CSV checks. This is same-device, reduced-budget
+acceptance, not a full-budget retraining or a different-machine verification.
+The cloned report also compiles without private experiment caches. Detailed
+smoke outputs stay local; PROGRESS records the commands, results and limitations.
 
 No further experiments are scheduled by this closeout. When the team resumes:
 
