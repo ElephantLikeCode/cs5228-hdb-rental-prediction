@@ -262,6 +262,14 @@ they are superseded, not official deadlines.
 
 ## 9. Current checkpoint and deferred queue
 
+29 October follow-up supersedes the earlier paused-research status: full-budget
+selected fit and recent validation reproduced in an independent local checkout;
+normal/stale decomposition, earlier-origin bias/risk transfer and a three-window
+interchange-access screen completed. No replacement met the promotion criterion.
+See PROGRESS and reports/followup_*.csv for evidence. Remaining research requires
+better regime adaptation, actual routing data or genuinely new permitted labels;
+member attribution, team approval, teacher access and submission remain team tasks.
+
 Best recorded public candidate: fixed recent-window four-head stacking,
 user-reported RMSE 432.04286 on 24 September, a 0.10595 improvement. It reuses the
 eight mainline CBMs with Oct-Dec 2024 weights and is retained without promotion.

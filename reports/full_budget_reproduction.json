@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-29",
+  "device": "RTX 4060 GPU",
+  "scope": "Independent local checkout and new venv, same physical device; full selected fit and recent validation, not every historical experiment.",
+  "components": 8,
+  "trees_per_component": 1600,
+  "full_training_rows": 150000,
+  "test_rows": 50000,
+  "fit_seconds": 679.83,
+  "submission_sha256": "164ce5caa2f1295a33c230a1c4adf833439035a5a5579eb90f3a6ce6d312d3ff",
+  "production_submission_sha256": "a88da3be518a4793486765f5d9ff44c9b27b3248bb195e6f2d0264ae7dabb57a",
+  "submission_mean_absolute_prediction_change": 4.397425918460746,
+  "submission_max_absolute_prediction_change": 34.83654172734259,
+  "fresh_recent_metrics": {
+    "rmse": 440.6422564793014,
+    "mae": 316.12372863016566,
+    "r2": 0.5366951162042441,
+    "bias": 2.5994339150784893
+  },
+  "frozen_recent_metrics": {
+    "rmse": 440.7628634143297,
+    "mae": 316.5490833184188,
+    "r2": 0.536441461779274,
+    "bias": 0.787673682590134
+  },
+  "recent_mean_absolute_prediction_change": 5.33217350576768,
+  "promoted": false
+}

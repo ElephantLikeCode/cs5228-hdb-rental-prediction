@@ -17,7 +17,7 @@
 \begin{document}
 
 \title{Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles%
-\thanks{CS5228 Group 44, National University of Singapore. Results reflect experiments completed through 6 October 2026.}}
+\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis on 29 October 2026.}}
 \author{\IEEEauthorblockN{Han Linxuan}\IEEEauthorblockA{A0350911M}
 \and\IEEEauthorblockN{Sun Shenghe}\IEEEauthorblockA{A0354849L}
 \and\IEEEauthorblockN{Zhang Yuhong}\IEEEauthorblockA{A0356795H}
@@ -135,6 +135,8 @@ Other tests use five-fold cross-fitted statistics, out-of-fold (OOF) residual co
 
 Economic experiments use lagged supplied COE and stock summaries, then official CPI and URA private non-landed rental indices. CPI measures consumer prices, while URA measures private housing rather than HDB rents. Release-lagged levels and changes are supplied with missingness and staleness indicators. A separate MRT calendar reconstructs operational stations by rental month and deduplicates interchange names. Opening exposure describes distance-decayed new-line access, recent openings and months since opening. These features test predictive association, not a causal opening effect.
 
+A follow-up adds three access proxies to the original local-trend inputs: distance to the nearest operating interchange and distinct supplied line-code prefixes within 1 and 2 km. Service follows the audited calendar; validation admits only openings announced before its origin. Two seed-42, 1,600-tree direct/residual fits per window test replacement of their corresponding ensemble components and a fixed 25\% blend. These measures retain the original static inputs and do not reconstruct track routes or commuting times.
+
 \section{Experimental Design}
 \subsection{Local validation and metrics}
 Chronological validation reflects the predominantly later competition period without assuming a pure time series. Each origin fits on earlier months and retains the complete scoring population. Models and rental-label histories remain fixed throughout its validation interval: no validation rents update later predictions. The recent quarter uses 141,076 training and 8,924 validation rows. Table~\ref{tab:temporal} records cutoffs for all four windows. These overlapping windows have been repeatedly inspected during development and are not untouched final tests.
@@ -196,6 +198,8 @@ The selected recent-quarter RMSE is 440.76, MAE 316.55 and bias +0.79 SGD. Its R
 
 We retain the selected model because the later-dated task favours recent conditions and it improves both recent and longer-horizon development windows. We accept eight components instead of four for those gains, while retaining the adaptive reference for robustness. Fig.~\ref{fig:tradeoff} shows the unresolved older-period cost. There, MAE falls slightly from 455.20 to 454.38 while RMSE rises, directing attention to large residuals. Stale-history augmentation changes the training distribution and may overcompensate under a different regime; the observed errors do not establish that mechanism.
 
+A follow-up decomposition of frozen components localises this trade-off. On the older year, the normal-history four-component view scores 579.85 RMSE with bias +7.08, whereas the stale-history view scores 624.08 with bias +158.35. Both views use the same scoring rows; this isolates their prediction behaviour, not the causal effect of augmentation alone. Every canonical flat type has higher selected-model RMSE than the adaptive reference, and the monthly bias is especially positive from August 2023 onward. Conversely, the stale view scores 441.78 recently versus 445.20 for the normal view. Subtracting half the mean error from an earlier OOF origin worsens older-year RMSE to 596.27 and leaves recent RMSE at 440.77. The earlier errors have the opposite sign: a constant inherited bias correction does not resolve changing regimes.
+
 \subsection{Stacking and supplementary competition evidence}
 Four-head recent-window stacking improves local recent RMSE from 440.7629 to 440.6565, but its paired gain interval $[-0.0342,0.2262]$ crosses zero. The eight-output version instead scores 440.8165. Earlier transfer tests are inconsistent; a sixteen-month stress check loses 0.538 with four inputs and 1.189 with eight. That check changes regime, fitting interval and horizon together, so it does not isolate recency weighting. Stacking remains an alternative rather than the default.
 
@@ -225,6 +229,8 @@ Table~\ref{tab:flats} complements outcome-defined bands. Executive flats have re
 
 For this detector, a depth-4 CatBoost binary classifier uses 600 trees, learning rate 0.04 and $L_2=20$. It trains on 35,239 January--December 2024 transactions with earlier-origin OOF predictions, and is evaluated on January--March 2025. Inputs combine observable flat, location and amenity attributes, calendar month and the frozen base prediction; actual query rent only defines the evaluation label. This keeps the diagnostic distinct from the three-band expert classifier.
 
+A simpler transfer check estimates town/type event rates from earlier OOF transactions, with 30-observation shrinkage toward their overall rate. Training on October--December 2024 gives recent AUC 0.5134 and average precision 0.03095, close to event prevalence 0.02992. A separate earlier-origin check gives older-year AUC 0.5176. These fixed partitions offer little transferable ranking signal; they do not establish that richer observations could never identify low rents.
+
 Large errors occur beyond rare executive flats. Contract terms, condition, renovation, household relationships or label problems remain possible explanations. The next useful analysis should seek a stable observable signal across periods before fitting another specialist.
 
 \subsection{Exploratory extensions and negative evidence}\label{sec:extensions}
@@ -245,6 +251,8 @@ The MRT audit finds 55 supplied rows marked open outside the verified operationa
 
 The index and rail studies comprise 36 formal GPU fits, excluding smoke checks. Repeating an otherwise identical seed-42 macro fit changes a replacement score by about 0.13 despite identical input matrices. Improvements at this scale require caution. We retain the supplied static MRT snapshot in the selected recipe to preserve the recorded offline comparison, while reporting corrected variants separately. This choice does not validate historical availability: the snapshot is a geographic proxy and cannot represent operational access at every transaction date.
 
+The interchange-access follow-up adds six full-budget GPU fits over three windows. Component replacement changes RMSE by +0.084 recently, +0.559 on the older year and +0.118 over sixteen months (positive means worse). The 25\% blend instead changes these by +0.655, $-4.938$ and $-0.100$. Its older-year RMSE of 585.41 still exceeds the adaptive reference's 580.54. Thus accessible line diversity offers a period-dependent trade-off, not a stable replacement; the tiny long-window gain does not offset the recent loss. These reused-window tests do not establish causal transport effects.
+
 We stop these experiments because observed gains are small, unstable across windows or comparable to refit variation. No candidate meets the later acceptance criterion. The low-rent detector lacks a strong observable signal, and further weight tuning would reuse the same development labels without resolving the older-period failure. This stopping decision preserves evidence for future hypotheses.
 
 \section{Limitations and Reproducibility}
@@ -255,12 +263,12 @@ We stop these experiments because observed gains are small, unstable across wind
 
 \textit{Information availability.} Static MRT proxies, revised macro vintages, snapshot stock membership and approval/negotiation timing limit live deployment. Spatial and opening associations are not causal estimates.
 
-\textit{Bounded search.} Parameters and representations are not exhaustively explored. One-seed, two-component tests cannot rule out better full retraining. No uncertainty interval for an individual tenancy is supplied. Future work should first identify stable observable subgroup bias in additional, preferably non-overlapping periods, then confirm a promising correction on later data and repeated seeds. Walking access, network connections or commuting time offer transit hypotheses more specific than repeated threshold tuning. These are proposals, not completed experiments.
+\textit{Bounded search.} Parameters and representations are not exhaustively explored. One-seed, two-component tests cannot rule out better full retraining. No uncertainty interval for an individual tenancy is supplied. Future work should identify stable observable subgroup bias in additional, preferably non-overlapping periods, then confirm promising corrections on later data and repeated seeds. Actual walking routes and commuting times require data beyond the tested station-distance and line-access proxies; these remain untested.
 
 \subsection{Implementation and reproducibility}
 The repository provides reusable code, the selected configuration, cumulative research decisions and score/provenance ledgers. Immutable course data, fitted models and detailed predictions remain local. Authorised readers can regenerate caches using the README; Appendix~\ref{app:reproduce} maps the evidence.
 
-One full-data eight-component fit took 669.44 seconds on an RTX 4060; this is not total research compute. The environment pins Python 3.12 and CatBoost 1.2.10. The recorded implementation passes 55 tests of cutoffs, categories, joins and output protection. Paper assets regenerate from saved evidence without training.
+The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent local checkout with a newly installed Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions, model reloads and hashes. Repeating all eight recent-window fits gives RMSE 440.6423 versus frozen 440.7629; this 0.12 difference is refit variation, not a new method gain. These times are not total research compute. CatBoost is pinned to 1.2.10; the maintained implementation passes 57 tests of cutoffs, categories, joins, access features and output protection. Paper assets regenerate from saved evidence without training.
 
 \section{Conclusion}
 For RQ1, canonical categories and validated joins establish coherent comparable groups; spatial ablations show modest incremental gains under the tested representation. For RQ2, market-adjusted comparables and history augmentation produce a selected recent RMSE of 440.76 and MAE of 316.55, with additional compute relative to the four-component reference. For RQ3, improvements transfer to two longer development windows but leave an older annual RMSE deficit of 9.81 unresolved. Low observed rents contribute disproportionately to squared error, while current feature-based detection is weak. The resulting lesson is a qualified modeling choice: retain useful recent-market information, document adverse transfer, and seek new observable evidence before further fine tuning.
@@ -272,7 +280,7 @@ For RQ1, canonical categories and validated joins establish coherent comparable 
 \clearpage
 \appendices
 \section{Reproduction and Evidence Map}\label{app:reproduce}
-Obtain the original course files under \code{data/raw/}, then run \code{python src/check\_setup.py} and \code{python -m pytest -q}. The README supplies full commands to regenerate temporal component predictions before feedback studies. Cached predictions and models are intentionally not distributed with the report. Compiling the committed paper needs only its source and saved aggregate assets; rebuilding experimental evidence additionally needs course data and prediction caches. GPU refits can differ numerically. Frozen hashes and metric checks deliberately reject silently changed evidence; a new run requires a reviewed source manifest and corresponding report update. A clean-machine end-to-end retraining has not been established by this report revision.
+Obtain the original course files under \code{data/raw/}, then run \code{python src/check\_setup.py} and \code{python -m pytest -q}. The README supplies commands to regenerate temporal component predictions before feedback studies. Cached predictions and models are not distributed. Compiling the paper needs committed sources and aggregate assets; rebuilding evidence needs course data and caches. Full-budget selected-model training is verified in an independent checkout and new virtual environment on the same physical machine. GPU refits differ numerically; frozen hashes and metric checks prevent silently replacing old evidence. A new run requires a reviewed manifest and corresponding report update. Cross-device verification is a separate team task.
 
 Fixed-budget comparisons use \path{src/run_experiments.py} with the \code{--compare-candidates} option. The selected ensemble is generated by \path{src/train_final_model.py} with the recorded configuration; research uses \path{src/feedback_experiments.py}, including \code{--families public} for indices and rail. These are abbreviated entry points; use the complete README commands for exact windows and options.\par
 For clarity, the historical core-baseline settings are listed in Table~\ref{tab:parameters}. They are bounded references, not the outcome of an exhaustive or common-compute search. The selected ensemble's settings and history coefficients are given in the main text.

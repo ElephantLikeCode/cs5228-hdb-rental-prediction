@@ -1733,3 +1733,77 @@ regression, development-window reuse, differing experimental budgets, weak
 low-rent detection and temporal availability limitations. Workload, team approval
 and teacher repository access remain pending user/team decisions. The paper
 continues to use seven body pages plus references and appendix; no Canvas upload.
+
+## Full-budget reproduction and targeted follow-up -- 29 October 2026
+
+Completed the user-requested selected-model full-budget repeat and bounded
+follow-up research. No production model/submission promotion occurred.
+
+### Reproduction
+
+The independent local clone/new Python 3.12 environment now repeats all eight
+selected components at 1,600 trees on 150,000 training rows. Fit takes 679.83 s;
+all CBM hashes/reloads and 50,000 ordered finite CSV predictions pass. Eight
+fresh recent-window fits at the same budget give RMSE 440.642256, MAE 316.123729,
+bias +2.599434, versus frozen RMSE 440.762863. This is refit variation, not a
+feature gain. Test predictions differ by mean absolute 4.397426 SGD and maximum
+34.836542 SGD; exact old submission bytes remain protected. Aggregate evidence:
+reports/full_budget_reproduction.json. Full repeat covers selected all-data
+training and recent validation, not every historical experiment or another
+physical computer. The user will arrange cross-device checking.
+
+### Transfer and low-rent diagnostics
+
+src/followup_analysis.py is the single new research entry point. Frozen paired
+predictions give older-year normal-view RMSE 579.845889/bias +7.077102 versus
+stale-view 624.076255/+158.353556. All six canonical types deteriorate versus
+the adaptive reference (one-room has only eight rows); 94.41% of excess squared
+error falls in August 2023-March 2024. Recent stale-view RMSE is instead
+441.783033 versus normal-view 445.203240. This localises prediction behaviour,
+not an isolated causal augmentation effect because view features also differ.
+
+A predeclared half-bias correction learned from earlier OOF origins worsens
+older-year RMSE to 596.270758 and recent RMSE to 440.774835. Earlier bias has the
+opposite sign in the old window, so constant inherited calibration is inadequate.
+Town/type low-event rates use earlier OOF labels only and shrink with 30 prior
+observations. Recent AUC/AP are .513370/.030949 versus prevalence .029919;
+older-year AUC is .517631. This offers no useful stable routing rule, and does
+not prove transactions are wrong or all such events inherently unpredictable.
+Aggregates: followup_transfer.csv, followup_groups.csv, followup_low_rent.csv.
+
+### Operational interchange access
+
+Tested nearest operating interchange distance and distinct supplied line-code
+prefixes within 1/2 km, using the existing audited calendar and announcements
+known before each validation origin. Original static covariates remain; these
+three additions are not track routes or actual commuting times. Six seed-42
+1,600-tree GPU fits (direct/residual in recent, older and sixteen-month windows)
+test corresponding component replacement and a fixed 25% pair blend.
+
+Replacement gains: -.083768/-.558694/-.117775 RMSE; blend gains:
+-.654862/+4.937799/+.099853 in the same window order. The older blend still
+loses to the adaptive reference. No candidate passes the recent/long-window
+promotion criterion; no second-seed expansion or new Kaggle CSV is warranted.
+Aggregate provenance, timing and paired intervals: reports/followup_transit.csv.
+Detailed predictions/features stay under ignored artifacts/followup.
+
+Pre-fit review caught MONTHLY_RENT retained in the draft feature-cache input;
+it was removed before any transit fit, label-free assertions added, and the
+three discarded draft caches deleted. Formal inputs have 81 columns (78+3).
+No leaky model/result was fitted or used. Repository pytest initially scanned
+the ignored local clone too; pytest.ini now limits discovery to maintained
+tests. Two new meaningful risk/access tests bring the suite to 57 passing.
+
+### Report and remaining scope
+
+The same paper now records these positive/negative findings and actual full-
+budget reproduction, replacing the obsolete unestablished-retraining wording.
+Original headline metrics stay frozen and the result cutoff is 29 October.
+This follow-up comprises 22 full-budget GPU fits: eight full-data, eight recent
+validation and six access fits. It provides substantive post-progress-report
+analysis without manufacturing an improvement. Workload/names/team review,
+teacher access and actual submission are user/team tasks. Exact commuting
+features need routing data; truly new-period validation needs new permitted
+labels. Their implementation and robust regime-adaptive modeling remain open.
+
+Final typesetting: eight body pages, one reference page and one appendix page; ten total. All pages rendered and checked; original production hashes and all nine data checks remain valid.

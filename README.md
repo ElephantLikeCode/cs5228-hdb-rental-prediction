@@ -527,6 +527,7 @@ src/generate_eda.py        Reproducible EDA figures and summaries
 src/run_experiments.py     Baselines, rolling validation, and feature ablations
 src/feedback_experiments.py   Entry point for information audit and feedback-driven experiments
 src/market_experiments.py     Research-only economic indices, MRT dates, matched learners and OOF corrections
+src/followup_analysis.py      Transfer decomposition, low-rent risk and interchange-access checks
 configs/mrt_openings.json     Official service/announcement dates for recent MRT openings
 src/generate_figures.py    Report-ready experiment and error plots
 src/update_progress.py     Refresh the historical early-stopping reference block only
@@ -535,6 +536,8 @@ reports/temporal_comparison.csv   Current fixed-budget per-fit evidence
 reports/temporal_summary.csv      Matched-seed and fixed-blend comparisons
 reports/feedback_results.csv      Feedback-driven screens; not a mainline selection
 reports/information_audit.csv     Aggregate input and spatial-join audit
+reports/followup_*.csv            Post-feedback transfer/risk/access aggregates
+reports/full_budget_reproduction.json  Independent full-budget selected-recipe check
 reports/final_model_metadata.json Exact local model and submission provenance
 reports/kaggle_submissions.csv    Only actually submitted public scores
 progress_report/main.tex          Editable source for the 14-slide progress report
@@ -542,10 +545,12 @@ progress_report/assets/           NUS logo and the five figures used by the repo
 output/pdf/CS5228_Progress_Report.pdf   Submission-ready progress-report PDF
 final_report/main.tex             Single evolving final scientific-paper source
 final_report/prepare_report.py    Derive paper figures/tables from frozen evidence
+final_report/check_statistics.py  Raw/canonical address bootstrap sensitivity
 final_report/figures/             Vector plots committed for standalone compilation
 final_report/generated/           Aggregate evidence and generated table fragments
 output/pdf/CS5228_Final_Report.pdf     Current final-report draft for team review
 tests/                     Automated data, feature, and validation tests
+pytest.ini                 Collect only maintained tests, excluding local clone copies
 requirements.txt           Exact verified direct dependencies
 ```
 
@@ -679,7 +684,7 @@ Edit the single evolving `final_report/main.tex` and `references.bib`. Figures
 and numeric table fragments are under `final_report/figures/` and `generated/`.
 The draft prioritises local temporal evaluation and subgroup interpretation;
 Kaggle scores are supplementary historical observations. It currently has
-seven main-text pages, one reference page and one appendix page (nine total).
+eight main-text pages, one reference page and one appendix page (ten total).
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
@@ -688,7 +693,8 @@ training cutoffs and fixed rental-history evaluation, and definitions of the
 low-rent detector and nearest-comparable/specialist/mixture candidates. The
 main temporal table appears beside the main results. PROGRESS records the
 disposition of all fourteen suggestions; workload completion and team review
-remain pending. The official template and seven-page body are retained.
+remain pending. The official template is retained; the 29 October follow-up
+expands the body to eight pages, within the course limit.
 
 Compile the committed text, figures and tables in the built-in LaTeX editor,
 or on Windows with existing MiKTeX/TeX tools:
@@ -712,8 +718,10 @@ and data hashes, and the selected metric is protected by an explicit check.
 GPU retraining is not expected to reproduce every bit. To report a fresh run,
 review its provenance, refresh the source manifest using the documented workflow,
 and update the report's protected metric and claims together. Do not bypass checks
-to make an unrelated cache appear to be the original evidence. A clean-machine
-full retraining was not performed during this report-only revision.
+to make an unrelated cache appear to be the original evidence. Full-budget
+selected-model retraining has now completed in a fresh local environment;
+see the 29 October follow-up below for its exact scope. Cross-device checking
+remains a separate team task.
 
 The figure generator requires Times New Roman (installed by default on Windows);
 install an authorised copy on other systems or use the committed vector figures.
@@ -738,9 +746,43 @@ acceptance, not a full-budget retraining or a different-machine verification.
 The cloned report also compiles without private experiment caches. Detailed
 smoke outputs stay local; PROGRESS records the commands, results and limitations.
 
-No further experiments are scheduled by this closeout. When the team resumes:
+The earlier closeout is followed by the bounded experiments below.
 
-1. Reproduce setup/tests and agree on member ownership.
+### Follow-up diagnostics and full-budget reproduction (29 October)
+
+`python src/followup_analysis.py` decomposes retained normal/stale and
+direct/residual predictions, reports monthly/town/type errors, tests a fixed
+half-bias correction learned at an earlier origin, and evaluates smoothed
+town/type low-rent-event rates on later labels. Aggregates are maintained in
+`reports/followup_transfer.csv`, `followup_groups.csv` and `followup_low_rent.csv`.
+These are reused development windows, not new unseen-period evidence.
+
+`python src/followup_analysis.py --train-transit` tests nearest operational
+interchange distance and distinct line prefixes accessible within 1/2 km.
+It uses the audited station calendar and announcements known before each origin;
+these geographic access measures are not actual network routes or commute times.
+The fixed one-seed, direct/residual 1,600-tree screen covers the recent quarter,
+older year and sixteen-month window. Detailed features/predictions stay under
+ignored `artifacts/followup`; aggregates are in `reports/followup_transit.csv`.
+
+Full-budget reproduction is performed in the ignored independent local clone
+`tmp/submission_acceptance`, using its new venv and original course data, without
+original model/prediction caches. From that clone's root run:
+
+```bash
+python src/train_final_model.py --task-type GPU --model-prefix acceptance_full --submission submissions/acceptance_full.csv --metadata reports/acceptance_full_metadata.json
+python src/run_experiments.py --compare-candidates --candidates local_trend_direct local_trend_residual horizon_direct horizon_residual --windows short_recent --comparison-seeds 42 2026 --trial-iterations 1600 --task-type GPU
+```
+
+From the maintained checkout, `python src/followup_analysis.py --summarize-reproduction`
+audits that clone's eight full-budget CBMs, all ordered test predictions and the
+eight-component recent validation result. It writes aggregate evidence to
+`reports/full_budget_reproduction.json`. Refit variation does not trigger model
+promotion; frozen production artifacts remain the submission reference.
+
+Remaining team actions and longer-term research:
+
+1. Confirm member ownership and review the reproduction evidence above.
 2. Investigate the old-window regression with more chronological cutoffs and
    monthly/town/flat-type errors before tuning against public scores.
 3. Maintain one mainline and, only when justified, a complementary final candidate;

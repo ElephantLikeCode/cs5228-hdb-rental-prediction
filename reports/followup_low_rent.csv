@@ -1,0 +1,3 @@
+window,training_window,training_rows,event_rate,auc,ap,event_definition,partition
+long_older,bridge_2022,7415,0.05339724653029374,0.5176307954767982,0.05679298130507987,observed rent < 0.65 * frozen selected prediction,town/type; smoothing 30; no validation fit
+short_recent,short_middle,8274,0.02991931869116988,0.5133701418911933,0.03094876051632966,observed rent < 0.65 * frozen selected prediction,town/type; smoothing 30; no validation fit
