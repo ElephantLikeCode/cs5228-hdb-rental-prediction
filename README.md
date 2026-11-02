@@ -1,5 +1,33 @@
 # CS5228 HDB Rental Prediction
 
+### 2 November evidence and report update
+
+The existing [final report](output/pdf/CS5228_Final_Report.pdf) now integrates the
+Claude/Codex follow-ups in its results, limitations and November appendix.
+[Verified integration notes](docs/REPORT_ADDENDUM_20261102_zh.md) and the
+[reconciled Claude handoff](docs/HANDOFF_CLAUDE_20261102_zh.md) distinguish authorship,
+validation protocols, unsuccessful candidates and abandoned code from executed runs.
+Aggregate evidence is committed as `reports/november_*20261102.*`.
+
+The selected model/configuration is unchanged. The best recorded public score
+remains **432.04286**; the two later user-requested four-head CPU probes scored
+**432.70689** and **434.72053**. They are supplementary public checks, not model
+promotions. No test-period public rental target was used in training/tuning or
+submitted. The independent source-matching diagnostic is target-visible, disabled
+by default, and cannot establish other teams' methods. Repeated inputs and a
+target-visible group statistic do not establish a 435--440 noise floor.
+
+Historical GPU results use `requirements.txt`; use a separate Python 3.12
+environment with `requirements-research.txt` for the November CPU scripts.
+The optional MLP additionally needs its separately recorded PyTorch environment.
+`python final_report/prepare_november.py` exports aggregate tables from local
+saved results without training or target lookup; compiling already committed
+assets needs no private data. On macOS/Linux run `bash final_report/build.sh`
+with Tectonic or pdflatex/BibTeX available; Windows retains `build.ps1`.
+The optional course example CSV is absent from the official Kaggle ZIP, so its
+template-specific test skips when missing. Other output and data checks still run.
+Team workload responsibilities and percentages remain for team confirmation.
+
 Private group-project repository for predicting Singapore HDB monthly rent.
 The evaluation metric is RMSE, and chronological validation is the primary
 local evaluation method.

@@ -200,3 +200,35 @@ do not supply a replacement date. Sources:
 https://canvas.nus.edu.sg/courses/93866/pages/project ,
 https://canvas.nus.edu.sg/courses/93866/pages/policies , and
 https://canvas.nus.edu.sg/courses/93866/discussion_topics/501350 .
+
+## 2 November 2026 integration and superseding status
+
+The instructor's 30 October project-Q&A reply was read on 2 November:
+publicly matched test rents may evaluate a final model but must not enter
+training or additional hyperparameter tuning. Owner declarations are not
+verified by HDB; this does not establish which individual low rents are rooms.
+Source: https://canvas.nus.edu.sg/courses/93866/discussion_topics/484708 .
+
+A separate Claude-assisted source-matching diagnostic had already produced
+local target-visible artifacts. They are not forecasting evidence, were never
+used for model training/tuning or uploaded, and do not identify another team's
+method. Its CSV remains outside Git; its audit script is now disabled by default.
+This supersedes any whole-project claim that no matching ever occurred while
+preserving the boundary for models and submissions.
+
+The historical-augmentation probe is different: it uses only records strictly
+before its January 2025 validation origin, subtracts known training multiplicities,
+and retains 4,357 additions with unique course attribute templates. It uses no
+validation-period or competition-period public rental targets. Its latest-vintage
+availability caveat and negative result remain recorded.
+
+The user authorized two real public probes after the local studies: the
+building-stock four-head CPU submission scored 432.70689; the market-normalized
+four-head CPU submission scored 434.72053. Both were verified Complete in the
+signed-in browser. Neither changed the prior best 432.04286, selected recipe or
+final-selection settings. The abandoned eight-head stock prototype produced no
+submission. File hashes are in `reports/kaggle_submissions.csv`.
+
+This integration does not reread or reconfirm the final-report deadline. The
+existing report remains a team-review draft with workload attribution pending;
+it has not been submitted to Canvas by this task.

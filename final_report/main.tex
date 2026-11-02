@@ -17,7 +17,7 @@
 \begin{document}
 
 \title{Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles%
-\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis on 29 October 2026.}}
+\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis through 2 November 2026.}}
 \author{\IEEEauthorblockN{Han Linxuan}\IEEEauthorblockA{A0350911M}
 \and\IEEEauthorblockN{Sun Shenghe}\IEEEauthorblockA{A0354849L}
 \and\IEEEauthorblockN{Zhang Yuhong}\IEEEauthorblockA{A0356795H}
@@ -45,7 +45,7 @@ Our empirical contribution combines auditable preprocessing, a comparable-market
 \subsection{Released files and task boundaries}
 The training file contains 150,000 rows from January 2021 through March 2025; the unlabelled competition file contains 50,000 rows from March 2025 through July 2026. Ten inputs describe approval month, town, block, street, flat type, flat model, floor area, furnishing status, lease commencement year and fee; training additionally supplies monthly rent. These audited file counts and dates take precedence over the course webpage's broader dataset overview.
 
-Month bins overlap in March 2025: 3,032 training rows and 380 competition rows occur in that month. Thus the competition period is predominantly later, but month precision does not establish strict chronological separation for every transaction. We do not access hidden test rents. Approval month is not necessarily the month in which rent was negotiated, limiting interpretations of short-term market movement.
+Month bins overlap in March 2025: 3,032 training rows and 380 competition rows occur in that month. Thus the competition period is predominantly later, but month precision does not establish strict chronological separation for every transaction. Competition rent labels are not supplied; no modeling experiment or submission uses public-source test-period rental targets. Approval month is not necessarily the month in which rent was negotiated, limiting interpretations of short-term market movement.
 
 Training rent has mean 2,719.04, median 2,700, standard deviation 749.73, and range 300--7,600 SGD. No core input is missing, although complete fields do not establish correctness or complete economic information. Auxiliary tables describe blocks, MRT stations, malls, primary schools, Certificate of Entitlement (COE) prices and stock prices. A normalised block lookup covers every released rental row without missing coordinates or principal block attributes.
 
@@ -159,7 +159,7 @@ Paired comparisons resample address clusters 1,000 times, reporting the 2.5th an
 \caption{Research decisions and their supporting evidence.}
 \label{tab:decisions}\centering\footnotesize
 \begin{tabular}{@{}p{.29\columnwidth}p{.64\columnwidth}@{}}
-\toprule Observation/question & Response and decision \\\midrule
+\toprule Question & Response and decision \\\midrule
 Fragmented categories & Canonicalise labels and validate spatial joins; retain ambiguous equal rows. \\
 Changing rent levels & Normalise comparables within flat type; retain the adaptive reference. \\
 Stale prediction history & Augment training and average targets; retain recent gains with older-period caveat. \\
@@ -203,7 +203,7 @@ A follow-up decomposition of frozen components localises this trade-off. On the 
 \subsection{Stacking and supplementary competition evidence}
 Four-head recent-window stacking improves local recent RMSE from 440.7629 to 440.6565, but its paired gain interval $[-0.0342,0.2262]$ crosses zero. The eight-output version instead scores 440.8165. Earlier transfer tests are inconsistent; a sixteen-month stress check loses 0.538 with four inputs and 1.189 with eight. That check changes regime, fitting interval and horizon together, so it does not isolate recency weighting. Stacking remains an alternative rather than the default.
 
-The competition provides an additional observation: team-reported historical public RMSE is 432.14881 for the selected model and 432.04286 for stacking. Test inputs are available, but their rent labels and public-subset membership are hidden. These scores cannot diagnose error mechanisms or replace local evaluation. The public reduction of 0.10595 is consistent with a small gain, yet does not override inconsistent temporal transfer. Full submission history remains in the repository ledger.
+The competition provides an additional observation: historical public RMSE is 432.14881 for the selected model and 432.04286 for stacking, subsequently verified on the signed-in submission page. Test inputs are available, but their rent labels and public-subset membership are hidden. These scores cannot diagnose error mechanisms or replace local evaluation. Two exploratory November probes score 432.70689 (building-stock features) and 434.72053 (market-normalized target); neither replaces the selected recipe or the best recorded submission. The probes use four CPU components, unlike the earlier weighted eight-component GPU best, so score differences do not isolate one intervention. Full submission history remains in the repository ledger.
 
 An earlier keep-versus-remove sensitivity probe changes public RMSE by only 0.17 in a different model family. It supplies no convincing reason to declare flagged labels wrong. The selected model retains all labels; every local comparison retains its complete scoring population.
 
@@ -253,13 +253,15 @@ The index and rail studies comprise 36 formal GPU fits, excluding smoke checks. 
 
 The interchange-access follow-up adds six full-budget GPU fits over three windows. Component replacement changes RMSE by +0.084 recently, +0.559 on the older year and +0.118 over sixteen months (positive means worse). The 25\% blend instead changes these by +0.655, $-4.938$ and $-0.100$. Its older-year RMSE of 585.41 still exceeds the adaptive reference's 580.54. Thus accessible line diversity offers a period-dependent trade-off, not a stable replacement; the tiny long-window gain does not offset the recent loss. These reused-window tests do not establish causal transport effects.
 
-We stop these experiments because observed gains are small, unstable across windows or comparable to refit variation. No candidate meets the later acceptance criterion. The low-rent detector lacks a strong observable signal, and further weight tuning would reuse the same development labels without resolving the older-period failure. This stopping decision preserves evidence for future hypotheses.
+The 2 November follow-up (Appendix~\ref{app:november}) adds CPU learner, target, housing-attribute and historical-data checks. Log-target integration improves an older-window blend but worsens the recent quarter. Resale and building-stock covariates add no stable gain; a relative-low-rent soft mixture also fails. Duplicate aggregation, market normalization, historical augmentation and alternative CatBoost structures do not pass the local advancement rule. These results are bounded negative evidence, not a theoretical prediction-error floor or a ranking of all possible learners.
+
+We stop these candidate batches because gains are small, unstable across windows or comparable to refit variation. Exploratory public probes are recorded separately from model promotion. Further tuning would reuse the same development labels without resolving the older-period failure.
 
 \section{Limitations and Reproducibility}
 \subsection{Scope of the conclusions}
 \textit{Evaluation reuse.} Temporal windows have been inspected repeatedly, several overlap, and public submissions add another selection channel. Bootstrap intervals do not repair this reuse. We have no private-label evaluation. The older-period regression prevents a claim of general dominance over the adaptive reference.
 
-\textit{Incomplete observation.} Unit floor, renovation and contract terms remain unobserved. Ambiguous flat identity and unusual rents establish neither label error nor a population irreducible-error floor. Predictions estimate recorded transactions, not a normative fair rent.
+\textit{Incomplete observation.} Unit floor, renovation and contract terms remain unobserved. Repeated building/type groups have constant supplied area, model and lease year, although resale records allow multiple unit attributes within those groups. The exact course join rule has not been recovered. Ambiguous flat identity and unusual rents establish neither label error nor a population irreducible-error floor. Predictions estimate recorded transactions, not a normative fair rent.
 
 \textit{Information availability.} Static MRT proxies, revised macro vintages, snapshot stock membership and approval/negotiation timing limit live deployment. Spatial and opening associations are not causal estimates.
 
@@ -268,7 +270,7 @@ We stop these experiments because observed gains are small, unstable across wind
 \subsection{Implementation and reproducibility}
 The repository provides reusable code, the selected configuration, cumulative research decisions and score/provenance ledgers. Immutable course data, fitted models and detailed predictions remain local. Authorised readers can regenerate caches using the README; Appendix~\ref{app:reproduce} maps the evidence.
 
-The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent local checkout with a newly installed Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions, model reloads and hashes. Repeating all eight recent-window fits gives RMSE 440.6423 versus frozen 440.7629; this 0.12 difference is refit variation, not a new method gain. These times are not total research compute. CatBoost is pinned to 1.2.10; the maintained implementation passes 57 tests of cutoffs, categories, joins, access features and output protection. Paper assets regenerate from saved evidence without training.
+The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent local checkout with a newly installed Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions, model reloads and hashes. Repeating all eight recent-window fits gives RMSE 440.6423 versus frozen 440.7629; this 0.12 difference is refit variation, not a new method gain. These times are not total research compute. CatBoost is pinned to 1.2.10. The November CPU check passes 74 tests; one optional example-template check skips because the Kaggle ZIP omits that file. Checks cover cutoffs, categories, joins, access, output protection and loss equivalence. Paper assets regenerate from saved evidence without training.
 
 \section{Conclusion}
 For RQ1, canonical categories and validated joins establish coherent comparable groups; spatial ablations show modest incremental gains under the tested representation. For RQ2, market-adjusted comparables and history augmentation produce a selected recent RMSE of 440.76 and MAE of 316.55, with additional compute relative to the four-component reference. For RQ3, improvements transfer to two longer development windows but leave an older annual RMSE deficit of 9.81 unresolved. Low observed rents contribute disproportionately to squared error, while current feature-based detection is weak. The resulting lesson is a qualified modeling choice: retain useful recent-market information, document adverse transfer, and seek new observable evidence before further fine tuning.
@@ -307,12 +309,15 @@ Stacking transfer & \path{reports/stacking_results.csv} \\
 Actual public scores & \path{reports/kaggle_submissions.csv} \\
 Selected recipe & \path{configs/model.json} \\
 Model provenance & \path{reports/final_model_metadata.json} \\
-Decisions/limitations & \path{docs/PROGRESS.md} \\\bottomrule
+Research decisions & \path{docs/PROGRESS.md} \\\bottomrule
 \end{tabular}
 \end{table}
-\newpage
+\clearpage
+\input{november_appendix.tex}
+\clearpage
 \section{Team Workload Statement -- To Be Completed}\label{app:workload}
 \textit{Reserved for completion before final submission. Responsibilities and contribution proportions have not been assigned in this draft.}
+The November handoff distinguishes Claude-assisted scripts, Codex-assisted experiments and their shared interfaces. Artifact provenance does not assign human contribution percentages; the team must confirm this table before submission.
 \begin{table}[h]
 \caption{Workload placeholder; no contributions are asserted.}
 \centering\footnotesize
@@ -326,5 +331,5 @@ Zhang Zhexuan & A0355290A & To be completed \\\bottomrule
 \end{table}
 
 \section{AI Assistance}
-AI tools assisted with discussion of experimental ideas, code development and checks, interpretation of recorded results, and drafting and editing this report. Numerical results derive from executed experiments and saved evidence; proposed analyses are identified separately. This statement documents assistance under the course policy\cite{policy}; it does not assert that team review or workload attribution has been completed.
+AI tools, including Claude and Codex, assisted with discussion of experimental ideas, code development and checks, interpretation of recorded results, and drafting and editing this report. Numerical results derive from executed experiments and saved evidence; proposed analyses are identified separately. This statement documents assistance under the course policy\cite{policy}; it does not assert that team review or workload attribution has been completed.
 \end{document}

@@ -1807,3 +1807,82 @@ features need routing data; truly new-period validation needs new permitted
 labels. Their implementation and robust regime-adaptive modeling remain open.
 
 Final typesetting: eight body pages, one reference page and one appendix page; ten total. All pages rendered and checked; original production hashes and all nine data checks remain valid.
+
+## 2 November 2026 - Reconciled Claude/Codex experiments and report update
+
+This entry supersedes the earlier report cutoff and the original handoff's
+whole-project submission status. It preserves the historical mainline and its
+recorded metrics. The consolidated Chinese explanation and artifact ownership
+are in `docs/REPORT_ADDENDUM_20261102_zh.md` and the audited
+`docs/HANDOFF_CLAUDE_20261102_zh.md`.
+
+### Executed evidence
+
+- Claude's supplementary 91-feature study has 13 result rows across three windows,
+  including two simple baselines, three reused-prediction blends and one
+  target-visible diagnostic. It is not a theoretical ceiling experiment.
+  The seven fitted configurations use seed42 and 1600 trees per regressor.
+  All 39 aggregate rows are in `reports/november_simplified_20261102.csv`.
+- Natural-log targets with training-set Duan smearing reduce sixteen-month bias
+  from +85.21 to +27.98 in the supplementary recipe, but not recent RMSE.
+  Integrated with the main feature workflow, the six-component mean scores
+  442.1204/467.2721/583.5154 across recent/recent-year/older-year windows,
+  versus the distinct four-component CPU reference
+  441.8429/467.3043/585.8437. It fails the declared all-window rule.
+- Codex's initial CPU comparisons, LightGBM variants and embedding MLP do not
+  justify replacing the mainline. A fixed relative-LightGBM blend reaches
+  441.5953 locally but fails the advancement rule. Budget and preprocessing
+  differences prevent interpreting these as a universal learner ranking.
+- Seventeen lagged resale, sixteen current building-stock and nineteen
+  contemporaneous supplied-macro features yield 441.8273, 441.7830 and 441.9767
+  against CPU reference 441.8429. Snapshot and release assumptions remain explicit.
+- The strict-past-reference low-rent event is distinct from earlier event
+  definitions: 3.160% of rows contribute 32.598% of reference squared error.
+  Adding housing data changes AUC 0.65761 to 0.65835; a relative two-expert mixture
+  and its fixed 25% blend score 453.993 and 442.223, not an improvement.
+- Five additional CatBoost fits test duplicate-mean compression, a market-
+  normalized target, 4357 attribute-matched historical-only source additions,
+  deeper symmetric trees and asymmetric trees. Their selected composition
+  scores 441.7347/441.6300/441.8761/441.7568/442.2445. None passes the recorded gate.
+  Exact compositions and cluster intervals are in
+  `reports/november_cpu_comparisons_20261102.csv`.
+
+### Actual public probes and decisions
+
+The user separately requested two submissions despite the local screen not
+passing. The four-head seed42 CPU building-stock probe scores 432.70689;
+the full-data market-normalized/damped6 probe scores 434.72053. Both are verified
+Complete on the signed-in Kaggle page; hashes and descriptions are in
+`reports/kaggle_submissions.csv`. Neither changes the best 432.04286,
+the selected 432.14881 recipe, or final-submission selection. Claude's abandoned
+eight-head stock prototype produced no submission and is not the executed
+four-head stock script.
+
+The separately saved public-source diagnostic is target-visible and was not
+used for training/tuning or uploaded. The instructor's 30 October clarification
+restricts publicly matched test rents to final evaluation. Source availability
+does not identify competitors' methods. The diagnostic's near189 proxy retains
+its evaluated row's source rent and is not out-of-sample prediction evidence.
+The script now requires explicit diagnostic-only opt-in; its CSV remains ignored.
+
+No 435--440 irreducible-error bound is established. Coarse scoring-label group
+medians, repeated-input dispersion and deleting low scoring rows do not prove
+such a bound. Course attributes are compatible with coarse building/type joins,
+but the exact generation rule and per-lease room/unit attributes remain unknown.
+
+### Integration, validation and remaining team action
+
+The original final-report source and PDF now include November findings; complete
+numeric tables are in its appendix, with eight main-text pages retained.
+`final_report/prepare_november.py` exports only aggregates from saved evidence;
+`final_report/build.sh` adds a macOS/Linux compilation path without fitting.
+The November suite passes 74 checks, with one optional example-template test
+skipped because the official ZIP omits that file. Loss-equivalence, log-target
+output units and exclusion of future source targets are checked. No fabricated
+example CSV is substituted for the checksum-locked course original.
+
+Code, process documents, aggregate results and the updated PDF are shared;
+raw records, per-row predictions, fitted weights, source-lookup CSVs and local
+logs remain excluded. Human responsibilities and percentages must still be
+confirmed by the team. This integration is not a claim of team approval or
+Canvas submission.

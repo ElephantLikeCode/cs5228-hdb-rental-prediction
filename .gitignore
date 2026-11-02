@@ -1,4 +1,5 @@
 .venv/
+.venv_research/
 .venv-*/
 __pycache__/
 .pytest_cache/
@@ -23,6 +24,7 @@ reports/data_audit.md
 reports/prototype_metrics.json
 submissions/*.csv
 artifacts/
+logs/
 tmp/
 
 # LaTeX build intermediates; keep the final PDF

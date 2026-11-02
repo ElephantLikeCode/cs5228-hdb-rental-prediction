@@ -1,0 +1,12 @@
+# Separate Python 3.12 environment for the 2 November CPU experiments.
+# Do not install over the historical GPU environment in requirements.txt.
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.15.3
+catboost==1.2.10
+lightgbm==4.6.0
+xgboost==3.0.5
+pytest==9.2.0
+matplotlib==3.11.2
+# The optional MLP was run separately with PyTorch 2.12.1 on Python 3.13.

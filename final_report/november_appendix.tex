@@ -1,0 +1,52 @@
+\section{November Follow-up: Executed Tests and Evidence Boundaries}\label{app:november}
+This appendix consolidates the executed November experiments; tool provenance is recorded separately. All tables describe completed runs. The selected eight-component GPU model remains unchanged; November's four-component, one-seed CPU reference is a separate comparator. Reused development windows and differing feature sets prohibit pooling these results into one algorithm ranking.
+
+\subsection{Supplementary learners and log targets}
+The supplementary study uses 91 core, spatial and past-rent features, seed 42 and 1,600 trees per learned component without outer-validation early stopping. Its recent, sixteen-month and older-year windows contain 8,924, 47,171 and 35,882 rows. The seven fitted learner/target variants, two simple baselines, three blends and one target-visible diagnostic form the thirteen rows in Table~\ref{tab:nov-simple}.
+\begin{table}[!ht]
+\caption{Supplementary feature recipe: RMSE, not the mainline recipe.}
+\label{tab:nov-simple}\centering\scriptsize
+\input{generated/november_simplified.tex}
+\par\smallskip\raggedright\footnotesize $^{*}$The group median uses scoring labels and is neither deployable nor a lower bound. Recent: Jan--Mar 2025; 16 mo.: Dec 2023--Mar 2025; older: Apr 2023--Mar 2024.
+\end{table}
+
+The log target uses $\log y$, not $\log(1+y)$; a training-set Duan smearing factor restores currency predictions. In the supplementary sixteen-month test, direct-target bias is $+85.21$ and log-target bias $+27.98$ SGD. The corresponding RMSEs are 498.195 and 493.709. Bias reduction alone neither explains all error nor proves a population noise floor. The log candidate is therefore integrated into the mainline feature workflow before assessing adoption.
+\begin{table}[!ht]
+\caption{Log-target integration: RMSE under the original feature workflow.}
+\label{tab:nov-log}\centering\scriptsize
+\input{generated/november_log.tex}
+\par\smallskip\raggedright\footnotesize Ref. 4: four CPU components, seed 42. Log 2: two log-target views. Mean 6: all six equally weighted. Blend: 75\% reference and 25\% log pair. Recent-year $n=35,158$; older-year $n=35,882$.
+\end{table}
+The six-component mean improves the older year but loses on the recent quarter. It fails the declared requirement of no loss across all three windows and at least one gain of two RMSE. The result is retained as a period-dependent trade-off rather than a new mainline.
+
+\subsection{External attributes, label ambiguity and RMSE probes}
+Official resale data\cite{hdb-resale} provide 196,982 records from 2017--2024. Seventeen features describe trailing two-year area, floor and resale-price distributions, with a two-month lag and a frozen validation origin. Sixteen building-stock features use 13,392 current property records\cite{hdb-property}; these are snapshot-assisted covariates without a historical-vintage claim. A separate supplied-macro test uses nineteen contemporaneous COE/stock summaries, distinguishing conditional prediction from origin-frozen forecasting.
+
+Of 14,828 course building/type groups, 13,758 recur and all recurrent groups have constant area, model and lease year. For 13,918 groups the supplied attribute tuple occurs in historical resales. This is compatibility evidence, not recovery of the course's exact generation script. Resales at 8 Holland Avenue include both 59 and 67 square metres for three-room flats. No verified unit identifier links a resale floor or area to an individual rental record.
+
+\begin{table}[!ht]
+\caption{November CPU probes on the same recent development sample.}
+\label{tab:nov-cpu}\centering\scriptsize
+\input{generated/november_cpu.tex}
+\par\smallskip\raggedright\footnotesize Comparator: RMSE 441.8429, four CPU components. $\Delta$ is candidate minus reference; negative is better. Learner rows can be standalone ensembles; replacement rows change only the stated component(s). Full budgets and uncertainty are in the aggregate ledger.
+\end{table}
+
+A diagnostic event, rent below 65\% of the strictly-past adaptive address/type/area reference, covers 282 recent rows (3.160\%) and 32.598\% of reference squared error. The stricter half-reference event covers 80 rows (0.896\%) and 14.853\% of squared error. These definitions differ from both the earlier frozen-prediction event and the same-month town/type cleaning rule. They must not be combined into a single prevalence or detector score.
+
+Adding housing information changes event AUC from 0.65761 to 0.65835; the address-cluster 95\% interval for the 0.00074 increment is $[-0.00625,0.00740]$. Highest-risk-decile precision is 7.39\%, versus 3.16\% prevalence. This event is not verified room rental or label error. A two-expert relative-rent mixture reaches 453.993 RMSE; its fixed 25\% blend reaches 442.223. Removing low observations from scoring would change the task rather than improve predictions.
+
+The historical-data probe uses only public rental records\cite{hdb-rental} strictly before January 2025. Multiset comparison finds 5,247 excess source records, of which 4,357 have unique course building/type templates; original labels remain unchanged. The replacement reaches 441.876. These are latest-vintage historical records, not reconstructed past publication vintages. No validation-period or competition-period rental targets enter this fit. Duplicate means retain original multiplicities; scale-squared weights preserve currency MSE for the market-normalized target. None of these local probes passes its declared advancement rule.
+
+\subsection{Public-source diagnostics and actual competition probes}
+A separately saved source-matching diagnostic finds five-key public-source support for 49,807 of 50,000 competition inputs and four-key fallback support for 193; 71.29\% have one remaining source record under its subtraction rule. This demonstrates target availability, not predictive performance. A reported training-period proxy near 189 deliberately retains the evaluated row's source target; it is not held-out model validation and is not evidence of how another team obtained its score. Neither that diagnostic CSV nor test-period source targets are used in modeling or submitted.
+
+The instructor's 30 October reply restricts publicly matched test rents to final evaluation, excluding training and additional hyperparameter tuning\cite{project-qa}. A coarse group statistic fitted on scoring labels and dispersion within repeated inputs likewise cannot establish a population irreducible-error floor. The report makes no claim that 435--440 is an attainable limit or that all remaining error is unpredictable.
+
+Two exploratory public probes were made despite not passing the local promotion rule. Both use all 150,000 official training rows and four equally weighted CPU components, seed 42:
+\begin{itemize}
+\item Building-stock probe: public RMSE 432.70689.
+\item Market-normalized, fixed six-month damping probe: public RMSE 434.72053, following local RMSE 441.629997.
+\end{itemize}
+Both are verified as Complete on Kaggle and leave the prior best 432.04286 and selected recipe unchanged. They differ in seed count, device and weighting from the earlier eight-component best; public differences do not isolate attribute or target effects. The abandoned eight-component stock prototype produced no submission and is distinct from these executed four-component probes.
+
+Aggregate evidence is committed under \path{reports/november_*20261102.*}; the cumulative decisions are in \path{docs/PROGRESS.md}. Full protocols, models and row-level predictions stay in ignored local artifacts. The export command \path{final_report/prepare_november.py} regenerates tables from saved results without training or source-target matching. A separate research environment is recorded in \path{requirements-research.txt}. Team workload percentages remain unconfirmed.

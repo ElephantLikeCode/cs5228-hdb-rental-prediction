@@ -1,0 +1,40 @@
+window,candidate,rmse,mae,bias,n,iters,tag,label_visibility,source
+jan_mar25,ORACLE_same_month_town_ft_model_area10_median,434.803,284.98,59.91,8924,1600,,validation-target-visible diagnostic,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,base_town_ft_recent_median,488.34,347.98,24.74,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,base_comparable_address_flat,497.231,350.86,-13.2,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,cat_direct,446.093,317.94,9.57,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,cat_resid,455.852,314.96,85.93,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,cat_recent_w,446.612,318.69,7.75,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,cat_clean,447.583,315.11,32.41,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,cat_log,447.889,316.28,31.71,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,lgbm_direct,467.983,340.46,-12.61,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,xgb_direct,467.779,338.06,-3.96,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,blend_direct_resid,448.315,313.49,47.75,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,blend_cat3_lgbm,447.81,317.1,22.66,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+jan_mar25,blend_all_trees,448.532,318.1,19.85,8924,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,ORACLE_same_month_town_ft_model_area10_median,464.043,310.84,64.7,47171,1600,,validation-target-visible diagnostic,artifacts/legit_ceiling_20261102/results.csv
+gap16,base_town_ft_recent_median,556.787,433.65,-156.37,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,base_comparable_address_flat,612.675,464.54,-186.06,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,cat_direct,498.195,360.28,85.21,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,cat_resid,589.032,434.1,302.53,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,cat_recent_w,500.983,366.59,66.78,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,cat_clean,499.924,360.57,95.41,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,cat_log,493.709,363.4,27.98,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,lgbm_direct,532.245,405.79,-52.78,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,xgb_direct,520.355,388.38,-3.61,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,blend_direct_resid,529.282,380.76,193.87,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,blend_cat3_lgbm,501.692,362.38,100.44,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+gap16,blend_all_trees,497.48,359.87,82.26,47171,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,ORACLE_same_month_town_ft_model_area10_median,545.992,388.54,66.73,35882,1600,,validation-target-visible diagnostic,artifacts/legit_ceiling_20261102/results.csv
+long_older,base_town_ft_recent_median,889.234,756.1,-637.47,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,base_comparable_address_flat,882.325,735.66,-609.6,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,cat_direct,590.798,460.0,47.95,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,cat_resid,608.292,468.97,124.68,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,cat_recent_w,594.105,462.19,58.79,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,cat_clean,589.736,455.95,71.48,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,cat_log,587.138,459.2,13.98,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,lgbm_direct,638.03,500.81,-14.14,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,xgb_direct,624.337,487.24,16.13,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,blend_direct_resid,594.531,460.15,86.32,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,blend_cat3_lgbm,591.945,460.33,54.32,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv
+long_older,blend_all_trees,589.373,457.81,50.81,35882,1600,,training labels only,artifacts/legit_ceiling_20261102/results.csv

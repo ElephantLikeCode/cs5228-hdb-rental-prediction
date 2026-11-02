@@ -1,0 +1,64 @@
+{
+  "simplified_feature_count": 91,
+  "simplified_windows": {
+    "jan_mar25": 8924,
+    "gap16": 47171,
+    "long_older": 35882
+  },
+  "log_target": "natural log(y), training-set Duan smearing; not log1p",
+  "original_reference": "Selected eight-head GPU 440.7629; distinct from November four-head CPU 441.8429",
+  "no_established_irreducible_error_floor": true,
+  "no_other_team_method_inference": true,
+  "stopped_eight_head_stock_prototype": "No submission produced; distinct from the completed four-head stock probe",
+  "submission_records": [
+    {
+      "status": "Complete",
+      "competition": "cs-5228-2610-project",
+      "submission_file": "submissions/submission_stock_probe4_20261102.csv",
+      "submission_sha256": "cdad0d1d68692b5abf92bf9ae8821c40b06b139cf9f3bd8e0faed97b3104d163",
+      "public_rmse": 432.70689,
+      "prior_best_public_rmse": 432.04286,
+      "difference_to_prior_best": 0.66403,
+      "verified_at_utc": "2026-11-02T08:30:50.637910+00:00",
+      "source": "Kaggle authenticated submissions page, success entry verified in DOM and screenshot",
+      "page_url": "https://www.kaggle.com/competitions/cs-5228-2610-project/submissions",
+      "final_selection_changed": false,
+      "default_model_changed": false,
+      "comparison_limit": "One-seed CPU four-head probe vs earlier weighted two-seed GPU ensemble; score gap does not isolate the extra feature effect."
+    },
+    {
+      "status": "Complete",
+      "competition": "cs-5228-2610-project",
+      "submission_file": "submission_market_normalized_damped6_20261102.zip",
+      "public_rmse": 434.72053,
+      "prior_best_public_rmse": 432.04286,
+      "difference_to_prior_best": 2.67767,
+      "local_validation_rmse": 441.629997,
+      "csv_sha256": "f755313dc5f817955dd3ad8431c21e8a70aa94c77d6114941d56e4c5a1517552",
+      "archive_sha256": "44a27eb6e6cb8063556d5e405e62add52e19513a118fdca324a27f3dcc2394fd",
+      "verified_at_utc": "2026-11-02T13:58:06.236091+00:00",
+      "source": "Authenticated Kaggle submissions page; Complete entry and score verified",
+      "page_url": "https://www.kaggle.com/competitions/cs-5228-2610-project/submissions",
+      "default_model_changed": false,
+      "final_selection_changed": false,
+      "comparison_limit": "Four-head seed42 CPU probe vs earlier weighted eight-head GPU best. Local short-window gain did not transfer to public test; isolated causal attribution not established."
+    }
+  ],
+  "source_sha256": {
+    "artifacts/legit_ceiling_20261102/results.csv": "a34b06d23c5be370cbccf695f9dcc871f811d4c373cd1623164cbfbd68967dea",
+    "artifacts/research_20261102/17bad5d96e4b3667/metrics.csv": "493c3d0a451187afa55ef842f24860c43a15501982b16678c00d3a52263d73c3",
+    "reports/kaggle_submissions.csv": "321420640fe0e9d714b5233d5b3d5c3a27cd6380723cfb2ad4e203f43312bf02"
+  },
+  "exported_from_environment": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "scipy": "1.15.3",
+    "catboost": "1.2.10",
+    "lightgbm": "4.6.0",
+    "xgboost": "3.0.5",
+    "pytest": "9.2.0"
+  },
+  "validation_reuse": "All windows are reused development samples; bootstrap intervals do not remove selection bias",
+  "withheld": "No raw rows, targets, per-row predictions, source-matching submission, credentials or fitted model files are exported"
+}
