@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from hdb_attribute_features_20261102 import course_keys
+from src.research.hdb_attribute_features import course_keys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts/attribute_study_20261102"
 PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 

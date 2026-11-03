@@ -8,9 +8,9 @@ import pandas as pd
 from lightgbm import LGBMRegressor
 from sklearn.metrics import roc_auc_score
 
-from research_20261102 import encode_lgbm
+from src.research.compare_models import encode_lgbm
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 HOUSING = ROOT / "artifacts/attribute_study_20261102/6829709328a10a35"
 CLASSIFIER = ROOT / "artifacts/attribute_study_20261102/low_rent_information"
@@ -30,7 +30,7 @@ def main():
     keep = train.RENT_APPROVAL_DATE.ge("2022-01").to_numpy()
     train_event = np.asarray(target) < .65 * train_level
     valid_event = y < .65 * query_level
-    from hdb_attribute_features_20261102 import property_features
+    from src.research.hdb_attribute_features import property_features
     extra_a, extra_b = pd.read_pickle(HOUSING / "resale_features.pkl")
     prop = pd.read_csv(ROOT / "data/external/attribute_sources_20261102/property.csv")
     query = source.iloc[scoring.source_row].reset_index(drop=True)
@@ -80,7 +80,7 @@ def main():
                                  rmse=float(np.sqrt(squared[mask].mean())),
                                  prediction_bias=float((reference[mask]-y[mask]).mean())))
     pd.DataFrame(attributions).to_csv(OUT / "reference_error_attribution.csv", index=False)
-    from hdb_attribute_features_20261102 import course_keys
+    from src.research.hdb_attribute_features import course_keys
     keys = course_keys(query)
     groups, names = pd.factorize(keys.town+"|"+keys.block+"|"+keys.street)
     bootstrap = np.random.default_rng(20261102).multinomial(

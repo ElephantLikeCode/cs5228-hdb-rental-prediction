@@ -11,15 +11,15 @@ import pandas as pd
 from catboost import CatBoostRegressor
 
 try:
-    from .features import build_block_lookup
-    from .hdb_attribute_features_20261102 import course_keys, normal
-    from .modeling import build_features, load_config
+    from src.features import build_block_lookup
+    from src.research.hdb_attribute_features import course_keys, normal
+    from src.modeling import build_features, load_config
 except ImportError:
-    from features import build_block_lookup
-    from hdb_attribute_features_20261102 import course_keys, normal
-    from modeling import build_features, load_config
+    from src.features import build_block_lookup
+    from src.research.hdb_attribute_features import course_keys, normal
+    from src.modeling import build_features, load_config
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT.parent / "external_datagov/renting_out_of_flats_2021on.csv"
 PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 OUT = ROOT / "artifacts/historical_augmentation_20261102"

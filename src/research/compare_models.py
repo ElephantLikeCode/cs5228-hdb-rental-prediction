@@ -13,20 +13,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
-from lightgbm import LGBMRegressor
 
 try:
-    from .check_setup import RAW_SHA256
-    from .features import build_block_lookup
-    from .modeling import build_features, build_training_features, load_config
-    from .validation import regression_metrics
+    from src.check_setup import RAW_SHA256
+    from src.features import build_block_lookup
+    from src.modeling import build_features, build_training_features, load_config
+    from src.validation import regression_metrics
 except ImportError:
-    from check_setup import RAW_SHA256
-    from features import build_block_lookup
-    from modeling import build_features, build_training_features, load_config
-    from validation import regression_metrics
+    from src.check_setup import RAW_SHA256
+    from src.features import build_block_lookup
+    from src.modeling import build_features, build_training_features, load_config
+    from src.validation import regression_metrics
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TARGET = "MONTHLY_RENT"
 WINDOWS = {
     "short_recent": ("2025-01", "2025-03"),
@@ -103,6 +102,8 @@ def fit_component(train, target, query, *, learner, mode, seed, config, threads,
     weights = scale_train**2 * (1 if sample_weight is None else np.asarray(sample_weight))
     vocabulary = None
     if learner == "lgbm":
+        from lightgbm import LGBMRegressor
+
         train, query, vocabulary = encode_lgbm(train, query)
         model = LGBMRegressor(
             objective="regression", n_estimators=config["iterations"],
@@ -173,7 +174,7 @@ def main():
     config = load_config()
     code_hash = hashlib.sha256(b"".join(
         (ROOT / "src" / name).read_bytes()
-        for name in ("research_20261102.py", "features.py", "modeling.py")
+        for name in ("research/compare_models.py", "features.py", "modeling.py")
     )).hexdigest()
     packages = {name: version(name) for name in
                 ("numpy", "pandas", "scikit-learn", "catboost", "lightgbm")}

@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
 
-from research_20261102 import encode_lgbm
-from validation import regression_metrics
+from src.research.compare_models import encode_lgbm
+from src.validation import regression_metrics
 
 
 def main():

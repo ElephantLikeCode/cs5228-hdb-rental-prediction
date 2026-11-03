@@ -1,4 +1,4 @@
-"""Target-visible public-record diagnostic (2026-11-02), not a prediction model.
+"""Quarantined target-visible public-record diagnostic, not a prediction model.
 
 The competition rows are a ~96% sample of data.gov.sg "Renting Out of Flats from Jan 2021", which already
 covers every test month. For each test row, take the public records with the same month/town/block/street/
@@ -6,13 +6,16 @@ flat type, remove the rents already accounted for by training rows in that group
 what is left. It reads test-period source targets and establishes no other team's method. Its output must
 never be uploaded or used for model training/tuning. Retained for audit, not part of the modeling workflow.
 """
-import re, sys
+import argparse, re, sys
 import numpy as np, pandas as pd
 from pathlib import Path
 if __name__ != "__main__" or "--diagnostic-only" not in sys.argv:
     raise SystemExit("Disabled audit script. Explicit --diagnostic-only is required; outputs must never be submitted or used for model tuning.")
-ROOT = Path(__file__).resolve().parents[1]; OUT = ROOT / "artifacts/lookup_20261102"; OUT.mkdir(parents=True, exist_ok=True)
-PUB = Path.home() / "Desktop/5228/external_datagov/renting_out_of_flats_2021on.csv"
+ROOT = Path(__file__).resolve().parents[2]; OUT = ROOT / "artifacts/lookup_20261102"; OUT.mkdir(parents=True, exist_ok=True)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--diagnostic-only", action="store_true", required=True)
+parser.add_argument("--source", type=Path, required=True, help="Existing public-source CSV; never downloaded automatically")
+PUB = parser.parse_args().source
 ABBR = {"ave": "avenue", "rd": "road", "st": "street", "dr": "drive", "cres": "crescent", "ctrl": "central", "nth": "north", "sth": "south", "pl": "place",
         "cl": "close", "lor": "lorong", "bt": "bukit", "jln": "jalan", "kg": "kampong", "upp": "upper", "ter": "terrace", "gdns": "gardens", "hts": "heights",
         "pk": "park", "mkt": "market", "c'wealth": "commonwealth", "tg": "tanjong", "ctr": "centre", "cresc": "crescent", "sq": "square", "blvd": "boulevard", "wk": "walk", "ln": "lane", "ind": "industrial", "est": "estate"}

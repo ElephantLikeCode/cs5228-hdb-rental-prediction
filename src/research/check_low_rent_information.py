@@ -8,10 +8,10 @@ import pandas as pd
 from lightgbm import LGBMClassifier
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
-from hdb_attribute_features_20261102 import property_features
-from research_20261102 import encode_lgbm
+from src.research.hdb_attribute_features import property_features
+from src.research.compare_models import encode_lgbm
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 HOUSING = ROOT / "artifacts/attribute_study_20261102/6829709328a10a35"
 OUT = ROOT / "artifacts/attribute_study_20261102/low_rent_information"

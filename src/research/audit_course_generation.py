@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from hdb_attribute_features_20261102 import course_keys, prepare_resale
+from src.research.hdb_attribute_features import course_keys, prepare_resale
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts/attribute_study_20261102"
 
 

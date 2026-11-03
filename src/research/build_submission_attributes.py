@@ -7,13 +7,15 @@ Validation evidence: the two-head replacement improved the four-head CPU referen
 (artifacts/attribute_study_20261102/paired_comparison.csv) - inside noise; this file exists because the user wants to
 try it on the public leaderboard, not because the pre-registered advancement rule passed. Nothing uploaded here."""
 import json, sys, time
+if __name__ != "__main__" or "--allow-abandoned-prototype" not in sys.argv:
+    raise SystemExit("Abandoned prototype; not a maintained submission entry. Explicit --allow-abandoned-prototype is required.")
 from pathlib import Path
 import numpy as np, pandas as pd
-ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT / "src"))
-from modeling import load_config, build_training_features, build_features
-from features import build_block_lookup
-from research_20261102 import fit_component
-from hdb_attribute_features_20261102 import property_features
+ROOT = Path(__file__).resolve().parents[2]
+from src.modeling import load_config, build_training_features, build_features
+from src.features import build_block_lookup
+from src.research.compare_models import fit_component
+from src.research.hdb_attribute_features import property_features
 OUT = ROOT / "artifacts/submission_attributes_20261102"; OUT.mkdir(parents=True, exist_ok=True)
 THREADS = 8
 train_full = pd.read_csv(ROOT / "data/raw/train.csv"); test = pd.read_csv(ROOT / "data/raw/test.csv")

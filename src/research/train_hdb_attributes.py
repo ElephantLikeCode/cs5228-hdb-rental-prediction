@@ -10,16 +10,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from hdb_attribute_features_20261102 import (
+from src.research.hdb_attribute_features import (
     course_keys, prepare_resale, property_features, provenance_audit,
     resale_features, supplied_current_macro,
 )
-from market_experiments import monthly_market
-from modeling import load_config
-from research_20261102 import fit_component
-from validation import regression_metrics
+from src.market_experiments import monthly_market
+from src.modeling import load_config
+from src.research.compare_models import fit_component
+from src.validation import regression_metrics
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts/attribute_study_20261102"
 PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 DATA = ROOT / "data/external/attribute_sources_20261102"
@@ -52,7 +52,7 @@ def run():
         information_boundary="No external rental labels, no per-lease floor assignment, no source IDs as inferred tenancy type",
         screening="Advance only if complete ensemble improves >=2 RMSE with address-cluster upper delta bound <0. No upload or default-config replacement.",
         code_sha256=hashlib.sha256(b"".join((ROOT / "src" / file).read_bytes()
-            for file in ["train_hdb_attributes_20261102.py", "hdb_attribute_features_20261102.py"])).hexdigest(),
+            for file in ["research/train_hdb_attributes.py", "research/hdb_attribute_features.py"])).hexdigest(),
         manifests={name: json.loads((DATA / f"{name}_manifest.json").read_text())
                    for name in ["resale", "property"] if (DATA / f"{name}_manifest.json").exists()},
         supplied_data_sha256={name: hashlib.sha256((ROOT / "data/raw/auxiliary" / name).read_bytes()).hexdigest()
@@ -110,7 +110,7 @@ def run():
                 model.save_model(str(folder / f"{name}_{mode}.cbm"))
                 np.save(destination, prediction)
                 if name == "given_macro":
-                    from modeling import predict_model
+                    from src.modeling import predict_model
                     frozen_extra = pd.read_pickle(folder / "macro_frozen_control_features.pkl")[1]
                     frozen = predict_model(model, query_x.join(frozen_extra), dict(config, residual_target=mode == "residual"))
                     np.save(folder / f"{name}_{mode}_frozen.npy", frozen)

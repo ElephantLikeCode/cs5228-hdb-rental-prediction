@@ -5,8 +5,8 @@ import csv
 import numpy as np
 import pandas as pd
 
-from src.probe_historical_augmentation_20261102 import historical_records
-from src.probe_rmse_structure_20261102 import aggregate_duplicates
+from src.research.probe_historical_augmentation import historical_records
+from src.research.probe_rmse_structure import aggregate_duplicates
 
 
 def test_duplicate_aggregation_preserves_prediction_dependent_loss():

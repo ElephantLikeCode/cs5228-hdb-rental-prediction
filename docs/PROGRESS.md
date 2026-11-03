@@ -1813,8 +1813,8 @@ Final typesetting: eight body pages, one reference page and one appendix page; t
 This entry supersedes the earlier report cutoff and the original handoff's
 whole-project submission status. It preserves the historical mainline and its
 recorded metrics. The consolidated Chinese explanation and artifact ownership
-are in `docs/REPORT_ADDENDUM_20261102_zh.md` and the audited
-`docs/HANDOFF_CLAUDE_20261102_zh.md`.
+are in `docs/RESEARCH_NOTES.md` and the audited
+`docs/RESEARCH_NOTES.md`.
 
 ### Executed evidence
 
@@ -1886,3 +1886,36 @@ raw records, per-row predictions, fitted weights, source-lookup CSVs and local
 logs remain excluded. Human responsibilities and percentages must still be
 confirmed by the team. This integration is not a claim of team approval or
 Canvas submission.
+
+## 3 November 2026 - Research structure consolidation
+
+Integrated remote commit 72a8620 by fast-forward after confirming a clean local
+checkout. No experiment was rerun or promoted. Moved the twenty dated research
+scripts into semantic modules: nineteen under src/research and the target-visible
+diagnostic under src/audits. Production entry points/configuration remain unchanged.
+Removed three machine-specific shell wrappers; supported invocation is now
+python -m src.research.<module> from the repository root. Seven overlapping
+handoffs/study notes are preserved together in docs/RESEARCH_NOTES.md, with the
+reconciled summary first. Historical aggregate tables, hashes and artifact IDs
+retain their original bytes and dates for traceability.
+
+LightGBM is lazily imported by the common comparison helper; only its four
+specific smoke tests skip in the historical environment. Added relocation and
+default-denial checks. The abandoned eight-component prototype is explicitly
+guarded, and the quarantined public-source audit requires an explicit input path
+instead of a personal Desktop path. Neither is executed by normal imports/tests.
+Research cache-dependent probes are documented separately from fresh-clone entry
+points; historical macOS commands in the retained notes are not current guidance.
+
+Paper decision: retain concise evidence on alternative learners/log targets,
+lagged resale/building attributes, and low-rent identifiability. Do not present
+target-visible lookup as a predictive result or an error floor. No paper text,
+tables, PDF, model, raw data or submission changed during this structural cleanup.
+The remote paper remains 8 body + 1 reference + 4 appendix pages; compression
+and final layout review are deliberately the next task, not claimed complete.
+
+Validation after relocation: 74 tests pass; four optional LightGBM tests skip in
+the unchanged historical environment. Both research/audit packages compile;
+the comparison CLI help and data-audit mode run successfully. All nine required
+data/schema/hash checks pass, and all eight production CBMs plus the selected
+submission match the existing metadata. No new training or public submission.

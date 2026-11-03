@@ -4,8 +4,7 @@
 
 The existing [final report](output/pdf/CS5228_Final_Report.pdf) now integrates the
 Claude/Codex follow-ups in its results, limitations and November appendix.
-[Verified integration notes](docs/REPORT_ADDENDUM_20261102_zh.md) and the
-[reconciled Claude handoff](docs/HANDOFF_CLAUDE_20261102_zh.md) distinguish authorship,
+[Consolidated research notes](docs/RESEARCH_NOTES.md) distinguish authorship,
 validation protocols, unsuccessful candidates and abandoned code from executed runs.
 Aggregate evidence is committed as `reports/november_*20261102.*`.
 
@@ -27,6 +26,45 @@ with Tectonic or pdflatex/BibTeX available; Windows retains `build.ps1`.
 The optional course example CSV is absent from the official Kaggle ZIP, so its
 template-specific test skips when missing. Other output and data checks still run.
 Team workload responsibilities and percentages remain for team confirmation.
+
+### Research layout and execution
+
+The selected production entry remains `python src/train_final_model.py --task-type GPU`.
+Optional follow-up modules live under `src/research/`, not alongside production
+entry points. Run them from the repository root using module syntax:
+
+```bash
+python -m src.research.compare_models --help
+python -m src.research.compare_models --audit-only
+python -m src.research.compare_models --windows short_recent --candidates reference cat_log
+python -m src.research.analyze_research artifacts/research_20261102/<run-id>
+```
+
+Use a separate environment with `requirements-research.txt` for LightGBM research.
+The main environment can run its tests without that optional package; only the
+four LightGBM-specific smoke tests skip. MLP additionally requires PyTorch.
+
+| Research modules | Purpose |
+| --- | --- |
+| `compare_models`, `compare_supplementary` | Matched CPU comparisons and the separate 91-feature recipe |
+| `hdb_attribute_features`, `collect_hdb_attributes`, `train_hdb_attributes` | External covariates, collection and feature ablations |
+| `analyze_research`, `analyze_hdb_attributes`, `audit_course_generation`, `check_low_rent_information` | Paired metrics, attribute provenance and low-rent diagnostics |
+| `probe_rmse_structure`, `probe_historical_augmentation`, `probe_low_rent_mixture`, `probe_cat_capacity` | Target, historical-data, specialist and tree-capacity probes |
+| `research_lgbm_sparse`, `research_mlp` | Optional learner variants |
+| `submit_stock_probe`, `submit_market_normalized` | Historical probe builders; local saved caches required, no automatic upload |
+| `src/audits/public_source_diagnostic.py` | Quarantined, disabled target-visible audit; not part of research training or submission |
+| `build_submission_attributes` | Abandoned prototype, explicitly guarded; not a recommended workflow |
+
+Reports under `reports/november_*` and `reports/rmse_followup_*` are immutable
+historical evidence. Their date suffixes, recorded source hashes and artifact IDs
+are intentionally retained. Code relocation does not rewrite past provenance.
+Some follow-up modules consume saved research caches: they are not standalone
+fresh-clone entry points. Without those caches, use `compare_models` to reproduce
+the reference protocol first; missing external-data/cached prerequisites must be
+resolved before running dependent probes. The report tables compile without caches.
+The consolidated notes include old commands for historical provenance; use the
+module commands here, not the old macOS wrappers. New decisions belong in
+`docs/PROGRESS.md`; do not create another dated handoff or report draft.
 
 Private group-project repository for predicting Singapore HDB monthly rent.
 The evaluation metric is RMSE, and chronological validation is the primary

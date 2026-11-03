@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 
-from hdb_attribute_features_20261102 import course_keys
+from src.research.hdb_attribute_features import course_keys
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/"artifacts/cat_capacity_20261102"
 CACHES={"short_recent":"e925f89746af432b","long_recent":"17bad5d96e4b3667","long_older":"17bad5d96e4b3667"}
 VARIANTS={

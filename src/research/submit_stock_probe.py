@@ -9,12 +9,12 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 
-from features import build_block_lookup
-from hdb_attribute_features_20261102 import property_features
-from modeling import build_features, build_training_features, load_config, predict_model
-from research_20261102 import checked_data
+from src.features import build_block_lookup
+from src.research.hdb_attribute_features import property_features
+from src.modeling import build_features, build_training_features, load_config, predict_model
+from src.research.compare_models import checked_data
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts/stock_probe_full_20261102"
 SUBMISSION = ROOT / "submissions/submission_stock_probe4_20261102.csv"
 
@@ -46,8 +46,8 @@ def main():
                        for name in ["train.csv", "test.csv"]},
         "submission_schema": "Id,Predicted; zero-based positional IDs per existing verified final-model metadata",
         "code_sha256": {name: sha256(ROOT / "src" / name) for name in
-                        ["submit_stock_probe_20261102.py", "features.py", "modeling.py",
-                         "hdb_attribute_features_20261102.py"]},
+                        ["research/submit_stock_probe.py", "features.py", "modeling.py",
+                         "research/hdb_attribute_features.py"]},
         "clipping": "none", "preserve_mainline": True,
         "comparison_limit": "Earlier Kaggle mainline uses two seeds and GPU; this probe uses one seed and CPU as in its local screen. Score difference cannot isolate stock-feature value.",
     }

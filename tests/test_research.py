@@ -7,7 +7,25 @@ import hashlib
 from zipfile import ZipFile
 
 from src import import_official_data
-from src.research_20261102 import encode_lgbm, fit_component, raw_signatures
+from src.research.compare_models import encode_lgbm, fit_component, raw_signatures
+
+
+def test_relocated_research_uses_repository_root():
+    from pathlib import Path
+    from src.research.compare_models import ROOT
+    assert ROOT == Path(__file__).resolve().parents[1]
+    assert (ROOT / "src/research/compare_models.py").is_file()
+
+
+@pytest.mark.parametrize("module", ["src.audits.public_source_diagnostic", "src.research.build_submission_attributes"])
+def test_quarantined_entries_refuse_default_execution(module):
+    import subprocess
+    import sys
+    from pathlib import Path
+    result = subprocess.run([sys.executable, "-m", module], cwd=Path(__file__).resolve().parents[1],
+                            capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "Disabled audit" in result.stderr or "Abandoned prototype" in result.stderr
 
 
 def test_query_vocabulary_cannot_change_training_encoding():
@@ -22,6 +40,8 @@ def test_query_vocabulary_cannot_change_training_encoding():
 @pytest.mark.parametrize("learner", ["catboost", "lgbm"])
 @pytest.mark.parametrize("mode", ["direct", "residual", "relative", "log"])
 def test_fit_predicts_finite_rent_in_original_units(learner, mode):
+    if learner == "lgbm":
+        pytest.importorskip("lightgbm", reason="Optional research dependency; install requirements-research.txt")
     rng = np.random.default_rng(42)
     count = 200
     frame = pd.DataFrame({

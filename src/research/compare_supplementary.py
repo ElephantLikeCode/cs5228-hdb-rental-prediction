@@ -7,8 +7,8 @@ from __future__ import annotations
 import argparse, json, os, sys, time
 from pathlib import Path
 import numpy as np, pandas as pd
-ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT / "src"))
-from features import (make_core_features, build_block_lookup, add_spatial_features, add_past_rent_features,
+ROOT = Path(__file__).resolve().parents[2]
+from src.features import (make_core_features, build_block_lookup, add_spatial_features, add_past_rent_features,
                       suspected_low_rent_mask, DATE_COLUMN)
 
 WINDOWS = {"jan_mar25": ("2024-12", "2025-01", "2025-03"),        # comparable to repo reference 441.84

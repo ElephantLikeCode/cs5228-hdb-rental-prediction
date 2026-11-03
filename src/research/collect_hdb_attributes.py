@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "data/external/attribute_sources_20261102"
 SOURCES = {
     "resale": "d_8b84c4ee58e3cfc0ece0d773c8ca6abc",

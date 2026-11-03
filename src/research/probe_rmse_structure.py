@@ -10,13 +10,13 @@ import pandas as pd
 from catboost import CatBoostRegressor
 
 try:
-    from .hdb_attribute_features_20261102 import course_keys
-    from .modeling import load_config
+    from src.research.hdb_attribute_features import course_keys
+    from src.modeling import load_config
 except ImportError:
-    from hdb_attribute_features_20261102 import course_keys
-    from modeling import load_config
+    from src.research.hdb_attribute_features import course_keys
+    from src.modeling import load_config
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts/rmse_structure_20261102"
 CACHES = {
     "short_recent": "e925f89746af432b",

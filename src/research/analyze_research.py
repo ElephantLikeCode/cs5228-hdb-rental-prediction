@@ -17,7 +17,7 @@ def metrics(y, prediction):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_folder", type=Path)
-    parser.add_argument("--raw-dir", type=Path, default=Path(__file__).resolve().parents[1] / "data/raw")
+    parser.add_argument("--raw-dir", type=Path, default=Path(__file__).resolve().parents[2] / "data/raw")
     args = parser.parse_args()
     folder = args.run_folder
     rows = pd.read_csv(folder / "short_recent_scoring_rows.csv")

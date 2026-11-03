@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 
-from modeling import load_config
-from probe_rmse_structure_20261102 import market_scales
-from research_20261102 import checked_data
+from src.modeling import load_config
+from src.research.probe_rmse_structure import market_scales
+from src.research.compare_models import checked_data
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PARENT = ROOT / "artifacts/stock_probe_full_20261102"
 SELECTED = ROOT / "artifacts/rmse_structure_20261102/e696b0893b2eaafe"
 OUT = ROOT / "artifacts/market_normalized_full_20261102"
@@ -52,7 +52,7 @@ def main():
         information="Only original official training labels; no external rental targets or new historical augmentation; no stock snapshot features",
         raw_sha256=previous["protocol"]["raw_sha256"],
         code_sha256={name: digest(ROOT/"src"/name) for name in
-                     ["submit_market_normalized_20261102.py", "probe_rmse_structure_20261102.py", "features.py", "modeling.py"]},
+                     ["research/submit_market_normalized.py", "research/probe_rmse_structure.py", "features.py", "modeling.py"]},
         clipping="none", default_config_changed=False,
     )
     (OUT / "protocol.json").write_text(json.dumps(protocol, indent=2))
