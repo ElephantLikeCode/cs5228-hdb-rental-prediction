@@ -1919,3 +1919,26 @@ the unchanged historical environment. Both research/audit packages compile;
 the comparison CLI help and data-audit mode run successfully. All nine required
 data/schema/hash checks pass, and all eight production CBMs plus the selected
 submission match the existing metadata. No new training or public submission.
+
+## 3 November 2026 - Integrate follow-up evidence into the original paper
+
+Reworked the same final_report/main.tex instead of appending another study.
+Retained attribute-identity evidence in data understanding, housing covariate and
+log-target definitions in methods, the separate CPU reference/progression rules
+in experimental design, and the new risk-detector result in error analysis.
+A compact three-window log-target table shows the recent/older trade-off;
+learner and external-attribute results are concise negative evidence in results.
+CPU four-component and GPU eight-component numbers remain explicitly separate.
+Public probes remain supplementary; target-visible lookup is only a boundary
+statement, not a predictive result or an explanation of competitors' scores.
+
+Removed the unreferenced chronological appendix and its three generated table
+fragments; they remain recoverable in Git. All aggregate CSV/JSON evidence is
+unchanged. prepare_november.py still exports historical aggregates from private
+caches, but no longer regenerates unused appendix tables. Workload is intentionally
+unfilled. No model, configuration, raw data, or submission was changed.
+
+The revised paper has 8 body pages + 1 references + 1 appendix (10 total), using
+the unchanged official IEEEtran class. Full PDF rendering and visual review cover
+all pages. The full-budget reproduction statement remains scoped to the selected
+recipe and the same physical computer; cross-device verification is a team task.

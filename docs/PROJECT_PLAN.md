@@ -520,8 +520,9 @@ The latest remote November experiments have been integrated. Optional code is
 isolated under src/research, target-visible audits under src/audits, and the seven
 old handoffs are consolidated in docs/RESEARCH_NOTES.md. Continue the cumulative
 PROGRESS log. Historical results/IDs remain unchanged. No candidate replaces the
-selected model. Before submission, compress the new paper appendix and review
-the existing 13-page PDF (8 body pages); the older page counts above are historical.
+selected model. The 3 November paper edit integrates selected evidence into the
+original research narrative and removes the chronological appendix: the current
+PDF is 10 pages (8 body, 1 references, 1 appendix). Older page counts are historical.
 Team workload/approval and cross-device verification remain team tasks. The
 previously verified Overview deadline was 6 November 2026, 23:59 Singapore;
 recheck Canvas for any update before actual submission.

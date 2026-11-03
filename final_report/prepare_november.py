@@ -1,4 +1,8 @@
-"""Export November aggregate evidence and appendix tables; never train or look up targets."""
+"""Export historical aggregate evidence; never train or look up targets.
+
+The paper integrates selected findings into its original sections. The former
+standalone chronological appendix and its three table fragments were retired.
+"""
 
 import hashlib
 import json
@@ -10,19 +14,10 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
-GENERATED = ROOT / "final_report/generated"
 
 
 def save_csv(frame, name):
     frame.to_csv(REPORTS / name, index=False, lineterminator="\n")
-
-
-def table(name, header, rows, alignment):
-    lines = [r"\begin{tabular}{" + alignment + "}", r"\toprule",
-             " & ".join(header) + r" \\", r"\midrule"]
-    lines.extend(" & ".join(map(str, row)) + r" \\" for row in rows)
-    lines += [r"\bottomrule", r"\end{tabular}", ""]
-    (GENERATED / name).write_text("\n".join(lines))
 
 
 def main():
@@ -32,20 +27,6 @@ def main():
                                                "validation-target-visible diagnostic", "training labels only")
     simplified["source"] = str(simplified_path.relative_to(ROOT))
     save_csv(simplified, "november_simplified_20261102.csv")
-    names = {
-        "ORACLE_same_month_town_ft_model_area10_median": "Target-visible group median$^{*}$",
-        "base_town_ft_recent_median": "Town/type median",
-        "base_comparable_address_flat": "Address/type comparables",
-        "cat_direct": "CatBoost direct", "cat_log": "CatBoost log target",
-        "cat_recent_w": "CatBoost recency weights", "cat_clean": "CatBoost low-rent removal",
-        "cat_resid": "CatBoost median residual", "lgbm_direct": "LightGBM", "xgb_direct": "XGBoost",
-        "blend_direct_resid": "Direct/residual mean", "blend_cat3_lgbm": "Three CatBoost + LightGBM",
-        "blend_all_trees": "Six-tree-model mean",
-    }
-    pivot = simplified.pivot(index="candidate", columns="window", values="rmse")
-    table("november_simplified.tex", ["Candidate", "Recent", "16 mo.", "Older"],
-          [[label, *[f"{pivot.loc[key, window]:.2f}" for window in ["jan_mar25", "gap16", "long_older"]]]
-           for key, label in names.items()], "lrrr")
 
     log_parent = ROOT / "artifacts/research_20261102/17bad5d96e4b3667"
     log_rows = []
@@ -63,10 +44,6 @@ def main():
                                  bias=float((pred-y).mean()), source=str(log_parent.relative_to(ROOT))))
     log_frame = pd.DataFrame(log_rows)
     save_csv(log_frame, "november_log_integration_20261102.csv")
-    p = log_frame.pivot(index="window", columns="candidate", values="rmse")
-    table("november_log.tex", ["Window", "Ref. 4", "Log 2", "Mean 6", "Blend"],
-          [[label, *[f"{p.loc[key, m]:.2f}" for m in ["reference4", "log2", "equal6", "blend25"]]]
-           for key, label in windows.items()], "lrrrr")
 
     initial = pd.read_csv(ROOT / "artifacts/research_20261102/e925f89746af432b/paired_comparison.csv")
     initial = initial.rename(columns={"delta_rmse_vs_reference": "delta_rmse"})
@@ -81,26 +58,6 @@ def main():
     combined["window"] = "2025-01..2025-03"
     save_csv(combined, "november_cpu_comparisons_20261102.csv")
 
-    selected = [
-        ("initial_cpu", "cat_raw", "Raw category/area signatures"),
-        ("initial_cpu", "lgbm", "Same-input LightGBM ensemble"),
-        ("initial_cpu", "lgbm_relative", "Relative-target LightGBM"),
-        ("initial_cpu", "embedding_mlp", "Embedding MLP"),
-        ("external_attributes", "resale", "17 lagged resale features"),
-        ("external_attributes", "stock_snapshot", "16 building-stock features"),
-        ("external_attributes", "given_macro", "19 current supplied macro features"),
-        ("relative_low_rent_mixture", "mixture_blend25", "Relative-low-rent mixture (25\\%)"),
-        ("rmse_followup", "duplicate_mean_native_replacement", "Duplicate-mean replacement"),
-        ("rmse_followup", "market_normalized_damped6_replacement", "Market-normalized replacement"),
-        ("rmse_followup", "augmented_replacement", "4,357 additional historical records"),
-        ("rmse_followup", "depth10_l2_20_replacement", "Depth 10, regularization 20"),
-        ("rmse_followup", "lossguide64_l2_20_replacement", "Asymmetric-tree replacement"),
-    ]
-    rows = []
-    for study, candidate, label in selected:
-        r = combined.loc[combined.study.eq(study) & combined.candidate.eq(candidate)].iloc[0]
-        rows.append([label, f"{r.rmse:.3f}", f"{r.delta_rmse:+.3f}"])
-    table("november_cpu.tex", ["Candidate/composition", "RMSE", "$\\Delta$"], rows, "lrr")
 
     detector = pd.read_csv(ROOT / "artifacts/attribute_study_20261102/low_rent_information/metrics.csv")
     save_csv(detector, "november_low_rent_detection_20261102.csv")
@@ -126,7 +83,7 @@ def main():
         withheld="No raw rows, targets, per-row predictions, source-matching submission, credentials or fitted model files are exported",
     )
     (REPORTS / "november_evidence_20261102.json").write_text(json.dumps(metadata, indent=2)+"\n")
-    print("Exported November aggregate evidence and three report tables; no model training.")
+    print("Exported historical aggregate evidence; no model training or appendix generation.")
 
 
 if __name__ == "__main__":

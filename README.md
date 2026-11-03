@@ -2,8 +2,10 @@
 
 ### 2 November evidence and report update
 
-The existing [final report](output/pdf/CS5228_Final_Report.pdf) now integrates the
-Claude/Codex follow-ups in its results, limitations and November appendix.
+The existing [final report](output/pdf/CS5228_Final_Report.pdf) integrates the
+follow-up evidence into its original data, methods, error-analysis and results
+sections. There is no separate chronological November appendix. The current
+paper is eight body pages, one reference page and one appendix page.
 [Consolidated research notes](docs/RESEARCH_NOTES.md) distinguish authorship,
 validation protocols, unsuccessful candidates and abandoned code from executed runs.
 Aggregate evidence is committed as `reports/november_*20261102.*`.

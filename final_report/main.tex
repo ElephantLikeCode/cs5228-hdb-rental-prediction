@@ -67,6 +67,8 @@ Fig.~\ref{fig:profile} motivates two subsequent choices. Monthly medians change 
 \subsection{Repeated inputs and extreme rents}
 An initial audit finds 425 exactly repeated labelled rows. Equal recorded fields and rent are not sufficient evidence of the same flat or contract, so these observations remain. Normalised feature vectors can also repeat with substantially different rents. Removing such records would change the frequency of transaction types without resolving absent individual-flat identity.
 
+Attribute tracing strengthens this caution: all 13,758 recurrent building/type groups have constant supplied area, model and lease year, whereas historical resales allow multiple areas within a group. The supplied attributes therefore need not identify an individual rental unit. Compatibility with resale records does not recover the course's exact join rule or justify assigning a resale floor to a particular tenancy.
+
 Low rents for larger flats motivate a sensitivity study. A fixed rule flags three-room-or-larger or executive observations below half the median for the same approval month, town and canonical flat type. It flags 954 training rows, or 0.636\%. Such a target-defined flag is a diagnostic or training-policy intervention; it cannot be computed from an unlabelled test transaction. We evaluate alternative training policies on the same complete local validation population and preserve every competition row in its original order. We neither label all low rents as errors nor multiply them by a presumed room count.
 
 \section{Methods}
@@ -137,6 +139,8 @@ Economic experiments use lagged supplied COE and stock summaries, then official 
 
 A follow-up adds three access proxies to the original local-trend inputs: distance to the nearest operating interchange and distinct supplied line-code prefixes within 1 and 2 km. Service follows the audited calendar; validation admits only openings announced before its origin. Two seed-42, 1,600-tree direct/residual fits per window test replacement of their corresponding ensemble components and a fixed 25\% blend. These measures retain the original static inputs and do not reconstruct track routes or commuting times.
 
+To test whether missing housing information matters, seventeen resale features describe trailing two-year area, floor and price distributions from 2017--2024 records\cite{hdb-resale}, with a two-month lag and frozen validation origin. Sixteen building-stock features use a current property snapshot\cite{hdb-property}, without claiming historical availability. A separate CPU screen compares LightGBM and an embedding MLP. Log-target CatBoost fits $\log y$ and restores currency predictions using a training-set Duan smearing factor.
+
 \section{Experimental Design}
 \subsection{Local validation and metrics}
 Chronological validation reflects the predominantly later competition period without assuming a pure time series. Each origin fits on earlier months and retains the complete scoring population. Models and rental-label histories remain fixed throughout its validation interval: no validation rents update later predictions. The recent quarter uses 141,076 training and 8,924 validation rows. Table~\ref{tab:temporal} records cutoffs for all four windows. These overlapping windows have been repeatedly inspected during development and are not untouched final tests.
@@ -151,6 +155,8 @@ Selected CatBoost settings are learning rate 0.04, depth 8 and leaf $L_2$ regula
 History shrinkage, the twelve-month half-life and trend damping are pragmatic choices held fixed subsequently, without independent optimisation. Four- and eight-component ensembles have equal per-component budgets but different total compute, so diversity and model count are not isolated.
 
 Later exploratory experiments usually start with seed 42 on the recent quarter and sixteen-month window. Candidates replace the matching direct/residual pair in the frozen eight-component selected ensemble, or enter a predefined 25\% blend. Budgets differ from full eight-component retraining. The later candidate acceptance criterion requires approximately 2 RMSE recent improvement plus a positive long-window gain before another seed and further periods. This operational threshold discourages selecting changes comparable to fitting noise; it is not a statistical significance level.
+
+The supplementary CPU screen instead uses one seed and four reference components (two views, direct/residual), scoring 441.8429 recently; it is not the frozen eight-component GPU reference. Log-target integration requires no loss across three windows and at least one gain of two RMSE. Both screens fix 1,600 trees per CatBoost component without outer-label early stopping. These are study-specific advancement rules, not a retrospective common ranking.
 
 Paired comparisons resample address clusters 1,000 times, reporting the 2.5th and 97.5th gain percentiles. Original keys use raw town/block/street strings, potentially splitting buildings. Canonicalised-key sensitivity retains all four gain directions: recent-quarter interval $[3.62,5.85]$ and older-year $[-11.12,-8.59]$. These exploratory intervals preserve within-key association, not cross-month independence or adjustment for candidate search. GPU refits can vary; frozen predictions and hashes support auditability, not bit-identical training.
 
@@ -203,7 +209,7 @@ A follow-up decomposition of frozen components localises this trade-off. On the 
 \subsection{Stacking and supplementary competition evidence}
 Four-head recent-window stacking improves local recent RMSE from 440.7629 to 440.6565, but its paired gain interval $[-0.0342,0.2262]$ crosses zero. The eight-output version instead scores 440.8165. Earlier transfer tests are inconsistent; a sixteen-month stress check loses 0.538 with four inputs and 1.189 with eight. That check changes regime, fitting interval and horizon together, so it does not isolate recency weighting. Stacking remains an alternative rather than the default.
 
-The competition provides an additional observation: historical public RMSE is 432.14881 for the selected model and 432.04286 for stacking, subsequently verified on the signed-in submission page. Test inputs are available, but their rent labels and public-subset membership are hidden. These scores cannot diagnose error mechanisms or replace local evaluation. Two exploratory November probes score 432.70689 (building-stock features) and 434.72053 (market-normalized target); neither replaces the selected recipe or the best recorded submission. The probes use four CPU components, unlike the earlier weighted eight-component GPU best, so score differences do not isolate one intervention. Full submission history remains in the repository ledger.
+The competition provides supplementary public RMSE: 432.14881 for the selected model and 432.04286 for stacking. Two later four-component CPU probes score 432.70689 with building-stock features and 434.72053 with a market-normalized target; neither is promoted. Their seed count, device and composition differ from the selected ensemble, so public differences do not isolate feature effects. Public-subset membership and official rent labels are hidden; these scores cannot diagnose mechanisms or replace local evaluation. The submission ledger retains all probes, including those made despite failing local advancement rules.
 
 An earlier keep-versus-remove sensitivity probe changes public RMSE by only 0.17 in a different model family. It supplies no convincing reason to declare flagged labels wrong. The selected model retains all labels; every local comparison retains its complete scoring population.
 
@@ -229,7 +235,7 @@ Table~\ref{tab:flats} complements outcome-defined bands. Executive flats have re
 
 For this detector, a depth-4 CatBoost binary classifier uses 600 trees, learning rate 0.04 and $L_2=20$. It trains on 35,239 January--December 2024 transactions with earlier-origin OOF predictions, and is evaluated on January--March 2025. Inputs combine observable flat, location and amenity attributes, calendar month and the frozen base prediction; actual query rent only defines the evaluation label. This keeps the diagnostic distinct from the three-band expert classifier.
 
-A simpler transfer check estimates town/type event rates from earlier OOF transactions, with 30-observation shrinkage toward their overall rate. Training on October--December 2024 gives recent AUC 0.5134 and average precision 0.03095, close to event prevalence 0.02992. A separate earlier-origin check gives older-year AUC 0.5176. These fixed partitions offer little transferable ranking signal; they do not establish that richer observations could never identify low rents.
+A simpler earlier-OOF town/type risk estimate gives recent AUC 0.5134 and average precision 0.03095, close to prevalence 0.02992; older-year AUC is 0.5176. Richer housing information is also tested against a distinct event: rent below 65\% of a strictly-past adaptive address/type/area reference. This covers 282 recent rows (3.160\%) and 32.598\% of reference squared error. Adding housing features changes AUC from 0.65761 to 0.65835, with an incremental 95\% address-cluster interval of $[-0.00625,0.00740]$. A two-expert relative-rent mixture and its 25\% blend score 453.993 and 442.223 versus CPU reference 441.843. Thus some ranking signal exists, but the added information does not yield useful routing. The different event definitions are not interchangeable or verified room-rental labels.
 
 Large errors occur beyond rare executive flats. Contract terms, condition, renovation, household relationships or label problems remain possible explanations. The next useful analysis should seek a stable observable signal across periods before fitting another specialist.
 
@@ -249,11 +255,24 @@ For official macro indices, month-start queries activate CPI\cite{cpi} two month
 
 The MRT audit finds 55 supplied rows marked open outside the verified operational calendar. Research variants verify TEL2--4, Punggol Coast and Hume dates against LTA releases (for example, TEL4\cite{lta}), exclude future/unverified codes, deduplicate interchange names, and activate service from the first full month after opening. Origin-based validation admits dated openings announced before that origin; the monthly-access control admits operational service by the rental month. Supplied coordinates limit coverage, especially for LRT. Corrected static rail gains just 0.1322 and 0.0169 RMSE, with intervals crossing zero. Filtering and deduplication change jointly, so their contributions are not isolated. Dynamic access and opening exposure establish neither a reliable improvement nor a causal premium.
 
-The index and rail studies comprise 36 formal GPU fits, excluding smoke checks. Repeating an otherwise identical seed-42 macro fit changes a replacement score by about 0.13 despite identical input matrices. Improvements at this scale require caution. We retain the supplied static MRT snapshot in the selected recipe to preserve the recorded offline comparison, while reporting corrected variants separately. This choice does not validate historical availability: the snapshot is a geographic proxy and cannot represent operational access at every transaction date.
+The index and rail studies comprise 36 formal GPU fits, excluding smoke checks. An identical-input seed-42 macro refit changes a replacement score by about 0.13; gains of this scale require caution. The selected recipe retains the supplied static MRT snapshot for comparability, not as a claim of operational access at every historical date.
 
-The interchange-access follow-up adds six full-budget GPU fits over three windows. Component replacement changes RMSE by +0.084 recently, +0.559 on the older year and +0.118 over sixteen months (positive means worse). The 25\% blend instead changes these by +0.655, $-4.938$ and $-0.100$. Its older-year RMSE of 585.41 still exceeds the adaptive reference's 580.54. Thus accessible line diversity offers a period-dependent trade-off, not a stable replacement; the tiny long-window gain does not offset the recent loss. These reused-window tests do not establish causal transport effects.
+Six additional interchange-access fits worsen recent RMSE by 0.084 under component replacement and 0.655 under a 25\% blend. The latter improves the older year by 4.938, but its 585.41 RMSE still exceeds the adaptive reference's 580.54. Sixteen-month improvement is only 0.100. Line diversity therefore offers a period-dependent trade-off, not a stable replacement or causal transport effect.
 
-The 2 November follow-up (Appendix~\ref{app:november}) adds CPU learner, target, housing-attribute and historical-data checks. Log-target integration improves an older-window blend but worsens the recent quarter. Resale and building-stock covariates add no stable gain; a relative-low-rent soft mixture also fails. Duplicate aggregation, market normalization, historical augmentation and alternative CatBoost structures do not pass the local advancement rule. These results are bounded negative evidence, not a theoretical prediction-error floor or a ranking of all possible learners.
+\begin{table}[t]
+\caption{Log-target integration under the original feature workflow: RMSE (SGD).}
+\label{tab:log-target}\centering\footnotesize
+\begin{tabular}{lrrr}
+\toprule Window & CPU ref. 4 & Log 2 & Mean 6 \\\midrule
+Jan--Mar 2025 & 441.84 & 445.17 & 442.12 \\
+Apr 2024--Mar 2025 & 467.30 & 469.65 & 467.27 \\
+Apr 2023--Mar 2024 & 585.84 & 585.50 & 583.52 \\\bottomrule
+\end{tabular}
+\par\smallskip\raggedright\footnotesize One seed; reference: two views $\times$ direct/residual; log: two views; mean: six equally weighted components. Window populations match Table~\ref{tab:temporal}; this is not the eight-component GPU comparison.
+\end{table}
+Table~\ref{tab:log-target} tests a different target rather than another weight search. Log components improve the older-year mean by 2.33 RMSE but worsen the recent quarter by 0.28, failing the three-window rule. A separate 91-feature screen likewise reduces sixteen-month bias from +85.21 to +27.98 but recent RMSE worsens. Target transformation can change regime bias without providing uniform benefit.
+
+In the four-component CPU screen, matched-input LightGBM scores 452.28 and an embedding MLP 471.61, versus reference 441.84. Replacing its normal-history direct/residual pair with resale or stock covariates gives 441.827 and 441.783; neither reaches the two-point screening threshold. These are bounded negative results, not proof that external information or other learners cannot help. Further duplicate-mean, market-normalized, deeper/asymmetric-tree and historical-only augmentation probes also fail advancement. The augmentation adds 4,357 attribute-matched public rental records\cite{hdb-rental} strictly before the scoring origin; no scoring-period targets enter fitting. Latest-vintage data and repeated development-window use limit these conclusions. Full compositions and numerical results remain in the repository.
 
 We stop these candidate batches because gains are small, unstable across windows or comparable to refit variation. Exploratory public probes are recorded separately from model promotion. Further tuning would reuse the same development labels without resolving the older-period failure.
 
@@ -270,13 +289,15 @@ We stop these candidate batches because gains are small, unstable across windows
 \subsection{Implementation and reproducibility}
 The repository provides reusable code, the selected configuration, cumulative research decisions and score/provenance ledgers. Immutable course data, fitted models and detailed predictions remain local. Authorised readers can regenerate caches using the README; Appendix~\ref{app:reproduce} maps the evidence.
 
-The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent local checkout with a newly installed Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions, model reloads and hashes. Repeating all eight recent-window fits gives RMSE 440.6423 versus frozen 440.7629; this 0.12 difference is refit variation, not a new method gain. These times are not total research compute. CatBoost is pinned to 1.2.10. The November CPU check passes 74 tests; one optional example-template check skips because the Kaggle ZIP omits that file. Checks cover cutoffs, categories, joins, access, output protection and loss equivalence. Paper assets regenerate from saved evidence without training.
+The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent checkout with a new Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions and model reloads. Recent-window refitting gives RMSE 440.6423 versus frozen 440.7629: refit variation, not a method gain. These times are not total research compute. CatBoost is pinned to 1.2.10. After code consolidation, the maintained environment passes 74 tests; four optional LightGBM smoke tests skip without its research dependency. Checks cover cutoffs, joins, output protection and loss equivalence. Paper compilation needs no training or private caches.
+
+Public-source target matching is quarantined from modeling. Its target-visible diagnostics are not held-out prediction results and are not used to train, tune or submit models; they establish neither a noise floor nor other teams' methods. This boundary follows the instructor's restriction on matched test rents\cite{project-qa}.
 
 \section{Conclusion}
 For RQ1, canonical categories and validated joins establish coherent comparable groups; spatial ablations show modest incremental gains under the tested representation. For RQ2, market-adjusted comparables and history augmentation produce a selected recent RMSE of 440.76 and MAE of 316.55, with additional compute relative to the four-component reference. For RQ3, improvements transfer to two longer development windows but leave an older annual RMSE deficit of 9.81 unresolved. Low observed rents contribute disproportionately to squared error, while current feature-based detection is weak. The resulting lesson is a qualified modeling choice: retain useful recent-market information, document adverse transfer, and seek new observable evidence before further fine tuning.
 
 \clearpage
-\IEEEtriggeratref{6}
+\IEEEtriggeratref{8}
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 \clearpage
@@ -285,6 +306,7 @@ For RQ1, canonical categories and validated joins establish coherent comparable 
 Obtain the original course files under \code{data/raw/}, then run \code{python src/check\_setup.py} and \code{python -m pytest -q}. The README supplies commands to regenerate temporal component predictions before feedback studies. Cached predictions and models are not distributed. Compiling the paper needs committed sources and aggregate assets; rebuilding evidence needs course data and caches. Full-budget selected-model training is verified in an independent checkout and new virtual environment on the same physical machine. GPU refits differ numerically; frozen hashes and metric checks prevent silently replacing old evidence. A new run requires a reviewed manifest and corresponding report update. Cross-device verification is a separate team task.
 
 Fixed-budget comparisons use \path{src/run_experiments.py} with the \code{--compare-candidates} option. The selected ensemble is generated by \path{src/train_final_model.py} with the recorded configuration; research uses \path{src/feedback_experiments.py}, including \code{--families public} for indices and rail. These are abbreviated entry points; use the complete README commands for exact windows and options.\par
+Supplementary CPU modules are under \path{src/research/}, with a separate \path{requirements-research.txt}. Their aggregate evidence is in \path{reports/november_cpu_comparisons_20261102.csv} and \path{reports/november_log_integration_20261102.csv}. The consolidated research record preserves protocols and unsuccessful probes.
 For clarity, the historical core-baseline settings are listed in Table~\ref{tab:parameters}. They are bounded references, not the outcome of an exhaustive or common-compute search. The selected ensemble's settings and history coefficients are given in the main text.
 \begin{table}[!ht]
 \caption{Principal historical baseline settings; preprocessing is described in the main text.}
@@ -312,13 +334,10 @@ Model provenance & \path{reports/final_model_metadata.json} \\
 Research decisions & \path{docs/PROGRESS.md} \\\bottomrule
 \end{tabular}
 \end{table}
-\clearpage
-\input{november_appendix.tex}
-\clearpage
+\newpage
 \section{Team Workload Statement -- To Be Completed}\label{app:workload}
 \textit{Reserved for completion before final submission. Responsibilities and contribution proportions have not been assigned in this draft.}
-The November handoff distinguishes Claude-assisted scripts, Codex-assisted experiments and their shared interfaces. Artifact provenance does not assign human contribution percentages; the team must confirm this table before submission.
-\begin{table}[h]
+\begin{table}[ht]
 \caption{Workload placeholder; no contributions are asserted.}
 \centering\footnotesize
 \begin{tabular}{lll}
