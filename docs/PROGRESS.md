@@ -1942,3 +1942,15 @@ The revised paper has 8 body pages + 1 references + 1 appendix (10 total), using
 the unchanged official IEEEtran class. Full PDF rendering and visual review cover
 all pages. The full-budget reproduction statement remains scoped to the selected
 recipe and the same physical computer; cross-device verification is a team task.
+
+## 3 November 2026 - Method references and full author attribution
+
+Removed three Canvas references (task page, Q&A and policies) and their citation
+markers at the user's request. The substantive assistance disclosure and the
+no-test-target modeling boundary remain. Official data-source citations remain.
+Disabled IEEEtran repeated-author dashes through its bibliography control entry;
+the bundled official class is unchanged. Added publisher/venue-verified method
+references for LightGBM (Ke et al., 2017), smearing retransformation (Duan, 1983)
+and model-selection bias (Cawley and Talbot, 2010), cited where actually relevant
+in methods/limitations. These references contextualise executed work, not a claim
+that they originally inspired the experiments. No new experiment or score change.

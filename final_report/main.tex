@@ -15,6 +15,7 @@
 \pagestyle{plain}
 \newcommand{\code}[1]{\texttt{\small #1}}
 \begin{document}
+\bstctlcite{full-author-names}
 
 \title{Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles%
 \thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis through 2 November 2026.}}
@@ -35,7 +36,7 @@ HDB rental prediction, tabular regression, comparable transactions, temporal val
 \section{Introduction}
 Monthly rent predictions can help renters compare options and owners assess asking prices. Singapore's public housing market requires considering physical attributes, surroundings and changing market conditions together. We estimate recorded monthly rent from observable transaction characteristics and investigate where those estimates remain unreliable.
 
-The course provides a regression task built from HDB rental approval information and auxiliary datasets\cite{course}. We treat it as dated cross-sectional transaction prediction. The underlying process may contain repeated observations of individual flats, but the released fields do not establish those identities. Several flats in a block can share their type, model and area. A block-level rental history is therefore evidence about comparable transactions, not a verified trajectory for one flat. This distinction matters both when handling repeated records and when interpreting historical features.
+The course provides a regression task built from HDB rental approval information and auxiliary datasets. We treat it as dated cross-sectional transaction prediction. The underlying process may contain repeated observations of individual flats, but the released fields do not establish those identities. Several flats in a block can share their type, model and area. A block-level rental history is therefore evidence about comparable transactions, not a verified trajectory for one flat. This distinction matters both when handling repeated records and when interpreting historical features.
 
 Three research questions organise the study. \textit{RQ1:} What information is recovered through consistent preprocessing and spatial joins? \textit{RQ2:} Do market-adjusted comparable rents and different training-history views improve local prediction? \textit{RQ3:} Do these improvements transfer across periods, and which groups account for the remaining errors? Local chronological evaluation and interpretation are our primary evidence; competition scores provide a supplementary external check.
 
@@ -139,7 +140,7 @@ Economic experiments use lagged supplied COE and stock summaries, then official 
 
 A follow-up adds three access proxies to the original local-trend inputs: distance to the nearest operating interchange and distinct supplied line-code prefixes within 1 and 2 km. Service follows the audited calendar; validation admits only openings announced before its origin. Two seed-42, 1,600-tree direct/residual fits per window test replacement of their corresponding ensemble components and a fixed 25\% blend. These measures retain the original static inputs and do not reconstruct track routes or commuting times.
 
-To test whether missing housing information matters, seventeen resale features describe trailing two-year area, floor and price distributions from 2017--2024 records\cite{hdb-resale}, with a two-month lag and frozen validation origin. Sixteen building-stock features use a current property snapshot\cite{hdb-property}, without claiming historical availability. A separate CPU screen compares LightGBM and an embedding MLP. Log-target CatBoost fits $\log y$ and restores currency predictions using a training-set Duan smearing factor.
+To test whether missing housing information matters, seventeen resale features describe trailing two-year area, floor and price distributions from 2017--2024 records\cite{hdb-resale}, with a two-month lag and frozen validation origin. Sixteen building-stock features use a current property snapshot\cite{hdb-property}, without claiming historical availability. A separate CPU screen compares LightGBM\cite{Ke_2017} and an embedding MLP. Log-target CatBoost fits $\log y$ and restores currency predictions using Duan's smearing method\cite{Duan_1983}: the mean exponentiated training residual multiplies the exponentiated query prediction. This corrects retransformation using training data, not validation-label calibration.
 
 \section{Experimental Design}
 \subsection{Local validation and metrics}
@@ -278,7 +279,7 @@ We stop these candidate batches because gains are small, unstable across windows
 
 \section{Limitations and Reproducibility}
 \subsection{Scope of the conclusions}
-\textit{Evaluation reuse.} Temporal windows have been inspected repeatedly, several overlap, and public submissions add another selection channel. Bootstrap intervals do not repair this reuse. We have no private-label evaluation. The older-period regression prevents a claim of general dominance over the adaptive reference.
+\textit{Evaluation reuse.} Temporal windows have been inspected repeatedly, several overlap, and public submissions add another selection channel. Selection on a noisy performance estimate can itself overfit\cite{Cawley_2010}; bootstrap intervals do not repair this reuse. We have no private-label evaluation. The older-period regression prevents a claim of general dominance over the adaptive reference.
 
 \textit{Incomplete observation.} Unit floor, renovation and contract terms remain unobserved. Repeated building/type groups have constant supplied area, model and lease year, although resale records allow multiple unit attributes within those groups. The exact course join rule has not been recovered. Ambiguous flat identity and unusual rents establish neither label error nor a population irreducible-error floor. Predictions estimate recorded transactions, not a normative fair rent.
 
@@ -291,7 +292,7 @@ The repository provides reusable code, the selected configuration, cumulative re
 
 The original full-data eight-component fit took 669.44 seconds on an RTX 4060. An independent checkout with a new Python 3.12 environment repeats all eight 1,600-tree fits in 679.83 seconds and validates 50,000 ordered predictions and model reloads. Recent-window refitting gives RMSE 440.6423 versus frozen 440.7629: refit variation, not a method gain. These times are not total research compute. CatBoost is pinned to 1.2.10. After code consolidation, the maintained environment passes 74 tests; four optional LightGBM smoke tests skip without its research dependency. Checks cover cutoffs, joins, output protection and loss equivalence. Paper compilation needs no training or private caches.
 
-Public-source target matching is quarantined from modeling. Its target-visible diagnostics are not held-out prediction results and are not used to train, tune or submit models; they establish neither a noise floor nor other teams' methods. This boundary follows the instructor's restriction on matched test rents\cite{project-qa}.
+Public-source target matching is quarantined from modeling. Its target-visible diagnostics are not held-out prediction results and are not used to train, tune or submit models; they establish neither a noise floor nor other teams' methods.
 
 \section{Conclusion}
 For RQ1, canonical categories and validated joins establish coherent comparable groups; spatial ablations show modest incremental gains under the tested representation. For RQ2, market-adjusted comparables and history augmentation produce a selected recent RMSE of 440.76 and MAE of 316.55, with additional compute relative to the four-component reference. For RQ3, improvements transfer to two longer development windows but leave an older annual RMSE deficit of 9.81 unresolved. Low observed rents contribute disproportionately to squared error, while current feature-based detection is weak. The resulting lesson is a qualified modeling choice: retain useful recent-market information, document adverse transfer, and seek new observable evidence before further fine tuning.
@@ -350,5 +351,5 @@ Zhang Zhexuan & A0355290A & To be completed \\\bottomrule
 \end{table}
 
 \section{AI Assistance}
-AI tools, including Claude and Codex, assisted with discussion of experimental ideas, code development and checks, interpretation of recorded results, and drafting and editing this report. Numerical results derive from executed experiments and saved evidence; proposed analyses are identified separately. This statement documents assistance under the course policy\cite{policy}; it does not assert that team review or workload attribution has been completed.
+AI tools, including Claude and Codex, assisted with discussion of experimental ideas, code development and checks, interpretation of recorded results, and drafting and editing this report. Numerical results derive from executed experiments and saved evidence; proposed analyses are identified separately. This statement documents assistance; it does not assert that team review or workload attribution has been completed.
 \end{document}
