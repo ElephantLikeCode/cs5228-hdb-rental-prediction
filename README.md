@@ -750,6 +750,10 @@ compile independently of the ignored template archive.
 
 Edit the single evolving `final_report/main.tex` and `references.bib`. Figures
 and numeric table fragments are under `final_report/figures/` and `generated/`.
+The five vector figures cover the data profile, full selected-model architecture,
+chronological validation windows, temporal RMSE trade-offs and error concentration.
+`python final_report/prepare_report.py` regenerates them from protected local
+evidence (including retained prediction caches); compilation alone needs no data.
 The draft prioritises local temporal evaluation and subgroup interpretation;
 Kaggle scores are supplementary historical observations. It currently has
 eight main-text pages, one reference page and one appendix page (ten total).

@@ -1954,3 +1954,25 @@ references for LightGBM (Ke et al., 2017), smearing retransformation (Duan, 1983
 and model-selection bias (Cawley and Talbot, 2010), cited where actually relevant
 in methods/limitations. These references contextualise executed work, not a claim
 that they originally inspired the experiments. No new experiment or score change.
+
+## 3 November 2026 - Scientific figure redesign
+
+Unified the report's vector figures with blue/teal/warm-orange accents, pale
+module fills, restrained grids and line/hatch alternatives to color alone.
+Replaced the small inline schematic with a full-width model overview showing
+inputs, two history views, direct/residual targets, two seeds and eight equal
+weights. Counts/dimensions are asserted against the selected config/metadata.
+Added a chronological validation timeline in place of the redundant decision
+summary table. Existing numerical tables remain; main figures increase from four
+to five. The error-share and temporal-gain plots now label key quantities.
+
+All assets are reproducible vector PDFs from final_report/prepare_report.py, not
+generated bitmap diagrams. Local NEXT paper diagrams were inspected only for
+layout/style; no scientific content or artwork was copied and NEXT was not edited.
+Used the PDF rendering/visual-verification skill; no new third-party skill was
+installed. Figure regeneration preserved every generated evidence/table value.
+To keep eight body pages, condensed repeated protocol/negative-result wording;
+core conclusions and all result ledgers remain unchanged. Full-budget repeat
+details remain in reports/full_budget_reproduction.json and the cumulative log.
+The PDF remains 10 pages (8 body, references, appendix); all pages visually checked
+and the final compiler log has no overflow or unresolved-reference warnings.

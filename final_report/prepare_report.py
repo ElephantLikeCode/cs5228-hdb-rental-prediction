@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 from matplotlib import font_manager, ticker
 import numpy as np
 import pandas as pd
@@ -26,7 +27,82 @@ from features import normalize_text
 from feedback_experiments import frozen_baseline
 
 MAIN = "local_trend_history_diversity_blend"
-COLORS = ["#223e55", "#9b563a", "#567a65", "#8b7194", "#a1853a"]
+COLORS = ["#356AA0", "#D58A36", "#258E83", "#8A6BA8", "#667785"]
+
+
+def model_overview():
+    """Vector schematic; counts and views follow the frozen selected recipe."""
+    config = json.loads((ROOT/'configs/model.json').read_text())
+    assert config['seeds'] == [42,2026] and set(config['target_modes']) == {False,True}
+    assert config['history_views'] == [dict(history='local_trend',lag=0),dict(history='hierarchical',lag=6)]
+    metadata = json.loads((ROOT/'reports/final_model_metadata.json').read_text())
+    assert metadata['feature_counts'] == {'local_trend:0':78,'hierarchical:6':74}
+    fig, ax = plt.subplots(figsize=(7.0, 2.0))
+    fig.subplots_adjust(left=.005, right=.995, top=.995, bottom=.005)
+    ax.set(xlim=(0, 10), ylim=(0, 3.1))
+    ax.axis('off')
+    ink = '#263746'
+
+    def box(x, y, w, h, text, fill, edge=ink, size=8, bold=False):
+        ax.add_patch(FancyBboxPatch((x,y), w,h, boxstyle='round,pad=0.025,rounding_size=0.055',
+                                   facecolor=fill, edgecolor=edge, linewidth=.8))
+        ax.text(x+w/2,y+h/2,text,ha='center',va='center',fontsize=size,
+                color=ink,weight='bold' if bold else 'normal',linespacing=1.22)
+
+    def arrow(a,b):
+        ax.add_patch(FancyArrowPatch(a,b,arrowstyle='-|>',mutation_scale=8,
+                                    linewidth=.8,color='#667785',zorder=0))
+
+    for x, title in [(0.1,'1  INPUTS'),(2.12,'2  HISTORY VIEWS'),(4.78,'3  CATBOOST COMPONENTS'),(8.15,'4  OUTPUT')]:
+        ax.text(x,2.93,title,fontsize=8,color=ink,weight='bold',va='center')
+    box(.1,1.62,1.63,.81,'Flat attributes\n+ spatial context', '#EEF2F6')
+    box(.1,.62,1.63,.81,'Permitted earlier\ntraining rents', '#EEF2F6')
+    box(2.12,1.62,2.13,.81,'Normal history\n+ local trends\n78 features', '#EAF1FA', COLORS[0])
+    box(2.12,.62,2.13,.81,'Original + 6-month\nstale-history augmentation\n74 features', '#E7F3F0',COLORS[2])
+    for y, color, fill in [(1.62,COLORS[0],'#EAF1FA'),(.62,COLORS[2],'#E7F3F0')]:
+        box(4.78,y,1.38,.81,'Direct target\nseeds 42 / 2026\n2 models',fill,color,7.6)
+        box(6.34,y,1.38,.81,'Residual target\nseeds 42 / 2026\n2 models',fill,color,7.6)
+        arrow((4.27,y+.405),(4.75,y+.405))
+        ax.plot([4.49,4.49,7.03],[y+.405,y+.92,y+.92],color='#667785',linewidth=.8,zorder=0)
+        arrow((7.03,y+.92),(7.03,y+.83))
+        ax.plot([5.47,5.47,7.92],[y,y-.12,y-.12],color='#667785',linewidth=.8,zorder=0)
+        arrow((7.92,y-.12),(8.13,1.53))
+        arrow((7.74,y+.405),(8.13,1.53))
+    box(8.16,1.08,1.7,.9,'Equal mean\n8 predictions\nweight = 1/8', '#FFF1DF',COLORS[1],8,True)
+    ax.text(9.01,.74,'Monthly rent (SGD)',ha='center',fontsize=8,color=ink)
+    for sy in [2.02,1.02]:
+        for ty in [2.02,1.02]:
+            arrow((1.76,sy),(2.09,ty))
+    ax.text(5,.18,'TRAIN: original transaction weight is preserved.   PREDICT: both views use all permitted earlier rents.',
+            fontsize=7.5,ha='center',color='#52616E')
+    fig.savefig(HERE/'figures/model_overview.pdf')
+    plt.close(fig)
+
+
+def validation_overview():
+    fig, ax = plt.subplots(figsize=(3.4,1.65),constrained_layout=True)
+    intervals = [('Recent quarter','2024-12','2025-03'),
+                 ('Recent year','2024-03','2025-03'),
+                 ('Older year','2023-03','2024-03'),
+                 ('16 months','2023-11','2025-03')]
+    start = pd.Timestamp('2021-01-01')
+    for row,(label,cut,end) in enumerate(intervals):
+        cutoff = pd.Timestamp(cut)+pd.offsets.MonthBegin(1)
+        finish = pd.Timestamp(end)+pd.offsets.MonthBegin(1)
+        ax.barh(row,(cutoff-start).days,left=mdates.date2num(start),height=.49,color=COLORS[0],
+                label='Fit on earlier months' if row==0 else None)
+        ax.barh(row,(finish-cutoff).days,left=mdates.date2num(cutoff),height=.49,color=COLORS[1],
+                label='Frozen validation' if row==0 else None,hatch='///',edgecolor='white',linewidth=.3)
+    ax.set_yticks(range(4),[r[0] for r in intervals])
+    ax.invert_yaxis()
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    ax.set_xlim(start,pd.Timestamp('2025-04-01'))
+    ax.legend(loc='lower left',bbox_to_anchor=(-.32,1.01),frameon=False,ncol=2,fontsize=7)
+    ax.tick_params(axis='both',length=0)
+    ax.spines[['left','bottom']].set_visible(False)
+    fig.savefig(HERE/'figures/validation_windows.pdf')
+    plt.close(fig)
 
 
 def tex_table(name, header, rows, alignment):
@@ -50,6 +126,8 @@ def main():
     plt.rcParams.update({"font.family": "Times New Roman", "font.size": 8,
         "axes.spines.top": False, "axes.spines.right": False,
         "axes.labelsize": 8, "legend.fontsize": 8, "pdf.fonttype": 42})
+    model_overview()
+    validation_overview()
     raw = pd.read_csv(ROOT / "data/raw/train.csv")
     test = pd.read_csv(ROOT / "data/raw/test.csv")
     summary = pd.read_csv(ROOT / "reports/temporal_summary.csv")
@@ -107,10 +185,15 @@ def main():
     fig, ax = plt.subplots(figsize=(3.4, 2.15), constrained_layout=True)
     x = np.arange(len(groups)); width=.34
     ax.bar(x-width/2, groups.row_percent, width, label="Share of rows", color=COLORS[0])
-    ax.bar(x+width/2, groups.sse_percent, width, label="Share of squared error", color=COLORS[1], hatch="//")
+    bars = ax.bar(x+width/2, groups.sse_percent, width, label="Share of squared error", color=COLORS[1], hatch="//",edgecolor='white',linewidth=.4)
+    ax.annotate(f'{groups.sse_percent.iloc[0]:.1f}%', (bars[0].get_x()+width/2,groups.sse_percent.iloc[0]),
+                xytext=(0,4),textcoords='offset points',ha='center',fontsize=8,color=COLORS[1],weight='bold')
     ax.set_xticks(x, ["\u2264 2500", "2501-3000", "3001-3500", "3501-4000", ">4000"], rotation=20)
     ax.set(xlabel="Actual monthly rent band (SGD)", ylabel="Share (%)")
-    ax.legend(frameon=False)
+    ax.legend(frameon=False,loc='upper right',fontsize=7)
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(True,color='#E7ECF1',linewidth=.5)
+    ax.set_ylim(0,62)
     fig.savefig(HERE / "figures/error_concentration.pdf")
     plt.close(fig)
 
@@ -135,11 +218,15 @@ def main():
         for window in windows:
             z=summary[summary.window.eq(window)].set_index("candidate")
             gains.append(z.loc[candidates[0], "rmse"]-z.loc[candidate,"rmse"])
-        ax.bar(np.arange(4) + (i-.5)*.34, gains, width=.34, label=label,
-               color=COLORS[i], hatch=["", "//"][i])
+        bars = ax.bar(np.arange(4) + (i-.5)*.34, gains, width=.34, label=label,
+               color=COLORS[i], hatch=["", "//"][i],edgecolor='white',linewidth=.4)
+        if candidate == MAIN:
+            ax.bar_label(bars,labels=[f'{g:+.2f}' for g in gains],fontsize=7,padding=3,color=COLORS[1])
     ax.axhline(0, color="0.6", linewidth=.7)
     ax.set_xticks(range(4), ["Recent\nquarter", "Recent\nyear", "Older\nyear", "16-month\nwindow"])
     ax.set(ylabel="RMSE improvement (SGD)", ylim=(-12, 8))
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(True,color='#E7ECF1',linewidth=.5)
     ax.legend(frameon=False, loc="upper right")
     fig.savefig(HERE / "figures/temporal_tradeoff.pdf")
     plt.close(fig)
@@ -195,7 +282,7 @@ def main():
             ["window", "baseline_candidate", "rmse_improvement", "address_bootstrap_replicates",
              "gain_ci_lower", "gain_ci_upper"]].to_dict("records")}
     if not np.isclose(facts["recent_rmse"],440.7628634143297,atol=1e-7): raise ValueError("Mainline changed")
-    (HERE / "generated/evidence.json").write_text(json.dumps(facts,indent=2),encoding="utf-8")
+    (HERE / "generated/evidence.json").write_text(json.dumps(facts,indent=2)+'\n',encoding="utf-8")
     print(json.dumps(facts,indent=2))
 
 
