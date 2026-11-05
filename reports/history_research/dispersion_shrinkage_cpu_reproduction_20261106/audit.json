@@ -1,0 +1,190 @@
+{
+  "checks": [
+    {
+      "window": "short_recent",
+      "rows": 8924,
+      "row_ids_labels_and_scores_verified": true
+    },
+    {
+      "window": "horizon16",
+      "rows": 47171,
+      "row_ids_labels_and_scores_verified": true
+    }
+  ],
+  "code_hash": "5d3f1e42bbbf157ba312964c29181254c93c57599cdbbe64185c056c980ec5fa",
+  "bootstrap_code_sha256": "eb16f97af9c52598999d630b8c85d713c42a38520e416b4d5d94891fc2f322d5",
+  "input_hashes": {
+    "horizon16_candidate_direct.npz": "b79ac6a923d284735972f3728cf4eb92d3c4c471b9700369632ac3d640789c42",
+    "horizon16_candidate_residual.npz": "a6782c5c44e9e3967062b7f55b784ab75a36dc7cd0ac1df10d4ce8732625d7ff",
+    "horizon16_original_direct.npz": "01ebedb2001a1c8bbb0bdb2d74b7b3b4a95cabb3d0c69f9f09eea26720c0dd51",
+    "horizon16_original_residual.npz": "323975a7b9b23f0c24a4a43e502df5ab5d54af33c8abcbfdb1c480ae54b2834f",
+    "short_recent_candidate_direct.npz": "0292ea240feca33d5c91e2cadb2f3a69770c6a14b3c91a534aa3d12366f7c49f",
+    "short_recent_candidate_residual.npz": "9b5ab3d2fda5fca4dce6bc942d0a030f86f9f34bad63ced1b0759a0d282ec6e0",
+    "short_recent_original_direct.npz": "f1a613745de44712b37bad826e239c1b7d0a92d79c6c9bb27b7d54ea405b30b2",
+    "short_recent_original_residual.npz": "6a24903318743f0c5fb03384d0febb93bce9333e7058f0c4a4e7ef0b28b30794"
+  },
+  "source_dir": "D:\\CS5228_Project_Workspace\\artifacts\\dispersion_shrinkage_cpu_reproduction_20261106",
+  "source_metadata_sha256": "0f43e8f01dd77f082610de68b9a27c63917edf25a69b0c7e4275dbd982a23bec",
+  "source_metadata": {
+    "hashes": {
+      "data\\raw\\train.csv": "6d7a417de72112361f8353659ba6fe44a442b07465b488aff1b03f7ec1ea3ba6",
+      "data\\raw\\auxiliary\\sg-coe-prices.csv": "e32fccd39da32780b6b7f35d069c813ed3edb0c110ea60761656bcee58d501a5",
+      "data\\raw\\auxiliary\\sg-hdb-block.csv": "e6ccc60c1f901f8f476eb6fe14c07ef5941d2afd06a081a1e4c00f717da27f83",
+      "data\\raw\\auxiliary\\sg-mrt-stations.csv": "899460b39fb251bd6883fffc9e6a772081f8e5217a657550afc3c49cfdcd3227",
+      "data\\raw\\auxiliary\\sg-schools.csv": "118c7ce8d96bbc934bd53655e73e6d0848c27853a625394ecc6a67a5af54f192",
+      "data\\raw\\auxiliary\\sg-shopping-malls.csv": "00e05b0176ac412695fc4ce1fc5a5338a1993593ffaffe26156dc2ea04ddf2c8",
+      "data\\raw\\auxiliary\\sg-stock-prices.csv": "c52fef9f33cfcb11285e2b9546124e02f32488e563af44e9fb3a505d10e2edff",
+      "src\\research\\dispersion_shrinkage.py": "ba141e5a47a47bdc1d0bea6961eb967838f213372d57c6a0c3d2e6976f4308f6",
+      "src\\features.py": "3f4318067a46c21a68ddd0477b161826ed2e521135fc94a6f1b729b14d9e69dd",
+      "src\\modeling.py": "8cacd42c499eaaaf49b3207f2a173e5ad3e1fda9199e87d9ef153cdc5f8bd7ba",
+      "src\\research\\history_reliability.py": "214837fdbcf2405432306dfd7edf8ba50e3d7e3e5c5fd7c32ad3275e3eda5c76",
+      "src\\research\\horizon_blend.py": "544375550e637d08db1aa1a4a9f7faadbcc547e4a052b0fb9638ebcb6b8e1e1a"
+    },
+    "device": "CPU",
+    "seed": 42,
+    "iterations": 1600,
+    "windows": [
+      "short_recent",
+      "horizon16"
+    ],
+    "versions": {
+      "catboost": "1.2.10",
+      "numpy": "2.5.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.9.1"
+    },
+    "python": "3.12.3",
+    "alpha_original": 5,
+    "alpha_high_dispersion": 10,
+    "threshold": 0.25,
+    "min_history": 5,
+    "scope": "Normal-history direct/residual pair only; not full eight-model mainline",
+    "offset": "Original finest-level offset retained for both recipes",
+    "protocol": "Fixed budget; no outer-label early stopping; identical rows; no weight optimization",
+    "acceptance": "Recent and long-window pair gains required for further confirmation; no automatic promotion"
+  },
+  "reference_comparison": {
+    "sha256": "3b53aec7dd69aca8fadaa33cc7e1e9288f2dc4318522ef9388c4b2189c888aba",
+    "max_absolute_rmse_difference": 0.1990563006942807,
+    "all_rmse_match": false,
+    "note": "Independent fits, not a claim of identical original model binaries"
+  },
+  "model_checks": [
+    {
+      "window": "short_recent",
+      "recipe": "original",
+      "mode": "direct",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "3a7f75cf99c23567d721849806f958225989d37588c29901f627ba8a3c993f64",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "short_recent",
+      "recipe": "original",
+      "mode": "residual",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "778b519b91615710e8c994b1bbc659b5e60d114074ef32d5ed67ff05e026d21d",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "short_recent",
+      "recipe": "candidate",
+      "mode": "direct",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "f0a2dce3a4a285dea17310c3dd4d80152b5e04dd6c63c051363989e5103ec72d",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "short_recent",
+      "recipe": "candidate",
+      "mode": "residual",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "a948924f63f1fe3775edcef8a4c61b24cc058c8577c19ca935923d76613d08d8",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "horizon16",
+      "recipe": "original",
+      "mode": "direct",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "96ff03b81a2135c2424e07d207ed541d3c643aa7b677ad15b724e9d8eb977eb9",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "horizon16",
+      "recipe": "original",
+      "mode": "residual",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "25ef2fae23d7e85783f0217799291b721e863c695448df47f2a294eeac2d0c06",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "horizon16",
+      "recipe": "candidate",
+      "mode": "direct",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "c9ae9e8fe1ce18214b8e18cc214fa246a7748a2ce69853828044105c26ac8597",
+      "reload_predictions_verified": true
+    },
+    {
+      "window": "horizon16",
+      "recipe": "candidate",
+      "mode": "residual",
+      "actual_trees": 1600,
+      "seed": 42,
+      "device": "CPU",
+      "depth": 8,
+      "learning_rate": 0.03999999911,
+      "l2_leaf_reg": 6,
+      "feature_count": 78,
+      "sha256": "d547d3b8d4c17867f0d395dfc5dd902b6a3b35087da4343e48e1522c07c70e61",
+      "reload_predictions_verified": true
+    }
+  ],
+  "feature_intervention_verified": true,
+  "sign": "candidate minus original: positive means deterioration",
+  "positive_loss_share": "Group positive SSE increments / all positive increments; zero when none exist",
+  "limitations": "One seed; descriptive reused overlapping windows; no causal attribution or parameter fitting"
+}

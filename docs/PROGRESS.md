@@ -2279,3 +2279,90 @@ feature/model code, configs, original result tables, raw inputs, the eight
 active CBMs and final submission are unchanged. No model promotion or paper
 revision is part of this test repair; the separately identified paper page-limit
 and team workload issues remain for the final submission review.
+
+## 6 November 2026 - Independent shrinkage repetition completed
+
+The user requested a fresh run because the teammate's original CPU caches are
+unavailable. This is a new computation from official course data, not a claim
+that the original model binaries or feature caches have been recovered.
+
+Frozen protocol: CPU, seed 42, 1,600 trees per head, depth 8, learning rate .04,
+L2 6, original versus fixed alpha-10 high-dispersion candidate, direct/residual
+heads in both short_recent and horizon16 windows: eight full-budget fits.
+No early stopping, new tuning, validation-row cleaning or promotion. Original
+residual offsets stay fixed. Production code, configs, models, submissions and
+the paper are outside this change. Fresh private output:
+`artifacts/dispersion_shrinkage_cpu_reproduction_20261106/`; local execution log:
+`tmp/shrinkage_reproduction_20261106.log`.
+
+```bash
+python -u -m src.research.dispersion_shrinkage --task-type CPU --windows short_recent horizon16 --iterations 1600 --seed 42 --output artifacts/dispersion_shrinkage_cpu_reproduction_20261106
+```
+
+All eight models finished at the full budget. Total recorded fit/predict time
+was 2,346.227 seconds (39.10 minutes); feature construction took a further
+146.668 seconds. This is not a runtime comparison against another machine/run.
+Training sizes are 141,076 and 102,829; validation sizes are 8,924 and 47,171.
+High-dispersion validation groups contain 1,654 and 8,919 records respectively.
+
+| Window | Fresh baseline pair RMSE | Fresh candidate pair RMSE | Gain (baseline minus candidate) | Address-cluster 95% gain interval |
+| --- | ---: | ---: | ---: | --- |
+| Jan–Mar 2025 | 445.758752 | 445.488279 | +0.270473 | [-0.423042, 0.921257] |
+| Dec 2023–Mar 2025 | 486.475878 | 486.907127 | -0.431249 | [-0.906902, 0.027248] |
+
+Intervals use 1,000 whole normalized town/block/street resamples, seed 42,
+percentile 95%; address clusters are not identified individual flats. Both
+intervals cross zero. One training seed and overlapping reused development
+windows do not establish training-seed or future-market stability. Do not promote
+the candidate, and do not compare this CPU two-head experiment directly with
+the frozen GPU eight-component mainline.
+
+The two recent baseline heads match the earlier aggregate scores up to floating
+point precision. Other scores differ; the largest absolute RMSE difference among
+the 12 keyed rows is 0.1990563007. The previously reported gains (+0.102891 and
+-0.317235) were therefore not exactly reproduced. Original metadata/caches are
+unavailable, so no cause for these differences is asserted. This fresh run is
+fully traceable to current source/data hashes and environment versions, and independently
+supports the same no-promotion decision. It does not authenticate old binaries.
+
+Analysis now accepts explicit source/output paths, verifies saved metric rows
+and duplicate keys, and can reload every model to check budget, seed, device,
+feature count and cached predictions. It also verifies that candidate feature
+tables match exactly the two-column intervention for both train and validation
+rows, recomputes address-cluster intervals, and exports a prior-score comparison
+without substituting the old predictions. Zero positive SSE increments are
+handled without dividing by zero. These are research-analysis changes only;
+the training/feature algorithm is unchanged.
+
+Executed verification:
+
+```bash
+python -m src.research.analyze_shrinkage_errors --source-dir artifacts/dispersion_shrinkage_cpu_reproduction_20261106 --output reports/history_research/dispersion_shrinkage_cpu_reproduction_20261106 --verify-models --bootstrap 1000 --reference-results reports/history_research/dispersion_shrinkage_cpu_v1/results.csv
+python -m pytest tests/test_history_research.py -q
+python -m pytest -q
+```
+
+All eight 1,600-tree model reloads reproduce their saved predictions (rtol=1e-12,
+atol=1e-9); raw row IDs/labels, all four regression metrics, intervention tables,
+and additive SSE partitions pass checks. Focused tests: 57 passed. Full suite:
+142 passed, four optional LightGBM checks skipped. Extended tests cover explicit
+paths, new intervals, model tree/seed/device and prediction tampering, and
+recording reference differences without replacing fresh results.
+
+Fresh attribution: long-window pair loss occurs in 12/16 months. The first and
+last eight-month slices worsen by 0.428308 and 0.436541 RMSE, so the loss is not
+limited to the most distant months. Three/four/five-room and executive slices
+worsen; the high-dispersion slice worsens by 0.336641. The low-dispersion slice
+also worsens despite unchanged input rows: refitting shared trees can propagate
+changes beyond the targeted rows. This is descriptive evidence, not a causal
+claim that dispersion identifies unusual low-rent leases.
+
+Shared evidence stays together under
+`reports/history_research/dispersion_shrinkage_cpu_reproduction_20261106/`:
+results, old-versus-new comparison, fresh interval checks, grouped error changes,
+monthly profiles, and an audit embedding source/environment hashes and model
+checks. Private CBMs, feature pickles and row predictions stay in the fresh
+ignored artifact directory. Old team results remain intact. Production CBMs
+(all eight hashes), raw train/test, final_submission.csv and paper PDF are
+unchanged; no public submission or paper revision was performed. Any later paper
+update should distinguish these fresh numbers from the earlier team-run numbers.

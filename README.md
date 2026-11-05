@@ -589,7 +589,7 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- a passing test suite (6 November check: `133 passed, 4 skipped`; skips are
+- a passing test suite (6 November check: `142 passed, 4 skipped`; skips are
   optional LightGBM checks when that research dependency is not installed);
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
@@ -969,7 +969,7 @@ python -m pytest tests/test_history_research.py -q
 python -m pytest -q
 ```
 
-The 48 focused checks cover all six research modules: source hashes and ledger
+The 57 focused checks cover all six research modules: source hashes and ledger
 consistency, complete/aligned validation rows, forward-only meta-training,
 bounded/clamped weights, sparse-group fallback, past-only normalized support
 and dispersion, the two-column shrinkage formula and unchanged residual target,
@@ -977,18 +977,21 @@ address-cluster bootstrap units/sign, and additive SSE attribution. Synthetic
 end-to-end cases exercise blending and attribution, plus a three-tree CPU
 CatBoost fit. They require neither course data nor original research caches;
 synthetic scores are never model-quality evidence. The full suite currently
-passes 133 checks with four optional LightGBM skips.
+passes 142 checks with four optional LightGBM skips.
 
 Separately, the original 72 frozen OOF caches passed hash, label, row and forward
 split validation on this machine. Both blending studies were recomputed into
 ignored `tmp/history_research_verification_20261106/`; all 21 rows per study
 matched the committed aggregates (`rtol=1e-12`, `atol=1e-9`). This is a
 recalculation from saved predictions, not retraining or independent test data.
-The original shrinkage CPU caches are absent on this machine: their full fits,
-row-level attribution and confidence intervals have **not** been independently
-reproduced here. Arithmetic agreement of their committed aggregates and passing
-synthetic tests do not replace that verification. No research candidate is
-promoted by these checks.
+The teammate's original shrinkage caches remain unavailable. A subsequent fresh
+eight-fit CPU repetition is now complete; its saved models, predictions, feature
+intervention, metrics and new address-cluster intervals were verified locally.
+This independently validates the currently committed recipe, not the exact old
+binaries or every old score. Maximum old-versus-new RMSE difference is 0.199056;
+its cause cannot be established without the original provenance/caches. Both
+runs support keeping this candidate research-only. Public evidence is in
+`reports/history_research/dispersion_shrinkage_cpu_reproduction_20261106/`.
 
 ### Reuse predictions before retraining
 
@@ -1036,21 +1039,44 @@ untrusted files. Small --iterations runs are execution checks, not score evidenc
 No automatic second seed, promotion or Kaggle submission is performed.
 
 The command above starts a **new training run** in a fresh directory; it is not
-needed to read completed v1 results. In the executed seed-42 CPU comparison:
+needed to read completed v1 results. The original team run and independent
+6 November repetition use the same stated seed-42 CPU comparison:
 
-| Validation window | Original two-head RMSE | Candidate two-head RMSE | Candidate minus original |
-| --- | ---: | ---: | ---: |
-| Jan–Mar 2025 | 445.759 | 445.656 | -0.103 |
-| Dec 2023–Mar 2025 | 486.644 | 486.962 | +0.317 |
+| Validation window | Team baseline | Team candidate | Repetition baseline | Repetition candidate |
+| --- | ---: | ---: | ---: | ---: |
+| Jan–Mar 2025 | 445.759 | 445.656 | 445.759 | 445.488 |
+| Dec 2023–Mar 2025 | 486.644 | 486.962 | 486.476 | 486.907 |
 
-Both paired address-cluster gain intervals cross zero. The candidate remains
-research-only; these scores must not be compared as a method gain against the
-eight-component GPU mainline. See the progress log for uncertainty and attribution.
+Fresh baseline-minus-candidate gains are +0.270473 and -0.431249 respectively.
+Their 1,000-replicate address-cluster 95% intervals are [-0.423042, 0.921257]
+and [-0.906902, 0.027248]: both cross zero. The candidate remains research-only;
+these two-head scores must not be compared as a method gain against the
+eight-component GPU mainline. These are repeated development windows, not new
+holdouts. See the progress log for attribution and the limits of this comparison.
+
+To repeat the full study, use fresh directories (the recorded ones now exist):
+
+```bash
+python -m src.research.dispersion_shrinkage --task-type CPU --windows short_recent horizon16 --iterations 1600 --seed 42 --output artifacts/dispersion_shrinkage_cpu_reproduction_NEW
+python -m src.research.analyze_shrinkage_errors --source-dir artifacts/dispersion_shrinkage_cpu_reproduction_NEW --output reports/history_research/dispersion_shrinkage_cpu_reproduction_NEW --verify-models --bootstrap 1000 --reference-results reports/history_research/dispersion_shrinkage_cpu_v1/results.csv
+```
+
+The public repetition folder contains `results.csv`, `reference_comparison.csv`,
+`local_evaluation_check.json`, `error_changes.csv`, `monthly_data_profile.csv`
+and `audit.json`. The audit embeds the fresh source/environment signature and
+all eight model-reload checks. Models, feature pickles and row predictions stay
+under ignored `artifacts/`; only locally generated/trusted pickles may be loaded.
 
 `python -m src.research.analyze_shrinkage_errors` reads the existing
-`artifacts/dispersion_shrinkage_cpu_v1/` predictions and feature caches. It has
-fixed input/output paths and refuses to overwrite its existing
-`artifacts/dispersion_shrinkage_attribution_v1/` output. The shared summary is
+`artifacts/dispersion_shrinkage_cpu_v1/` predictions and feature caches by default
+and refuses to overwrite its existing output. For a fresh completed run, specify
+`--source-dir` and a new `--output`; `--verify-models` reloads all eight CBMs,
+checks their budget/seed/device, verifies cached predictions and the feature
+intervention, and recomputes metrics. `--bootstrap` defaults to 1,000 whole-address
+resamples. Optional `--reference-results` records prior-versus-fresh differences;
+it never substitutes the prior predictions or forces matching scores.
+
+The shared original-run summary is
 `reports/history_research/dispersion_shrinkage_attribution_v1/error_changes.csv`.
 Detailed monthly profiles and audit records remain local to the original run;
 restore trusted inputs before reproducing them. Do not delete completed results

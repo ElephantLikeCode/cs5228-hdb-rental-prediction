@@ -392,7 +392,8 @@ def attribution_inputs(tmp_path, monkeypatch):
     raw_dir.mkdir(parents=True)
     raw = pd.DataFrame({'RENT_APPROVAL_DATE': ['2023-12', '2024-08', '2025-01', '2025-03'],
         'MONTHLY_RENT': [2000., 2100., 2200., 2300.], 'FLAT_TYPE': ['4-room', '5-room'] * 2,
-        'FLOOR_AREA_SQM': [90., 110.] * 2})
+        'FLOOR_AREA_SQM': [90., 110.] * 2, 'TOWN': ['Town'] * 4,
+        'BLOCK': ['1', '1', '2', '3'], 'STREET': ['Test St'] * 4})
     raw.to_csv(raw_dir / 'train.csv', index=False)
     src = tmp_path / 'artifacts/dispersion_shrinkage_cpu_v1'
     src.mkdir(parents=True)
@@ -407,8 +408,8 @@ def attribution_inputs(tmp_path, monkeypatch):
                 p = y + error + shift
                 np.savez(src / f'{window}_{recipe}_{mode}.npz', row_id=ids, y=y, prediction=p)
                 predictions.append(p)
-                rows.append(dict(window=window, recipe=recipe, mode=mode, **horizon.metrics(y, p)))
-            rows.append(dict(window=window, recipe=recipe, mode='pair', **horizon.metrics(y, np.mean(predictions, axis=0))))
+                rows.append(dict(window=window, recipe=recipe, mode=mode, rows=len(ids), **horizon.metrics(y, p)))
+            rows.append(dict(window=window, recipe=recipe, mode='pair', rows=len(ids), **horizon.metrics(y, np.mean(predictions, axis=0))))
         stats = pd.DataFrame({'count': [6] * len(ids), 'adjusted_relative_iqr': [.3] * len(ids)})
         pd.to_pickle({'stats_valid': stats, 'high_valid': np.ones(len(ids), dtype=bool)}, src / f'{window}_features.pkl')
     pd.DataFrame(rows).to_csv(src / 'results.csv', index=False)
@@ -418,7 +419,7 @@ def attribution_inputs(tmp_path, monkeypatch):
 
 def test_attribution_end_to_end_conserves_sse_and_refuses_overwrite(attribution_inputs):
     root, _ = attribution_inputs
-    attribution.main()
+    attribution.main([])
     out = root / 'artifacts/dispersion_shrinkage_attribution_v1'
     result = pd.read_csv(out / 'error_changes.csv')
     for (_, _), frame in result.groupby(['window', 'mode']):
@@ -428,8 +429,13 @@ def test_attribution_end_to_end_conserves_sse_and_refuses_overwrite(attribution_
             assert group.delta_sse.sum() == pytest.approx(total)
             assert group.original_sse_share.sum() == pytest.approx(1.)
     assert all(c['row_ids_labels_and_scores_verified'] for c in json.loads((out / 'audit.json').read_text())['checks'])
+    paired_checks = json.loads((out / 'local_evaluation_check.json').read_text())
+    assert paired_checks['bootstrap']['replicates'] == 1000
+    for check in paired_checks['windows']:
+        assert check['rmse_gain_child_minus_parent'] == pytest.approx(-2.)
+        assert check['conclusion'] == 'child_better'
     with pytest.raises(FileExistsError):
-        attribution.main()
+        attribution.main([])
 
 
 @pytest.mark.parametrize('damage', ['data_hash', 'row_id', 'labels', 'saved_score'])
@@ -448,8 +454,115 @@ def test_attribution_rejects_inconsistent_inputs_before_output(attribution_input
         item['row_id' if damage == 'row_id' else 'y'][0] += 1
         np.savez(path, **item)
     with pytest.raises((ValueError, AssertionError)):
-        attribution.main()
+        attribution.main([])
     assert not (root / 'artifacts/dispersion_shrinkage_attribution_v1').exists()
+
+
+def test_attribution_accepts_explicit_input_and_output(attribution_inputs):
+    root, source = attribution_inputs
+    output = root / 'new_analysis'
+    attribution.main(['--source-dir', str(source), '--output', str(output), '--bootstrap', '113'])
+    record = json.loads((output / 'local_evaluation_check.json').read_text())
+    assert record['bootstrap']['replicates'] == 113
+    assert (output / 'error_changes.csv').is_file()
+    with pytest.raises(ValueError, match='positive'):
+        attribution.main(['--bootstrap', '0'])
+
+
+def test_attribution_model_check_requires_budget_metadata(attribution_inputs):
+    root, source = attribution_inputs
+    output = root / 'model_analysis'
+    with pytest.raises(ValueError, match='budget/window'):
+        attribution.main(['--source-dir', str(source), '--output', str(output), '--verify-models'])
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('missing_key', [False, True])
+def test_attribution_records_reference_differences_without_changing_results(attribution_inputs, missing_key):
+    root, source = attribution_inputs
+    prior = pd.read_csv(source / 'results.csv')
+    prior['rmse'] += .5
+    if missing_key:
+        prior = prior.iloc[:-1]
+    reference = root / 'prior.csv'
+    prior.to_csv(reference, index=False)
+    output = root / 'reference_analysis'
+    args = ['--source-dir', str(source), '--output', str(output), '--reference-results', str(reference)]
+    if missing_key:
+        with pytest.raises(ValueError, match='keys differ'):
+            attribution.main(args)
+        assert not output.exists()
+    else:
+        attribution.main(args)
+        comparison = pd.read_csv(output / 'reference_comparison.csv')
+        np.testing.assert_allclose(comparison.rmse_delta, -.5)
+        record = json.loads((output / 'audit.json').read_text())['reference_comparison']
+        assert record['all_rmse_match'] is False
+        assert record['max_absolute_rmse_difference'] == pytest.approx(.5)
+        pd.testing.assert_frame_equal(pd.read_csv(output / 'results.csv'), pd.read_csv(source / 'results.csv'))
+
+
+@pytest.mark.parametrize('damage', [None, 'prediction', 'trees', 'seed', 'device'])
+def test_attribution_reloads_actual_models_before_accepting_cache(attribution_inputs, damage):
+    root, source = attribution_inputs
+    raw = pd.read_csv(root / 'data/raw/train.csv')
+    metadata = json.loads((source / 'metadata.json').read_text())
+    metadata.update(iterations=3, windows=['short_recent', 'horizon16'], seed=42, device='CPU')
+    rows = []
+    for window, start in [('short_recent', '2025-01'), ('horizon16', '2023-12')]:
+        ids = np.flatnonzero(raw.RENT_APPROVAL_DATE.ge(start))
+        y = raw.iloc[ids].MONTHLY_RENT.to_numpy()
+        original = pd.DataFrame({shrinkage.LEVEL: np.full(len(ids), 2200.),
+            shrinkage.PREMIUM: np.full(len(ids), 1.1), 'ADAPT_MARKET_LEVEL': np.full(len(ids), 2000.),
+            'ADAPT_ADDRESS_FLAT_PREMIUM': np.ones(len(ids)),
+            'ADAPT_ADDRESS_FLAT_AREA_LOG_MASS': np.full(len(ids), np.log1p(10.)),
+            'area': np.arange(len(ids), dtype=float)})
+        stats = pd.DataFrame({'count': [6] * len(ids), 'adjusted_relative_iqr': [.3] * len(ids)})
+        candidate, high = shrinkage.shrink_features(original, stats)
+        bundle = dict(original_train=original, original_valid=original,
+            candidate_train=candidate, candidate_valid=candidate,
+            stats_train=stats, stats_valid=stats, high_train=high, high_valid=high)
+        pd.to_pickle(bundle, source / f'{window}_features.pkl')
+        for recipe in ['original', 'candidate']:
+            predictions = []
+            for mode in ['direct', 'residual']:
+                X = bundle[recipe + '_valid']
+                offset = shrinkage.fixed_offset(original, mode == 'residual')
+                model = shrinkage.fit_model(X, y - offset,
+                    dict(iterations=3, learning_rate=.04, depth=2, l2_leaf_reg=6.), 42, 'CPU', False)
+                p = model.predict(X) + offset
+                model.save_model(str(source / f'{window}_{recipe}_{mode}.cbm'))
+                np.savez(source / f'{window}_{recipe}_{mode}.npz', row_id=ids, y=y, prediction=p)
+                predictions.append(p)
+                rows.append(dict(window=window, recipe=recipe, mode=mode, **horizon.metrics(y, p)))
+            rows.append(dict(window=window, recipe=recipe, mode='pair', **horizon.metrics(y, np.mean(predictions, axis=0))))
+    pd.DataFrame(rows).to_csv(source / 'results.csv', index=False)
+    if damage == 'trees':
+        metadata['iterations'] = 4
+    elif damage == 'seed':
+        metadata['seed'] = 2026
+    elif damage == 'device':
+        metadata['device'] = 'GPU'
+    elif damage == 'prediction':
+        path = source / 'short_recent_original_direct.npz'
+        with np.load(path, allow_pickle=False) as z:
+            item = {k: z[k].copy() for k in z.files}
+        item['prediction'][0] += 1
+        np.savez(path, **item)
+    (source / 'metadata.json').write_text(json.dumps(metadata))
+    output = root / 'verified_models'
+    args = ['--source-dir', str(source), '--output', str(output), '--verify-models', '--bootstrap', '113']
+    if damage:
+        with pytest.raises((ValueError, AssertionError)):
+            attribution.main(args)
+        assert not output.exists()
+    else:
+        attribution.main(args)
+        audit = json.loads((output / 'audit.json').read_text())
+        assert audit['feature_intervention_verified'] is True
+        assert len(audit['model_checks']) == 8
+        assert all(row['reload_predictions_verified'] for row in audit['model_checks'])
+        assert pd.read_csv(output / 'error_changes.csv').positive_loss_share.notna().all()
 
 
 def test_committed_aggregate_arithmetic_and_gain_direction():
@@ -488,3 +601,24 @@ def test_committed_aggregate_arithmetic_and_gain_direction():
     expected = np.where(pairs.rmse_gain_ci_low.gt(0), 'parent_better',
                         np.where(pairs.rmse_gain_ci_high.lt(0), 'child_better', 'uncertain'))
     np.testing.assert_array_equal(pairs.conclusion, expected)
+    # The fresh run is kept separate; these checks need only shared aggregates.
+    repeat = root / 'dispersion_shrinkage_cpu_reproduction_20261106'
+    audit = json.loads((repeat / 'audit.json').read_text())
+    assert audit['feature_intervention_verified'] is True
+    assert len(audit['model_checks']) == 8
+    for model in audit['model_checks']:
+        assert model['actual_trees'] == 1600 and model['seed'] == 42
+        assert model['device'] == 'CPU' and model['depth'] == 8
+        assert model['learning_rate'] == pytest.approx(.04)
+        assert model['l2_leaf_reg'] == pytest.approx(6.)
+        assert model['feature_count'] == 78 and model['reload_predictions_verified'] is True
+    fresh = pd.read_csv(repeat / 'results.csv')
+    intervals = json.loads((repeat / 'local_evaluation_check.json').read_text())
+    assert len(fresh) == 12
+    for item in intervals['windows']:
+        pair = fresh.loc[fresh.window.eq(item['window']) & fresh['mode'].eq('pair')].set_index('recipe')
+        gain = pair.loc['original', 'rmse'] - pair.loc['candidate', 'rmse']
+        assert item['rmse_gain_child_minus_parent'] == pytest.approx(gain)
+    comparison = pd.read_csv(repeat / 'reference_comparison.csv')
+    np.testing.assert_allclose(comparison.rmse_rerun - comparison.rmse_reference, comparison.rmse_delta, atol=1e-10)
+    assert audit['reference_comparison']['max_absolute_rmse_difference'] == pytest.approx(comparison.rmse_delta.abs().max())

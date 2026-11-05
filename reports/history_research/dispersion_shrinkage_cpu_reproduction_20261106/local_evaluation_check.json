@@ -1,0 +1,41 @@
+{
+  "checks_passed": true,
+  "paired_gain_positive_means_candidate_better": true,
+  "paired_argument_mapping": "parent=candidate; child=original; applies to win rate and all gain fields",
+  "bootstrap": {
+    "unit": "normalized town/block/street",
+    "replicates": 1000,
+    "seed": 42,
+    "interval": "percentile 95%; exploratory, overlapping windows, not multiplicity adjusted"
+  },
+  "windows": [
+    {
+      "window": "short_recent",
+      "rows": 8924,
+      "clusters": 5211,
+      "parent_win_rate": 0.5085163603765128,
+      "tie_rate": 0.0,
+      "mse_gain_child_minus_parent": 241.0579751330598,
+      "rmse_gain_child_minus_parent": 0.2704726824767363,
+      "rmse_gain_ci_low": -0.42304237714364773,
+      "rmse_gain_ci_high": 0.9212573826908464,
+      "mse_gain_ci_low": -373.34927464788194,
+      "mse_gain_ci_high": 824.6482214229959,
+      "conclusion": "uncertain"
+    },
+    {
+      "window": "horizon16",
+      "rows": 47171,
+      "clusters": 8865,
+      "parent_win_rate": 0.49846303873142395,
+      "tie_rate": 0.0,
+      "mse_gain_child_minus_parent": -419.7708178982464,
+      "rmse_gain_child_minus_parent": -0.43124938032406135,
+      "rmse_gain_ci_low": -0.9069017796815316,
+      "rmse_gain_ci_high": 0.027248047042945457,
+      "mse_gain_ci_low": -885.285222183929,
+      "mse_gain_ci_high": 26.69853553423723,
+      "conclusion": "uncertain"
+    }
+  ]
+}
