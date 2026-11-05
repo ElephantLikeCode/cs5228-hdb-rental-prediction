@@ -2366,3 +2366,82 @@ ignored artifact directory. Old team results remain intact. Production CBMs
 (all eight hashes), raw train/test, final_submission.csv and paper PDF are
 unchanged; no public submission or paper revision was performed. Any later paper
 update should distinguish these fresh numbers from the earlier team-run numbers.
+
+## 6 November 2026 - Compress and reconcile the report for human review
+
+Revised the same `final_report/main.tex` and stable output PDF. The report now
+has eight body pages, one reference page and one appendix page. It retains the
+official IEEEtran conference 10pt/Letter format, margins, five vector figures,
+main temporal comparison and observable error groups. The last body page is
+column-balanced; balancing is disabled before references and appendices.
+No table of contents or dated update log was added. Removed the title-footnote
+update date; dates identifying validation periods and data vintages remain.
+
+Compression focuses on repeated caveats and secondary experiments rather than
+removing the research journey: the questions, assumptions, model construction,
+controlled comparisons, adverse transfer, failed alternatives and stopping
+reason remain in the main text. The supplementary log-target table is condensed
+to its three-window results in prose; complete aggregates remain in the repository.
+Only the two averaged shrinkage outcomes remain in the paper table; all head
+scores remain in the shared experiment evidence.
+
+Replaced old shrinkage values and intervals with the verified independent CPU
+repetition: recent 445.758752 to 445.488279, sixteen-month 486.475878 to
+486.907127; gain intervals [-0.423042,0.921257] and [-0.906902,0.027248]. Updated
+monthly/subgroup attribution and explained the maximum old-versus-new score
+difference (0.199056), without guessing its cause or claiming exact reproduction.
+The updated appendix points to committed evidence rather than unavailable old
+local caches. Corrected ambiguous "stock" wording to "building-stock" for the
+441.783 housing-feature result, distinct from financial-stock indicators.
+Adaptive support is described as log support mass, matching the feature code,
+not as a claim of Kish effective sample size. Updated the test count to 142
+passing with four optional LightGBM skips.
+
+### What the two teammate commit groups contributed
+
+This is a summary of Git commit contents, not assignment of human workload or
+contribution percentages. The user will confirm those separately.
+
+- **Yuhong Zhang, 72a8620 (2 November):** shared a broad supplementary CPU
+  study: CatBoost target/representation variants, LightGBM/MLP, log-target
+  integration, housing/resale attributes, low-rent detectability and mixture
+  probes, historical augmentation, capacity checks, source tracing and two
+  documented public probes. It also introduced many dated modules, handoff
+  files and a chronological paper appendix. Some uploaded notes reconcile
+  Claude/Codex executions; commit authorship does not prove who performed each
+  experiment. No candidate passed the recorded adoption criteria. A target-visible
+  public-source diagnostic is not held-out model evidence and remains quarantined.
+- **hanlinxuan, 61e0faf and 2ba7588 (5 November):** added horizon/support-based
+  weighting, historical reliability diagnostics, parent/child reference
+  comparisons, and the fixed high-dispersion finest-level shrinkage experiment
+  with error attribution. The later commit supplied six modules and eight
+  aggregate evidence files, plus a BibTeX build repair. These diagnose why
+  histories may be unreliable but do not establish a mainline replacement.
+
+### How the work is integrated
+
+The maintained layout remains `src/research/` for optional predictive studies,
+`src/audits/` for target-visible quarantined diagnostics, `reports/` for aggregate
+evidence and the same cumulative documentation. The earlier seven handoffs were
+already consolidated into RESEARCH_NOTES; no new handoff or stage was created.
+In the paper, learner/target/data probes belong to alternative hypotheses and
+negative evidence; reliability/reference/shrinkage form the chain from risk
+diagnosis to a controlled intervention. Small reference-estimator gains are not
+described as gains of the final CatBoost ensemble. Unsupported error-floor and
+competitor-method inferences are not retained. The selected equal-weight eight
+CatBoost components and optional stacking backup remain unchanged.
+
+For style only, inspected the section organisation of the local Voyager and
+R-Zero papers and consulted open academic-writing guidance
+(https://github.com/felixschrimpff/academic-writing-skill). No unrelated research
+content or new template was imported; course requirements take priority.
+The PDF skill's render/verify workflow was used. `.gitattributes` now marks PDFs
+and raster figures as binary, preventing Git's global PDF text attribute from
+producing unreadable multi-thousand-line pseudo-patches.
+
+Validation: successful multi-pass build, all ten pages rendered and visually
+reviewed, all 13 bibliography entries resolved, no overfull boxes or unresolved
+citations/references. Workload Appendix B remains deliberately unfilled at the
+user's request; this version is for human review, not an assertion of final team
+approval or Canvas submission. Original model files, selected CSV, immutable
+data, training code/configuration and historical result tables are unchanged.

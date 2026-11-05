@@ -536,3 +536,16 @@ Use README's current commands rather than renaming new run IDs to old ones.
 No training recipe, fitted model, saved prediction or paper has changed. Remaining
 team tasks are workload attribution, review, cross-device confirmation, teacher
 code access and actual submission; these fixes do not assert those are complete.
+
+### Report ready for human review -- 6 November 2026
+
+The current report is again eight main-text pages, followed by one reference
+page and one appendix page. The official 10pt IEEEtran template and page margins
+are retained; compression removes repetition rather than shrinking typography.
+Supplementary work is integrated into the original research questions, not a
+dated update appendix. The shrinkage table, intervals and subgroup discussion
+now use the independently repeated CPU evidence, with the prior-run discrepancy
+explicitly acknowledged. No production model/configuration or submission changed.
+The cumulative PROGRESS entry explains both teammate commit groups and editorial
+integration. Workload attribution is intentionally deferred until the user's
+review; team approval, code access and actual submission are not asserted.

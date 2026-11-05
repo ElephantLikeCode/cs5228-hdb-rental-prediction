@@ -1,0 +1,5 @@
+# Treat generated scientific documents and figures as binary, not text patches.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary

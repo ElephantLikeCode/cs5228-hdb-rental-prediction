@@ -9,6 +9,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{balance}
 \usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
 \hypersetup{pdftitle={Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles},pdfauthor={Han Linxuan; Sun Shenghe; Zhang Yuhong; Zhang Zhexuan}}
@@ -18,7 +19,7 @@
 \bstctlcite{full-author-names}
 
 \title{Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles%
-\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis through 5 November 2026.}}
+\thanks{CS5228 Group 44, National University of Singapore.}}
 \author{\IEEEauthorblockN{Han Linxuan}\IEEEauthorblockA{A0350911M}
 \and\IEEEauthorblockN{Sun Shenghe}\IEEEauthorblockA{A0354849L}
 \and\IEEEauthorblockN{Zhang Yuhong}\IEEEauthorblockA{A0356795H}
@@ -34,19 +35,17 @@ HDB rental prediction, tabular regression, comparable transactions, temporal val
 \end{IEEEkeywords}
 
 \section{Introduction}
-Monthly rent predictions can help renters compare options and owners assess asking prices. Singapore's public housing market requires considering physical attributes, surroundings and changing market conditions together. We estimate recorded monthly rent from observable transaction characteristics and investigate where those estimates remain unreliable.
+We estimate Singapore HDB monthly rent from observable flat characteristics, surroundings and market conditions, and investigate where those estimates remain unreliable.
 
-The course provides a regression task built from HDB rental approval information and auxiliary datasets. We treat it as dated cross-sectional transaction prediction. The underlying process may contain repeated observations of individual flats, but the released fields do not establish those identities. Several flats in a block can share their type, model and area. A block-level rental history is therefore evidence about comparable transactions, not a verified trajectory for one flat. This distinction matters both when handling repeated records and when interpreting historical features.
+The task uses HDB rental approval information and auxiliary datasets. We treat it as dated cross-sectional transaction prediction: repeated observations of individual flats may exist, but the released fields do not establish their identities. Several flats in a block can share their type, model and area. Block-level histories therefore describe comparable transactions, not verified trajectories of individual flats.
 
-Three research questions organise the study. \textit{RQ1:} What information is recovered through consistent preprocessing and spatial joins? \textit{RQ2:} Do market-adjusted comparable rents and different training-history views improve local prediction? \textit{RQ3:} Do these improvements transfer across periods, and which groups account for the remaining errors? Local chronological evaluation and interpretation are our primary evidence; competition scores provide a supplementary external check.
-
-Our empirical contribution combines auditable preprocessing, a comparable-market predictor with training-history diversity, and temporal and subgroup evaluation that retains adverse findings. Code and cumulative experimental records are maintained in the team repository.\footnote{\url{https://github.com/ElephantLikeCode/cs5228-hdb-rental-prediction}}
+\textit{RQ1} examines information recovered through preprocessing and spatial joins. \textit{RQ2} tests market-adjusted comparable rents and training-history diversity. \textit{RQ3} examines transfer across periods and the groups driving residual errors. Local chronological evaluation is primary; competition scores are supplementary. The contribution is an auditable comparable-market predictor and an evaluation retaining both gains and adverse transfer. Code and cumulative records are in the team repository.\footnote{\url{https://github.com/ElephantLikeCode/cs5228-hdb-rental-prediction}}
 
 \section{Data Understanding and Preparation}
 \subsection{Released files and task boundaries}
-The training file contains 150,000 rows from January 2021 through March 2025; the unlabelled competition file contains 50,000 rows from March 2025 through July 2026. Ten inputs describe approval month, town, block, street, flat type, flat model, floor area, furnishing status, lease commencement year and fee; training additionally supplies monthly rent. These audited file counts and dates take precedence over the course webpage's broader dataset overview.
+The training file contains 150,000 rows from January 2021 through March 2025; the unlabelled competition file contains 50,000 rows from March 2025 through July 2026. Ten inputs describe approval month, town, block, street, flat type, flat model, floor area, furnishing status, lease commencement year and fee; training additionally supplies monthly rent.
 
-Month bins overlap in March 2025: 3,032 training rows and 380 competition rows occur in that month. Thus the competition period is predominantly later, but month precision does not establish strict chronological separation for every transaction. Competition rent labels are not supplied; no modeling experiment or submission uses public-source test-period rental targets. Approval month is not necessarily the month in which rent was negotiated, limiting interpretations of short-term market movement.
+March 2025 contains 3,032 training and 380 competition rows, so month precision does not establish strict separation for every transaction. Competition rent labels are not supplied; models and submissions use no public-source test-period targets. Approval month need not equal negotiation month.
 
 Training rent has mean 2,719.04, median 2,700, standard deviation 749.73, and range 300--7,600 SGD. No core input is missing, although complete fields do not establish correctness or complete economic information. Auxiliary tables describe blocks, MRT stations, malls, primary schools, Certificate of Entitlement (COE) prices and stock prices. A normalised block lookup covers every released rental row without missing coordinates or principal block attributes.
 
@@ -68,7 +67,7 @@ Fig.~\ref{fig:profile} motivates two subsequent choices. Monthly medians change 
 \subsection{Repeated inputs and extreme rents}
 An initial audit finds 425 exactly repeated labelled rows. Equal recorded fields and rent are not sufficient evidence of the same flat or contract, so these observations remain. Normalised feature vectors can also repeat with substantially different rents. Removing such records would change the frequency of transaction types without resolving absent individual-flat identity.
 
-Attribute tracing strengthens this caution: all 13,758 recurrent building/type groups have constant supplied area, model and lease year, whereas historical resales allow multiple areas within a group. The supplied attributes therefore need not identify an individual rental unit. Compatibility with resale records does not recover the course's exact join rule or justify assigning a resale floor to a particular tenancy.
+All 13,758 recurrent building/type groups have constant supplied area, model and lease year, although historical resales allow multiple areas within a group. This supports caution about unit identity, without recovering the course's attribute-join rule or a particular tenancy's floor.
 
 Low rents for larger flats motivate a sensitivity study. A fixed rule flags three-room-or-larger or executive observations below half the median for the same approval month, town and canonical flat type. It flags 954 training rows, or 0.636\%. Such a target-defined flag is a diagnostic or training-policy intervention; it cannot be computed from an unlabelled test transaction. We evaluate alternative training policies on the same complete local validation population and preserve every competition row in its original order. We neither label all low rents as errors nor multiply them by a presumed room count.
 
@@ -90,7 +89,7 @@ Unadjusted historical rents confound local premium with market movement. Our ada
 \widehat r_{g,t}=\frac{\sum_{i\in H_{g,t}}w_i r_i+\alpha_g\widehat r_{p(g),t}}{\sum_{i\in H_{g,t}}w_i+\alpha_g}.
 \label{eq:premium}
 \end{equation}
-Here $r_i$ is the reference rent ratio, the top-level parent premium is one, and the four shrinkage strengths are 30, 12, 8 and 5. Anchoring weights to the latest observation avoids making effective support vanish merely because the query is distant. Each group supplies its market-adjusted level, premium, effective support and observation age.
+Here $r_i$ is the reference rent ratio, the top-level parent premium is one, and the four shrinkage strengths are 30, 12, 8 and 5. Anchoring weights to the latest observation avoids making support vanish merely because the query is distant. Each group supplies its market-adjusted level, premium, log support mass and observation age.
 
 For flat type $f$, let $M_{f,a}$ be the count-weighted mean of its latest three observed monthly means. Its log-linear slope $\beta_f$ uses up to twelve months, is zero with fewer than six, and is clipped to $[-0.01,0.01]$ per month. For horizon $h=t-a$ from the final reference month,
 \begin{equation}
@@ -115,22 +114,20 @@ The normal view includes local trends; the augmented view uses hierarchical feat
 
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{figures/model_overview.pdf}
-\caption{Selected model, read left to right. Two history views each feed direct and residual CatBoost targets, each fitted with two seeds: $2\times2\times2=8$ components. Residual predictions restore their comparable-rent offset before averaging. Augmentation preserves each original transaction's total weight; inference uses all permitted earlier training rents in both views, not rents from the scoring interval.}
+\caption{Selected model: two history views $\times$ two target modes $\times$ two seeds give eight components. Residual predictions restore their comparable-rent offsets before averaging. Augmentation preserves transaction weight; inference in both views uses permitted earlier training rents, never scoring-interval labels.}
 \label{fig:pipeline}
 \end{figure*}
 
 \subsection{Alternative hypotheses}
 Stacking\cite{Wolpert_1992} uses predictions generated by earlier training origins to fit a second layer. We compare four seed-averaged heads with all eight individual outputs, using constrained weighting or Ridge correction. Meta-training always precedes meta-evaluation. The retained probe fits nonnegative sum-to-one four-head weights on October--December 2024 and shrinks them halfway toward equal weights; January--March 2025 labels are not used to fit those weights.
 
-The nearest-comparable predictor finds up to 64 same-type transactions using scaled coordinates, area and lease age. It weights market-normalised rents by inverse squared distance and eighteen-month recency decay, then restores a flat-type market level. The reported variant holds that market level constant after the origin; damped and bounded-linear forecasts are additional checks. Flat-type specialists fit separate CatBoost models for one/two-room, three-room, four-room and five-room/executive groups, falling back to the selected ensemble below 500 training rows. Rent-band experts fit three regressors on training rents $\leq2{,}500$, $(2{,}500,4{,}000]$ and $>4{,}000$ SGD; a CatBoost classifier supplies prediction-time mixture probabilities. Each of these candidates enters a fixed 25\% blend with the selected ensemble.
+Nearest comparables use up to 64 same-type transactions, scaled location/area/lease-age distances, inverse-squared-distance weights and eighteen-month recency decay. Market-normalised rents are restored using an origin-frozen flat-type market level. Flat-type specialists cover one/two-room, three-room, four-room and five-room/executive groups, with fallback below 500 training rows. Rent-band experts cover training rents $\leq2{,}500$, $(2{,}500,4{,}000]$ and $>4{,}000$ SGD; a classifier supplies prediction-time probabilities. Each enters a fixed 25\% blend with the selected ensemble.
 
-Other tests use five-fold cross-fitted statistics, out-of-fold (OOF) residual corrections and matched-input learners. OOF predictions come from models not fitted on the predicted row's label; corrections learn earlier-origin OOF residuals. An isolated area/age composition-trend ablation preserves original history levels and the residual offset. These definitions distinguish it from an earlier joint change.
+Five-fold cross-fitted statistics exclude each inner fold's labels; out-of-fold (OOF) residual corrections learn from earlier-origin predictions. An isolated area/age composition-trend ablation preserves original history levels and residual offsets, unlike an earlier joint change.
 
-Economic experiments use lagged supplied COE and stock summaries, then official CPI and URA private non-landed rental indices. CPI measures consumer prices, while URA measures private housing rather than HDB rents. Release-lagged levels and changes are supplied with missingness and staleness indicators. A separate MRT calendar reconstructs operational stations by rental month and deduplicates interchange names. Opening exposure describes distance-decayed new-line access, recent openings and months since opening. These features test predictive association, not a causal opening effect.
+Economic inputs comprise lagged supplied COE/stock summaries and release-lagged official CPI/URA levels and changes, with missingness and staleness indicators. An audited MRT calendar supplies operational access, opening exposure and interchange/line-prefix proxies; these are geographic associations, not routes or causal effects. Resale features describe trailing two-year area, floor and price distributions from 2017--2024 records\cite{hdb-resale}, with a two-month lag and frozen validation origin. Building-stock features use a current property snapshot\cite{hdb-property}, not reconstructed historical stock.
 
-A follow-up adds three access proxies to the original local-trend inputs: distance to the nearest operating interchange and distinct supplied line-code prefixes within 1 and 2 km. Service follows the audited calendar; validation admits only openings announced before its origin. Two seed-42, 1,600-tree direct/residual fits per window test replacement of their corresponding ensemble components and a fixed 25\% blend. These measures retain the original static inputs and do not reconstruct track routes or commuting times.
-
-To test whether missing housing information matters, seventeen resale features describe trailing two-year area, floor and price distributions from 2017--2024 records\cite{hdb-resale}, with a two-month lag and frozen validation origin. Sixteen building-stock features use a current property snapshot\cite{hdb-property}, without claiming historical availability. A separate CPU screen compares LightGBM\cite{Ke_2017} and an embedding MLP. Log-target CatBoost fits $\log y$ and restores currency predictions using Duan's smearing method\cite{Duan_1983}: the mean exponentiated training residual multiplies the exponentiated query prediction. This corrects retransformation using training data, not validation-label calibration.
+A separate matched-input CPU screen tests LightGBM\cite{Ke_2017} and an embedding MLP. Log-target CatBoost fits $\log y$ and restores currency predictions by Duan's smearing method\cite{Duan_1983}: exponentiated predictions are multiplied by the mean exponentiated training residual, without validation-label calibration.
 
 \section{Experimental Design}
 \subsection{Local validation and metrics}
@@ -138,7 +135,7 @@ Chronological validation reflects the predominantly later competition period wit
 
 RMSE emphasises large deviations, MAE measures typical absolute error, and signed bias distinguishes systematic overprediction from underprediction. Error is prediction minus observation. For subgroup $g$, squared-error share is $\sum_{i\in g}(\widehat y_i-y_i)^2/\sum_i(\widehat y_i-y_i)^2$. Counts accompany subgroup scores: high RMSE in a rare group can contribute less total error than moderate RMSE in a common group.
 
-Historical exploration used scoring-window early stopping for CatBoost, with patience 100. Those results are descriptive references, not unbiased final comparisons. Subsequent temporal comparisons fix 1,600 trees per component and supply no outer scoring labels for early stopping. We keep the protocols separate: a changed tree-selection procedure must not be presented as a gain caused solely by a new feature. Neither procedure uses hidden competition labels.
+Exploratory CatBoost references use scoring-window early stopping with patience 100. Controlled comparisons instead fix 1,600 trees and supply no outer labels for early stopping. Changes across these protocols cannot be attributed solely to features; neither uses hidden competition labels.
 
 \subsection{Budgets, promotion and uncertainty}
 Selected CatBoost settings are 1,600 trees, learning rate 0.04, depth 8 and leaf $L_2$ regularisation 6, shared by deployment and fixed-budget validation. Alternative depths, sample weighting and targets are bounded checks, not exhaustive tuning; historical settings remain in the evidence ledger.
@@ -187,16 +184,14 @@ The selected recent-quarter RMSE is 440.76, MAE 316.55 and bias +0.79 SGD. Its R
 
 We retain the selected model because the later-dated task favours recent conditions and it improves both recent and longer-horizon development windows. We accept eight components instead of four for those gains, while retaining the adaptive reference for robustness. Fig.~\ref{fig:tradeoff} shows the unresolved older-period cost. There, MAE falls slightly from 455.20 to 454.38 while RMSE rises, directing attention to large residuals. Stale-history augmentation changes the training distribution and may overcompensate under a different regime; the observed errors do not establish that mechanism.
 
-Frozen-component decomposition localises the trade-off. Older-year normal-history RMSE/bias are 579.85/+7.08 versus stale-history 624.08/+158.35; all canonical types regress against the adaptive reference. Recently, stale history instead scores 441.78 versus normal history 445.20. This compares prediction behaviour, not a causal augmentation effect, because view features differ. Subtracting half an earlier OOF origin's mean error gives older/recent RMSE 596.27/440.77: inherited constant bias correction does not resolve regime change.
+Older-year normal/stale RMSE is 579.85/624.08, with bias +7.08/+158.35; recently, stale history instead scores 441.78 versus normal 445.20. View features differ, so this does not isolate augmentation's causal effect. An earlier-OOF half-bias correction also fails (older/recent RMSE 596.27/440.77).
 
 \subsection{Stacking and supplementary competition evidence}
 Four-head recent-window stacking improves local recent RMSE from 440.7629 to 440.6565, but its paired gain interval $[-0.0342,0.2262]$ crosses zero. The eight-output version instead scores 440.8165. Earlier transfer tests are inconsistent; a sixteen-month stress check loses 0.538 with four inputs and 1.189 with eight. That check changes regime, fitting interval and horizon together, so it does not isolate recency weighting. Stacking remains an alternative rather than the default.
 
-Two further weighting studies reuse the frozen component predictions. One varies the normal/stale-history weight linearly with forecast horizon; the other learns separate weights for address/type histories containing 0--4, 5--19 or at least 20 records. Both learn only from earlier validation windows and shrink weights toward 50:50. Each improves three of seven overlapping forward comparisons but worsens recent-quarter RMSE, to 441.08 and 441.09, respectively. Both also worsen the recent-year and sixteen-month results. These tests support retaining equal weights within the evaluated settings; neither horizon nor historical support provides a stable weighting rule across periods.
+Two forward-only weighting studies fit either a horizon-linear normal/stale gate or separate gates for address/type support of 0--4, 5--19 or at least 20 records. Weights shrink toward 50:50. Each improves three of seven overlapping comparisons but worsens the recent quarter (441.08/441.09), recent year and sixteen-month window. These tested gates do not justify replacing equal weights.
 
-The competition provides supplementary public RMSE: 432.14881 for the selected model and 432.04286 for stacking. Two later four-component CPU probes score 432.70689 with building-stock features and 434.72053 with a market-normalized target; neither is promoted. Their seed count, device and composition differ from the selected ensemble, so public differences do not isolate feature effects. Public-subset membership and official rent labels are hidden; these scores cannot diagnose mechanisms or replace local evaluation. The submission ledger retains all probes, including those made despite failing local advancement rules.
-
-An earlier keep-versus-remove sensitivity probe changes public RMSE by only 0.17 in a different model family. It supplies no convincing reason to declare flagged labels wrong. The selected model retains all labels; every local comparison retains its complete scoring population.
+Supplementary public RMSE is 432.14881 for the selected model and 432.04286 for stacking. Four-component CPU building-stock/market-normalised probes score 432.70689/434.72053; neither is promoted. Differing compositions and hidden public-subset membership prevent attributing these differences to features. An earlier keep/remove-label probe changes public RMSE by only 0.17 in another model family. It does not establish label errors; the selected model retains all labels and local validation retains every scoring row.
 
 \subsection{Where errors concentrate}
 \begin{table}[t]
@@ -220,11 +215,11 @@ Table~\ref{tab:flats} complements outcome-defined bands. Executive flats have re
 
 For this detector, a depth-4 CatBoost binary classifier uses 600 trees, learning rate 0.04 and $L_2=20$. It trains on 35,239 January--December 2024 transactions with earlier-origin OOF predictions, and is evaluated on January--March 2025. Inputs combine observable flat, location and amenity attributes, calendar month and the frozen base prediction; actual query rent only defines the evaluation label. This keeps the diagnostic distinct from the three-band expert classifier.
 
-A simpler earlier-OOF town/type risk estimate gives recent AUC 0.5134 and average precision 0.03095, close to prevalence 0.02992; older-year AUC is 0.5176. Richer housing information is also tested against a distinct event: rent below 65\% of a strictly-past adaptive address/type/area reference. This covers 282 recent rows (3.160\%) and 32.598\% of reference squared error. Adding housing features changes AUC from 0.65761 to 0.65835, with an incremental 95\% address-cluster interval of $[-0.00625,0.00740]$. A two-expert relative-rent mixture and its 25\% blend score 453.993 and 442.223 versus CPU reference 441.843. Thus some ranking signal exists, but the added information does not yield useful routing. The different event definitions are not interchangeable or verified room-rental labels.
+Housing information is tested against a distinct event: rent below 65\% of a strictly-past adaptive address/type/area reference. Its 282 recent rows (3.160\%) contribute 32.598\% of reference squared error. Added features change AUC from 0.65761 to 0.65835, with gain interval $[-0.00625,0.00740]$. A two-expert relative-rent mixture and 25\% blend score 453.993/442.223 versus CPU reference 441.843. Some ranking signal exists, but these features do not yield useful routing. Neither event definition identifies verified room rentals.
 
-A separate reliability audit groups frozen predictions by historical support, recency and rent dispersion, using only records available at each validation origin. Dispersion is the address/type interquartile range divided by the median of market-normalised rent ratios, estimated with at least five records. In the recent quarter, the high-dispersion group (ratio above 0.25) contains 18.53\% of observations but contributes 24.88\% of squared error. Its RMSE exceeds that of the low-dispersion group in all four main windows, including within strata of support, flat type, month and area. Matched strata cover only part of the population, and the earliest supplementary annual window reverses the unstratified pattern. Support and recency associations are less stable after stratification. Historical dispersion therefore identifies elevated error risk, but does not establish label errors or show that stronger smoothing would improve prediction.
+Historical reliability is assessed from origin-frozen support, recency and dispersion. Dispersion is the IQR/median of address/type market-normalised rent ratios, requiring at least five records. The high-dispersion group (above 0.25) represents 18.53\% of recent rows and 24.88\% of squared error. Its RMSE exceeds the low-dispersion group's in all four main windows, including the reported matched strata, but the earliest supplementary annual window reverses the unstratified pattern. Partial stratum coverage and support/recency confounding limit generalisation. Dispersion marks error risk, not verified label errors or a proven smoothing benefit.
 
-Large errors occur beyond rare executive flats. Contract terms, condition, renovation, household relationships or label problems remain possible explanations. Further work should establish a correctable, stable error pattern before fitting another specialist.
+Large errors are not confined to rare executive flats. Contract terms, condition and label problems remain unverified explanations; another specialist needs a stable observable error pattern.
 
 \subsection{Exploratory extensions and negative evidence}\label{sec:extensions}
 \begin{table}[t]
@@ -237,31 +232,27 @@ Table~\ref{tab:research} compares hypotheses under differing budgets. Nearest-co
 Cross-fitting excludes a held-out inner fold from training statistics; outer validation uses only outer-training labels. Full-interval statistics worsen both windows, whereas strict-past dispersion replacement gains only about 0.12 and 0.14 RMSE. Changed training/inference support distributions limit generalisation of this finding. The isolated area/age composition-trend ablation provides essentially no recent gain and worsens the other main windows.
 
 \paragraph{Parent--child reference accuracy}
-To determine which historical level might benefit from stronger smoothing, we compare parent and child references on identical high-dispersion validation rows. All references use origin-frozen histories and the same forecast-month market level, avoiding comparisons between unadjusted historical means and market-adjusted rents. Street/type references have higher RMSE than address/type references in all four core windows, providing no support for generally favouring coarser groups. At the finest level, however, address/type references outperform address/type/area references by 2.79, 3.20, 4.34 and 3.85 SGD in the recent quarter, recent year, older year and sixteen-month window, respectively. The recent-quarter 95\% address-cluster interval is $[-0.65,6.76]$; the other three intervals exclude zero, although the windows overlap. In the audited data, these two finest levels use the same matched historical records. Their differences therefore arise from hierarchical smoothing rather than additional area-specific evidence. Low-dispersion controls do not show a consistent parent advantage, arguing against removing the finest level universally. These are gains in historical-reference accuracy, not CatBoost predictions: the model already receives both levels. The diagnostic thus motivates testing stronger shrinkage only at the finest level for high-dispersion cases, while leaving the remaining hierarchy unchanged.
+On identical high-dispersion rows, address/type references outperform address/type/area references by 2.79, 3.20, 4.34 and 3.85 RMSE across the four core windows. The recent gain interval $[-0.65,6.76]$ crosses zero; the other three exclude zero, but windows overlap. These levels share matched records and the forecast market scale, so their difference reflects smoothing rather than extra area-specific evidence. Street/type references perform worse than address/type in all four windows. Thus the diagnostic motivates a targeted finest-level test, not universally coarser groups. Reference-level gains are not model gains: CatBoost already receives both levels.
 
 \paragraph{Dispersion-adaptive shrinkage}
-Following this diagnostic, we conduct a controlled test of dispersion-adaptive historical smoothing. For address/type histories with at least five records and a market-normalised relative IQR above 0.25, we increase only the finest address/type/area shrinkage strength from 5 to 10 in Eq.~\eqref{eq:premium}. The modified premium and level are used as input features, while residual training targets and prediction offsets retain the original historical reference. All historical statistics use only permitted earlier training labels. We compare original and candidate recipes using CPU CatBoost with seed 42 and 1,600 trees, fitting direct and residual models on two validation windows (eight fits in total). This is a controlled component-level comparison rather than a full eight-model ensemble evaluation.
+For histories with at least five records and dispersion above 0.25, only the finest-level strength in Eq.~\eqref{eq:premium} changes from 5 to 10. The corresponding premium/level inputs change; residual targets and prediction offsets retain the original reference. Statistics exclude the query month; validation histories are origin-frozen. Eight CPU fits compare original/candidate direct/residual heads over two windows, seed 42 and 1,600 trees each. Table~\ref{tab:dispersion-shrinkage} uses an independently executed repetition of the committed recipe, not the full GPU ensemble.
 
 \begin{table}[t]
-\caption{Dispersion-adaptive shrinkage: paired CPU RMSE (SGD).}
+\caption{Independently repeated shrinkage test: two-head CPU RMSE (SGD).}
 \label{tab:dispersion-shrinkage}\centering\footnotesize
-\begin{tabular}{llrrr}
-\toprule Window & Target & Original & Candidate & $\Delta$ \\
+\begin{tabular}{lrrr}
+\toprule Window & Original & Candidate & $\Delta$ \\
 \midrule
-Recent & Direct & 446.090 & 445.555 & $-0.535$ \\
- & Residual & 447.295 & 447.522 & $+0.227$ \\
- & Mean & 445.759 & 445.656 & $-0.103$ \\
-16 months & Direct & 487.732 & 489.052 & $+1.320$ \\
- & Residual & 488.744 & 488.082 & $-0.662$ \\
- & Mean & 486.644 & 486.962 & $+0.317$ \\
+Jan--Mar 2025 & 445.759 & 445.488 & $-0.270$ \\
+Dec 2023--Mar 2025 & 486.476 & 486.907 & $+0.431$ \\
 \bottomrule
 \end{tabular}
-\par\smallskip\raggedright\footnotesize Recent: Jan--Mar 2025 (8,924 rows); 16 months: Dec 2023--Mar 2025 (47,171 rows). Mean averages the two targets. $\Delta=$ candidate minus original; negative is better. One seed, matched validation rows and settings.
+\par\smallskip\raggedright\footnotesize All 8,924/47,171 validation rows retained. Each prediction averages direct and residual heads. $\Delta=$ candidate minus original; negative is better. This is a same-device two-head ablation, not the eight-component GPU comparison.
 \end{table}
 
-Table~\ref{tab:dispersion-shrinkage} reports the results. Averaging direct and residual predictions yields a small RMSE improvement of 0.103 SGD in the recent quarter but a deterioration of 0.317 SGD over the 16-month window. Paired address-cluster bootstrap intervals for RMSE improvement are $[-0.535, 0.796]$ and $[-0.793, 0.126]$, respectively, both including zero. Thus, historical dispersion is associated with prediction difficulty, but this fixed increase in shrinkage does not demonstrate a consistent benefit.
+Recent improvement is 0.270 RMSE, but sixteen-month loss is 0.431. Gain intervals from 1,000 normalised address-cluster resamples are $[-0.423,0.921]$ and $[-0.907,0.027]$, both crossing zero. Long-window loss occurs in 12/16 months; its first/last eight-month slices worsen by 0.428/0.437. Three-, four-, five-room and executive slices worsen; so does the high-dispersion slice (+0.337). Refitting shared trees can also change predictions for rows whose inputs were unchanged. This fixed intervention does not establish stable benefit.
 
-Post-hoc analysis shows that the 16-month deterioration is not concentrated at longer forecast horizons: RMSE increases by 0.324 and 0.310 SGD in the first and last eight months, respectively. Direct prediction worsens in 14 of 16 months, while residual prediction improves in 11, partially offsetting the loss. Five-room flats account for 22.9\% of observations but 60.0\% of the net increase in squared error, although this does not establish a causal explanation. High-dispersion cases also show inconsistent monthly changes. Given the overlapping validation windows and single-seed CPU setting, we retain the original recipe rather than introduce subgroup-specific adjustments.
+The repetition reloads all eight models and verifies predictions, feature interventions and error totals. Earlier team-run scores differ by at most 0.199 RMSE across the twelve head/pair rows; unavailable original caches prevent attributing that discrepancy. Both runs support non-adoption, but their numerical results are not interchangeable.
 
 COE and stock features use preceding-month summaries and origin-frozen controls. Monthly lags approximate release timing, and stock membership is a supplied snapshot; neither materially improves prediction. Ridge exposes extrapolation instability when future numeric inputs exceed training ranges. Joint range clipping stabilises predictions, yet its blend loses recently while gaining over sixteen months. Multiple fields change together, preventing attribution to one variable.
 
@@ -271,46 +262,37 @@ The MRT audit finds 55 supplied rows marked open outside the verified operationa
 
 The index and rail studies comprise 36 formal GPU fits, excluding smoke checks. An identical-input seed-42 macro refit changes a replacement score by about 0.13; gains of this scale require caution. The selected recipe retains the supplied static MRT snapshot for comparability, not as a claim of operational access at every historical date.
 
-Six additional interchange-access fits worsen recent RMSE by 0.084 under component replacement and 0.655 under a 25\% blend. The latter improves the older year by 4.938, but its 585.41 RMSE still exceeds the adaptive reference's 580.54. Sixteen-month improvement is only 0.100. Line diversity therefore offers a period-dependent trade-off, not a stable replacement or causal transport effect.
+Six additional interchange-access fits use nearest operating-interchange distance and line-code diversity within 1/2 km, admitting only openings announced before each origin. Recent RMSE worsens by 0.084 under replacement and 0.655 under a 25\% blend. The latter gains 4.938 on the older year but still loses to the adaptive reference; sixteen-month gain is only 0.100. These geographic proxies provide no stable replacement or causal transport estimate.
 
-\begin{table}[t]
-\caption{Log-target integration under the original feature workflow: RMSE (SGD).}
-\label{tab:log-target}\centering\footnotesize
-\begin{tabular}{lrrr}
-\toprule Window & CPU ref. 4 & Log 2 & Mean 6 \\\midrule
-Jan--Mar 2025 & 441.84 & 445.17 & 442.12 \\
-Apr 2024--Mar 2025 & 467.30 & 469.65 & 467.27 \\
-Apr 2023--Mar 2024 & 585.84 & 585.50 & 583.52 \\\bottomrule
-\end{tabular}
-\par\smallskip\raggedright\footnotesize One seed; reference: two views $\times$ direct/residual; log: two views; mean: six equally weighted components. Window populations match Table~\ref{tab:temporal}; this is not the eight-component GPU comparison.
-\end{table}
-Table~\ref{tab:log-target} tests a different target rather than another weight search. Log components improve the older-year mean by 2.33 RMSE but worsen the recent quarter by 0.28, failing the three-window rule. A separate 91-feature screen likewise reduces sixteen-month bias from +85.21 to +27.98 but recent RMSE worsens. Target transformation can change regime bias without providing uniform benefit.
+Log-target integration averages two log heads with the four-head CPU reference, using one seed and the original feature workflow. Recent/older-year RMSE changes from 441.843/585.844 to 442.120/583.515; recent-year change is 467.304 to 467.272. The recent loss fails the three-window acceptance rule. A separate 91-feature screen reduces sixteen-month bias from +85.21 to +27.98 but also loses recently. Target transformation changes regime bias without uniform benefit; complete results remain in the shared evidence.
 
-In the four-component CPU screen, matched-input LightGBM scores 452.28 and an embedding MLP 471.61, versus reference 441.84. Replacing its normal-history direct/residual pair with resale or stock covariates gives 441.827 and 441.783; neither reaches the two-point screening threshold. These are bounded negative results, not proof that external information or other learners cannot help. Further duplicate-mean, market-normalized, deeper/asymmetric-tree and historical-only augmentation probes also fail advancement. The augmentation adds 4,357 attribute-matched public rental records\cite{hdb-rental} strictly before the scoring origin; no scoring-period targets enter fitting. Latest-vintage data and repeated development-window use limit these conclusions. Full compositions and numerical results remain in the repository.
+The four-head CPU screen scores LightGBM 452.28 and the embedding MLP 471.61 versus reference 441.84. Resale/building-stock replacements give 441.827/441.783, below the required gain. Duplicate-mean, market-normalised, deeper/asymmetric-tree and historical-only augmentation probes also fail advancement. Augmentation adds 4,357 attribute-matched public records\cite{hdb-rental} strictly before the scoring origin. These bounded negative results do not rule out other representations; latest-vintage inputs and reused windows remain limitations.
 
-We stop these candidate batches because gains are small, unstable across windows or comparable to refit variation. Exploratory public probes are recorded separately from model promotion. Further tuning would reuse the same development labels without resolving the older-period failure.
+Candidate batches stop because gains are small or period-dependent. Further tuning would reuse inspected labels without resolving the older-period failure.
 
+\balance
 \section{Limitations and Reproducibility}
 \subsection{Scope of the conclusions}
 \textit{Evaluation reuse.} Temporal windows have been inspected repeatedly, several overlap, and public submissions add another selection channel. Selection on a noisy performance estimate can itself overfit\cite{Cawley_2010}; bootstrap intervals do not repair this reuse. We have no private-label evaluation. The older-period regression prevents a claim of general dominance over the adaptive reference.
 
-\textit{Incomplete observation.} Unit floor, renovation and contract terms remain unobserved. Repeated building/type groups have constant supplied area, model and lease year, although resale records allow multiple unit attributes within those groups. The exact course join rule has not been recovered. Ambiguous flat identity and unusual rents establish neither label error nor a population irreducible-error floor. Predictions estimate recorded transactions, not a normative fair rent.
+\textit{Incomplete observation.} Unit floor, renovation and contract terms are unobserved; flat identity and the course's attribute-join rule remain unresolved. Unusual rents establish neither label errors nor an irreducible-error floor. Predictions estimate recorded transactions, not normative fair rent.
 
 \textit{Information availability.} Static MRT proxies, revised macro vintages, snapshot stock membership and approval/negotiation timing limit live deployment. Spatial and opening associations are not causal estimates.
 
-\textit{Bounded search.} Parameters and representations are not exhaustively explored. One-seed, two-component tests cannot rule out better full retraining. No uncertainty interval for an individual tenancy is supplied. Future work should identify stable observable subgroup bias in additional, preferably non-overlapping periods, then confirm promising corrections on later data and repeated seeds. Actual walking routes and commuting times require data beyond the tested station-distance and line-access proxies; these remain untested.
+\textit{Bounded search.} One-seed component screens cannot rule out better full retraining, and no individual-tenancy uncertainty interval is supplied. Future work needs stable observable subgroup bias in additional, preferably non-overlapping periods, then confirmation with later data and repeated seeds. Actual commuting routes remain outside the tested geographic proxies.
 
 \subsection{Implementation and reproducibility}
-The repository provides reusable code, the selected configuration, cumulative research decisions and score/provenance ledgers. Immutable course data, fitted models and detailed predictions remain local. Authorised readers can regenerate caches using the README; Appendix~\ref{app:reproduce} maps the evidence.
+Code, configuration and aggregate provenance are shared; immutable course data, fitted models and row predictions remain local. The README gives cache-regeneration commands and Appendix~\ref{app:reproduce} maps the evidence.
 
-An independent checkout/new Python 3.12 environment repeats eight 1,600-tree fits in 679.83 seconds on the RTX 4060, validating 50,000 predictions and model reloads. Recent refit RMSE is 440.6423 versus frozen 440.7629: fitting variation, not a method gain. CatBoost is pinned to 1.2.10. The maintained environment passes 74 tests, with four optional LightGBM tests skipped. Appendix~\ref{app:reproduce} records reproduction scope; paper compilation needs no private caches.
+An independent checkout/new Python 3.12 environment repeats eight 1,600-tree fits in 679.83 seconds on the RTX 4060, validating 50,000 predictions and model reloads. Recent refit RMSE is 440.6423 versus frozen 440.7629: fitting variation, not a method gain. CatBoost is pinned to 1.2.10. The maintained suite passes 142 tests, with four optional LightGBM tests skipped. The separate eight-fit CPU shrinkage repetition takes 2,346.23 seconds for fitting/prediction plus 146.67 for features; its models, saved predictions and intervention tables pass verification. Appendix~\ref{app:reproduce} maps evidence and scope; paper compilation needs no private caches.
 
 Public-source target matching is quarantined from modeling. Its target-visible diagnostics are not held-out prediction results and are not used to train, tune or submit models; they establish neither a noise floor nor other teams' methods.
 
 \section{Conclusion}
-For RQ1, canonical categories and validated joins establish coherent comparable groups; spatial ablations show modest incremental gains under the tested representation. For RQ2, market-adjusted comparables and history augmentation produce a selected recent RMSE of 440.76 and MAE of 316.55, with additional compute relative to the four-component reference. For RQ3, improvements transfer to two longer development windows but leave an older annual RMSE deficit of 9.81 unresolved. Low observed rents contribute disproportionately to squared error, while current feature-based detection is weak. The resulting lesson is a qualified modeling choice: retain useful recent-market information, document adverse transfer, and seek new observable evidence before further fine tuning.
+Canonical categories and spatial joins establish coherent comparables (RQ1). Market adjustment and history diversity yield recent RMSE 440.76 and MAE 316.55, at higher compute than the four-component reference (RQ2). Gains transfer to two longer windows, but the older annual deficit of 9.81 remains (RQ3). Low rents contribute disproportionate squared error without reliable feature-based detection. We retain the qualified recent-market improvement and prioritise new observable evidence over further tuning of reused windows.
 
 \clearpage
+\nobalance
 \IEEEtriggeratref{8}
 \bibliographystyle{IEEEtran}
 \bibliography{references}
@@ -320,8 +302,8 @@ For RQ1, canonical categories and validated joins establish coherent comparable 
 Obtain the original course files under \code{data/raw/}, then run \code{python src/check\_setup.py} and \code{python -m pytest -q}. The README supplies commands to regenerate temporal component predictions before feedback studies. Cached predictions and models are not distributed. Compiling the paper needs committed sources and aggregate assets; rebuilding evidence needs course data and caches. Full-budget selected-model training is verified in an independent checkout and new virtual environment on the same physical machine. GPU refits differ numerically; frozen hashes and metric checks prevent silently replacing old evidence. A new run requires a reviewed manifest and corresponding report update. Cross-device verification is a separate team task.
 
 Fixed-budget comparisons use \path{src/run_experiments.py} with the \code{--compare-candidates} option. The selected ensemble is generated by \path{src/train_final_model.py} with the recorded configuration; research uses \path{src/feedback_experiments.py}, including \code{--families public} for indices and rail. These are abbreviated entry points; use the complete README commands for exact windows and options.\par
-Supplementary CPU modules are under \path{src/research/}, with a separate \path{requirements-research.txt}. Their aggregate evidence is in \path{reports/november_cpu_comparisons_20261102.csv} and \path{reports/november_log_integration_20261102.csv}. The consolidated research record preserves protocols and unsuccessful probes.
-The shrinkage study uses \path{src/research/dispersion_shrinkage.py}; saved scores and paired uncertainty checks are under \path{artifacts/dispersion_shrinkage_cpu_v1/}. The read-only module \path{src/research/analyze_shrinkage_errors.py} produces the monthly and subgroup evidence under \path{artifacts/dispersion_shrinkage_attribution_v1/}. These diagnostics reuse predictions without additional model fitting.
+{\raggedright Supplementary CPU modules are under \path{src/research/}, with a separate \path{requirements-research.txt}. Their aggregate evidence is in \path{reports/november_cpu_comparisons_20261102.csv} and \path{reports/november_log_integration_20261102.csv}. The consolidated research record preserves protocols and unsuccessful probes.\par}
+{\raggedright The shrinkage study uses \path{src/research/dispersion_shrinkage.py}. Shared repetition results, intervals, attribution and provenance are under \path{reports/history_research/dispersion_shrinkage_cpu_reproduction_20261106/}. Analysis uses \path{src/research/analyze_shrinkage_errors.py} with explicit input/output paths and model verification; full commands are in the README. Models and row predictions remain local; original team aggregates are preserved separately.\par}
 For clarity, the historical core-baseline settings are listed in Table~\ref{tab:parameters}. They are bounded references, not the outcome of an exhaustive or common-compute search. The selected ensemble's settings and history coefficients are given in the main text.
 \begin{table}[!ht]
 \caption{Principal historical baseline settings; preprocessing is described in the main text.}

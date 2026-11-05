@@ -12,7 +12,7 @@ Quick navigation: [current model](#current-mainline-and-retained-reference),
 [final report](#final-report-working-draft), and
 [cumulative progress](docs/PROGRESS.md).
 
-## Current status — 5 November 2026
+## Current status — 6 November 2026
 
 - **Selected model unchanged:** eight-component local-trend/history-diversity
   CatBoost; recent validation RMSE **440.76**, recorded public RMSE **432.14881**.
@@ -20,9 +20,10 @@ Quick navigation: [current model](#current-mainline-and-retained-reference),
 - Horizon/support weighting, historical reliability, parent–child reference
   comparisons and the paired CPU shrinkage experiment are complete. None
   establishes a replacement for the selected model; see the study index below.
-- The final-report source incorporates these studies. Rebuild the PDF after
-  editing and verify the eight-main-text-page limit; previous page-count claims
-  describe older drafts, not the current layout. Team workload remains pending.
+- The revised report incorporates selected findings by research question, using
+  the independently repeated shrinkage evidence. The PDF has eight body pages,
+  one reference page and one appendix page, in the unchanged official 10pt
+  IEEEtran format. Team workload and final human approval remain pending.
 - README is the entry-point and execution guide. `docs/PROGRESS.md` retains
   dated decisions, protocols and negative results; `docs/RESEARCH_NOTES.md`
   preserves the consolidated earlier research evidence.
@@ -824,8 +825,13 @@ chronological validation windows, temporal RMSE trade-offs and error concentrati
 `python final_report/prepare_report.py` regenerates them from protected local
 evidence (including retained prediction caches); compilation alone needs no data.
 The draft prioritises local temporal evaluation and subgroup interpretation;
-Kaggle scores are supplementary historical observations. Rebuild and check the
-current body-page count against the eight-page limit before submission.
+Kaggle scores are supplementary historical observations. The reviewed PDF has
+eight body pages, one reference page and one appendix page. Its shrinkage table,
+intervals and attribution now use the independent CPU repetition in
+`reports/history_research/dispersion_shrinkage_cpu_reproduction_20261106/`.
+The old team aggregates are preserved separately; they are not presented as an
+exactly reproduced run. Dates belong to data periods and provenance, not an
+article update log. Rebuild and recheck pages after any subsequent edits.
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
