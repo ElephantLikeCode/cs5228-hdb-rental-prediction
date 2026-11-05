@@ -2229,3 +2229,53 @@ check_setup.py passes with all eight mandatory data hashes and the optional
 template hash when present. All eight original CBMs and final_submission.csv
 match the recorded metadata; no report, PDF, config, result-table or feature/
 modeling-algorithm diff is present.
+
+## 6 November 2026 - Verify the added historical research modules
+
+Fast-forwarded the clean maintained D-drive checkout from fb55d85 to the existing
+team commit 2ba7588 before testing. This imported the teammate's report revision;
+the work below does not edit that paper, its PDF, the production model or results.
+
+Added one maintained test module, `tests/test_history_research.py`, with 48 checks
+across all six newly shared research modules. Coverage includes invalid/missing
+prediction sources, cache hashes, source-ledger/config agreement, validation
+row/label/month alignment, strictly forward meta-training, and invariance of
+fitted gates to outer-label changes. Other checks cover weight bounds and
+extrapolation clamping, support thresholds and sparse fallback, normalized
+past-only record counts without deduplication, market-adjusted dispersion and
+decayed support statistics, exclusion of whole query months/future labels,
+shrinkage thresholds/formula/column scope, and fixed original residual offsets.
+Address-cluster bootstrap checks independently reconstruct whole-block sampling;
+synthetic attribution verifies additive SSE and rejects inconsistent inputs
+before output creation. A three-tree real CPU CatBoost fit is an execution smoke
+check only. All generated fixtures/models stay in pytest temporary directories.
+
+Commands and observed results:
+
+```text
+python -m pytest tests/test_history_research.py -q
+48 passed
+python -m pytest -q
+133 passed, 4 skipped (optional LightGBM unavailable)
+python -m src.research.horizon_blend --audit-only
+72 required frozen caches; zero missing; hashes/rows/labels/forward splits verified
+python -m src.research.horizon_blend --output tmp/history_research_verification_20261106/horizon
+python -m src.research.support_blend --output tmp/history_research_verification_20261106/support
+21 result rows per study match the committed aggregates, rtol=1e-12, atol=1e-9
+```
+
+Both recomputations reuse the original frozen OOF predictions, not new model
+fits or new holdouts. The shrinkage study's original CPU feature/prediction
+caches are not on this machine. Its committed aggregates pass arithmetic and
+gain-sign checks; its original full training, row-level attribution and saved
+confidence intervals have not been independently reproduced here. Do not treat
+the saved `checks_passed` JSON field or synthetic tests as proof of that run.
+Restoring those trusted caches is needed for that remaining evidence check,
+but the private caches themselves do not belong in GitHub.
+
+README now links to the committed historical-research evidence instead of
+unshared local REPORT.md files and states the verification scope. Production
+feature/model code, configs, original result tables, raw inputs, the eight
+active CBMs and final submission are unchanged. No model promotion or paper
+revision is part of this test repair; the separately identified paper page-limit
+and team workload issues remain for the final submission review.

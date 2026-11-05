@@ -589,7 +589,8 @@ python src/train_final_model.py --candidate legacy --task-type GPU --outlier-pol
 
 Expected results:
 
-- `33 passed` from pytest;
+- a passing test suite (6 November check: `133 passed, 4 skipped`; skips are
+  optional LightGBM checks when that research dependency is not installed);
 - candidate scores and adoption evidence in `docs/PROGRESS.md`;
 - `submissions/final_submission.csv` with columns `Id,Predicted` and
   exactly 50,000 rows;
@@ -948,14 +949,46 @@ Detailed artifacts are local/ignored; a fresh clone must restore the original
 course data and validated caches before repeating prediction-based diagnostics.
 All windows overlap; they are not independent final tests.
 
-| Study | Existing local evidence | Result / decision |
+The public evidence paths below are relative to `reports/history_research/`.
+They can be read without local caches; row-level reproduction still needs the
+private inputs described below.
+
+| Study | Committed aggregate evidence | Result / decision |
 | --- | --- | --- |
-| Horizon-dependent weights | `artifacts/horizon_blend_v1/` | Recent RMSE 441.083 vs 440.763; no promotion |
-| Support-group weights | `artifacts/support_blend_v1/` | Recent RMSE 441.091 vs 440.763; no promotion |
-| Historical reliability | `artifacts/history_reliability_diagnostic_v1/REPORT.md` | High dispersion is a relatively stable risk marker; support/age are confounded |
-| Parent–child references | `artifacts/parent_child_reference_v1/REPORT.md` | Finest-level parent advantage motivated a bounded experiment, not deployment |
-| Dispersion shrinkage | `artifacts/dispersion_shrinkage_cpu_v1/results.csv` | Two-head recent gain 0.103, 16-month loss 0.317 RMSE; no promotion |
-| Saved-prediction attribution | `artifacts/dispersion_shrinkage_attribution_v1/REPORT.md` | Loss starts in the first month; target modes and monthly effects differ |
+| Horizon-dependent weights | `horizon_blend_v1/results.csv` | Recent RMSE 441.083 vs 440.763; no promotion |
+| Support-group weights | `support_blend_v1/results.csv` | Recent RMSE 441.091 vs 440.763; no promotion |
+| Historical reliability | `history_reliability_diagnostic_v1/group_metrics.csv`, `stratified_contrasts.csv` | High dispersion is a relatively stable risk marker; support/age are confounded |
+| Parent–child references | `parent_child_reference_v1/paired_comparisons.csv` | Finest-level parent advantage motivated a bounded experiment, not deployment |
+| Dispersion shrinkage | `dispersion_shrinkage_cpu_v1/results.csv`, `local_evaluation_check.json` | Two-head recent gain 0.103, 16-month loss 0.317 RMSE; no promotion |
+| Saved-prediction attribution | `dispersion_shrinkage_attribution_v1/error_changes.csv` | Loss starts in the first month; target modes and monthly effects differ |
+
+### Tests and independent verification (6 November)
+
+```bash
+python -m pytest tests/test_history_research.py -q
+python -m pytest -q
+```
+
+The 48 focused checks cover all six research modules: source hashes and ledger
+consistency, complete/aligned validation rows, forward-only meta-training,
+bounded/clamped weights, sparse-group fallback, past-only normalized support
+and dispersion, the two-column shrinkage formula and unchanged residual target,
+address-cluster bootstrap units/sign, and additive SSE attribution. Synthetic
+end-to-end cases exercise blending and attribution, plus a three-tree CPU
+CatBoost fit. They require neither course data nor original research caches;
+synthetic scores are never model-quality evidence. The full suite currently
+passes 133 checks with four optional LightGBM skips.
+
+Separately, the original 72 frozen OOF caches passed hash, label, row and forward
+split validation on this machine. Both blending studies were recomputed into
+ignored `tmp/history_research_verification_20261106/`; all 21 rows per study
+matched the committed aggregates (`rtol=1e-12`, `atol=1e-9`). This is a
+recalculation from saved predictions, not retraining or independent test data.
+The original shrinkage CPU caches are absent on this machine: their full fits,
+row-level attribution and confidence intervals have **not** been independently
+reproduced here. Arithmetic agreement of their committed aggregates and passing
+synthetic tests do not replace that verification. No research candidate is
+promoted by these checks.
 
 ### Reuse predictions before retraining
 
@@ -1017,6 +1050,8 @@ eight-component GPU mainline. See the progress log for uncertainty and attributi
 `python -m src.research.analyze_shrinkage_errors` reads the existing
 `artifacts/dispersion_shrinkage_cpu_v1/` predictions and feature caches. It has
 fixed input/output paths and refuses to overwrite its existing
-`artifacts/dispersion_shrinkage_attribution_v1/` output. Read that directory's
-`REPORT.md`, `error_changes.csv`, `monthly_data_profile.csv` and `audit.json`
-for the completed analysis; do not delete results just to rerun it.
+`artifacts/dispersion_shrinkage_attribution_v1/` output. The shared summary is
+`reports/history_research/dispersion_shrinkage_attribution_v1/error_changes.csv`.
+Detailed monthly profiles and audit records remain local to the original run;
+restore trusted inputs before reproducing them. Do not delete completed results
+just to rerun the analysis.
