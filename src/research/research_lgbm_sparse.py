@@ -5,6 +5,7 @@ import hashlib
 import json
 import time
 from pathlib import Path
+from src.research.cache_inputs import require_files
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,9 @@ def main():
     parser.add_argument("run_folder", type=Path)
     parser.add_argument("--threads", type=int, default=2)
     args = parser.parse_args()
-    folder = args.run_folder
+    folder = require_files(args.run_folder, ['protocol.json','short_recent_local_trend_0.pkl',
+        'short_recent_scoring_rows.csv','short_recent_reference_ensemble.npy',
+        'short_recent_lgbm_hierarchical_6_direct_42.npy','short_recent_lgbm_hierarchical_6_residual_42.npy'], 'run_folder')
     destination = folder / "sparse_categories_followup"
     destination.mkdir(exist_ok=True)
     params = dict(

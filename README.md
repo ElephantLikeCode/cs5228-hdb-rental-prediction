@@ -248,7 +248,7 @@ and use this exact layout:
 data/raw/
 |-- train.csv
 |-- test.csv
-|-- example-submission.csv
+|-- example-submission.csv    (optional; only if provided by the course)
 `-- auxiliary/
     |-- sg-coe-prices.csv
     |-- sg-hdb-block.csv
@@ -267,6 +267,53 @@ python src/check_setup.py
 Do not continue until it prints `SETUP CHECK PASSED`. Before receiving the
 private data, use `python src/check_setup.py --skip-data` to check only Python
 and packages.
+
+The official Kaggle ZIP has eight required CSVs (train, test and six auxiliary
+files), not the optional example template. You may import it with
+`python src/import_official_data.py path/to/official.zip`.
+When the template is absent, setup/audit and both final-submission entry paths
+use the verified `Id,Predicted` contract with zero-based positional IDs in memory.
+No substitute CSV is written into raw data or claimed to be a course file.
+If a template is present it must pass its checks; malformed templates are not
+silently ignored. Raw-file checksums remain enforced.
+
+### Explicit research cache inputs
+
+Do not rename a fresh run to an old hash ID. Use the actual run folder printed by
+`compare_models`, which contains both features and predictions, not just its parent:
+
+```bash
+python -m src.research.compare_models --candidates reference --windows short_recent --output artifacts/research_repeat
+python -m src.research.train_hdb_attributes --candidates resale --reference-run-dir artifacts/research_repeat/ACTUAL_RUN_ID --output-dir artifacts/attribute_repeat
+python -m src.research.probe_rmse_structure --windows short_recent --reference-run-dir artifacts/research_repeat/ACTUAL_RUN_ID --output-dir artifacts/rmse_repeat
+```
+
+These commands **train research models** and are not part of report compilation.
+Use the separate research environment for LightGBM candidates/dependent probes;
+CatBoost-only comparison no longer requires LightGBM package metadata.
+
+`analyze_hdb_attributes`, `train_hdb_attributes`, `probe_historical_augmentation`,
+`check_low_rent_information`, `probe_low_rent_mixture`, `probe_rmse_structure` and
+`probe_cat_capacity` accept `--reference-run-dir` and `--output-dir`.
+The two low-rent scripts additionally use `--housing-run-dir` for a completed
+resale-feature run; the mixture uses `--classifier-run-dir` for saved risk scores.
+For attribute analysis, `--output-dir` selects the attribute-study root being
+analysed (its ensemble files live in child run folders).
+For different reference folders across windows, invoke the probe once per window,
+each with its corresponding reference and a fresh output directory.
+`submit_market_normalized` accepts `--stock-run-dir` and `--selected-run-dir`;
+it still requires the corresponding completed four-component stock and
+market-normalized model artifacts, not a generic reference cache.
+The MLP, sparse-LightGBM and comparison-analysis scripts retain their positional
+`run_folder` argument and now check prerequisites before reading caches.
+
+Missing inputs list their exact paths and the prerequisite command. Historical
+defaults remain compatible, but are not automatically searched or substituted.
+Only use trusted team caches: pickle loading can execute code. Shapes/labels
+and protocol checks in the existing probes still apply. Path parameters do not
+make unrelated protocols interchangeable or bypass missing external-source data.
+The `artifacts/temporal_comparison/` NPZ directory is a different cache family;
+it cannot replace a CPU `compare_models` folder with its required PKL/NPY files.
 
 ## Reproduce the current result
 

@@ -3,6 +3,7 @@
 import argparse
 import json
 from pathlib import Path
+from src.research.cache_inputs import require_files
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,8 @@ def main():
     parser.add_argument("run_folder", type=Path)
     parser.add_argument("--raw-dir", type=Path, default=Path(__file__).resolve().parents[2] / "data/raw")
     args = parser.parse_args()
-    folder = args.run_folder
+    folder = require_files(args.run_folder, ['short_recent_scoring_rows.csv',
+        'short_recent_reference_ensemble.npy'], 'run_folder')
     rows = pd.read_csv(folder / "short_recent_scoring_rows.csv")
     source = pd.read_csv(args.raw_dir / "train.csv").iloc[rows.source_row].reset_index(drop=True)
     y = rows.target.to_numpy()

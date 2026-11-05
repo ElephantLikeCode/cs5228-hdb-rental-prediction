@@ -6,6 +6,7 @@ import json
 import platform
 import time
 from pathlib import Path
+from src.research.cache_inputs import require_files
 
 import numpy as np
 import pandas as pd
@@ -73,7 +74,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_folder", type=Path)
     args = parser.parse_args()
-    folder = args.run_folder
+    folder = require_files(args.run_folder, ['short_recent_local_trend_0.pkl',
+        'short_recent_scoring_rows.csv','short_recent_reference_ensemble.npy'], 'run_folder')
     output = folder / "embedding_mlp_followup"
     output.mkdir(exist_ok=True)
     train, query, target, weights, _ = pd.read_pickle(folder / "short_recent_local_trend_0.pkl")

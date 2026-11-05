@@ -1,7 +1,9 @@
 """A bounded relative-low-rent mixture probe, not a verified tenancy classifier."""
 
+import argparse
 import json
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run, require_files
 
 import numpy as np
 import pandas as pd
@@ -18,7 +20,16 @@ OUT = ROOT / "artifacts/low_rent_soft_probe_20261102"
 
 
 def main():
-    OUT.mkdir(exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_cache_arguments(parser)
+    parser.add_argument('--classifier-run-dir', type=Path)
+    args = parser.parse_args()
+    PARENT = reference_run(args, globals()['PARENT'])
+    OUT = args.output_dir or globals()['OUT']
+    HOUSING = housing_run(args, globals()['HOUSING'])
+    CLASSIFIER = args.classifier_run_dir or globals()['CLASSIFIER']
+    CLASSIFIER = require_files(CLASSIFIER, ['validation_probabilities.csv'], '--classifier-run-dir')
+    OUT.mkdir(parents=True, exist_ok=True)
     fit_x, query_x, target, _, _ = pd.read_pickle(PARENT / "short_recent_local_trend_0.pkl")
     source = pd.read_csv(ROOT / "data/raw/train.csv")
     train = source.loc[source.RENT_APPROVAL_DATE.lt("2025-01")].reset_index(drop=True)

@@ -31,7 +31,7 @@ PACKAGES = {
     "jupyterlab": "jupyterlab",
 }
 
-CORE_FILES = ("train.csv", "test.csv", "example-submission.csv")
+CORE_FILES = ("train.csv", "test.csv")
 AUXILIARY_FILES = (
     "sg-coe-prices.csv",
     "sg-hdb-block.csv",
@@ -100,18 +100,21 @@ def check_data() -> list[str]:
 
     train_columns = csv_header(RAW_DIR / "train.csv")
     test_columns = csv_header(RAW_DIR / "test.csv")
-    sample_columns = csv_header(RAW_DIR / "example-submission.csv")
     if "MONTHLY_RENT" not in train_columns:
         failures.append("train.csv is missing MONTHLY_RENT")
     if "MONTHLY_RENT" in test_columns:
         failures.append("test.csv unexpectedly contains MONTHLY_RENT")
     if [column for column in train_columns if column != "MONTHLY_RENT"] != test_columns:
         failures.append("train/test feature columns do not match")
-    if sample_columns != ["Id", "Predicted"]:
+    sample_path = RAW_DIR / "example-submission.csv"
+    if sample_path.exists() and csv_header(sample_path) != ["Id", "Predicted"]:
         failures.append(
             "example-submission.csv columns must be exactly: Id, Predicted"
         )
     for relative_path, expected_hash in RAW_SHA256.items():
+        if relative_path == "example-submission.csv" and not sample_path.exists():
+            print("[INFO] Optional example-submission.csv absent; output layout is constructed in memory")
+            continue
         actual_hash = sha256(RAW_DIR / relative_path)
         if actual_hash != expected_hash:
             failures.append(

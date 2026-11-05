@@ -1,7 +1,9 @@
 """Paired comparisons for the external-attribute experiments."""
 
+import argparse
 import json
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run
 
 import numpy as np
 import pandas as pd
@@ -15,6 +17,11 @@ PARENT = ROOT / "artifacts/research_20261102/e925f89746af432b"
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_cache_arguments(parser)
+    args = parser.parse_args()
+    PARENT = reference_run(args, globals()['PARENT'])
+    OUT = args.output_dir or globals()['OUT']
     scoring = pd.read_csv(PARENT / "short_recent_scoring_rows.csv")
     source = pd.read_csv(ROOT / "data/raw/train.csv").iloc[scoring.source_row].reset_index(drop=True)
     y = scoring.target.to_numpy()

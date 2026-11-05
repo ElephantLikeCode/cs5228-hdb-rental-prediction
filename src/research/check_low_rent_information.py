@@ -1,7 +1,9 @@
 """Does the new housing information help identify low-rent events?"""
 
+import argparse
 import json
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run
 
 import numpy as np
 import pandas as pd
@@ -18,7 +20,13 @@ OUT = ROOT / "artifacts/attribute_study_20261102/low_rent_information"
 
 
 def main():
-    OUT.mkdir(exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_cache_arguments(parser)
+    args = parser.parse_args()
+    PARENT = reference_run(args, globals()['PARENT'])
+    OUT = args.output_dir or globals()['OUT']
+    HOUSING = housing_run(args, globals()['HOUSING'])
+    OUT.mkdir(parents=True, exist_ok=True)
     fit_x, query_x, target, _, _ = pd.read_pickle(PARENT / "short_recent_local_trend_0.pkl")
     source = pd.read_csv(ROOT / "data/raw/train.csv")
     rows = pd.read_csv(PARENT / "short_recent_scoring_rows.csv")

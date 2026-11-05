@@ -1,9 +1,11 @@
 """Refit the user-selected 441.63 four-head candidate for one Kaggle probe."""
 
 import hashlib
+import argparse
 import json
 import zipfile
 from pathlib import Path
+from src.research.cache_inputs import require_files
 
 import numpy as np
 import pandas as pd
@@ -25,16 +27,24 @@ def digest(path):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--stock-run-dir', type=Path, default=PARENT)
+    parser.add_argument('--selected-run-dir', type=Path, default=SELECTED)
+    args = parser.parse_args()
+    stock_files = ['manifest.json', 'local_trend_0_features.pkl']
+    stock_files += [f'hierarchical_6_{m}_42.{ext}' for m in ['direct','residual'] for ext in ['cbm','npy']]
+    parent = require_files(args.stock_run_dir, stock_files, '--stock-run-dir')
+    selected = require_files(args.selected_run_dir, ['short_recent_market_normalized.cbm'], '--selected-run-dir')
     OUT.mkdir(exist_ok=True)
     source, test = checked_data(ROOT / "data/raw")
     raw = source.drop(columns="MONTHLY_RENT")
     target = source.MONTHLY_RENT.to_numpy(float)
-    previous = json.loads((PARENT / "manifest.json").read_text())
+    previous = json.loads((parent / "manifest.json").read_text())
     for name, expected in previous["protocol"]["raw_sha256"].items():
         assert digest(ROOT / "data/raw" / name) == expected
     for name in ["features.py", "modeling.py"]:
         assert digest(ROOT / "src" / name) == previous["protocol"]["code_sha256"][name]
-    fit_x, query_x, cached_y, _ = pd.read_pickle(PARENT / "local_trend_0_features.pkl")
+    fit_x, query_x, cached_y, _ = pd.read_pickle(parent / "local_trend_0_features.pkl")
     np.testing.assert_array_equal(cached_y, target)
     # Restore precisely the 78 original features, without the previous stock probe.
     stock_columns = [c for c in fit_x if c.startswith("EXT_STOCK_")]
@@ -61,7 +71,7 @@ def main():
             or c.startswith("HIST_") and not c.endswith("LOG_COUNT")
             or c.startswith("ADAPT_") and c.endswith("_LEVEL")]
     selected_model = CatBoostRegressor()
-    selected_model.load_model(str(SELECTED / "short_recent_market_normalized.cbm"))
+    selected_model.load_model(str(selected / "short_recent_market_normalized.cbm"))
     assert fit_x.drop(columns=drop).columns.tolist() == selected_model.feature_names_
     specifications = [
         ("market_normalized", fit_x.drop(columns=drop), query_x.drop(columns=drop),
@@ -94,10 +104,10 @@ def main():
         print(f"Completed {name}", flush=True)
     for mode in ["direct", "residual"]:
         stem = f"hierarchical_6_{mode}_42"
-        file = PARENT / f"{stem}.cbm"
+        file = parent / f"{stem}.cbm"
         expected = next(item for item in previous["components"] if item["name"] == stem)
         assert digest(file) == expected["model_sha256"]
-        predictions.append(np.load(PARENT / f"{stem}.npy"))
+        predictions.append(np.load(parent / f"{stem}.npy"))
         components.append(dict(name=stem, model=str(file), model_sha256=digest(file), reused=True))
     prediction = np.mean(predictions, axis=0)
     assert prediction.shape == (50000,) and np.isfinite(prediction).all()
