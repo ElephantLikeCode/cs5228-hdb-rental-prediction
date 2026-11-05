@@ -60,8 +60,8 @@ def model_overview():
     box(2.12,1.62,2.13,.81,'Normal history\n+ local trends\n78 features', '#EAF1FA', COLORS[0])
     box(2.12,.62,2.13,.81,'Original + 6-month\nstale-history augmentation\n74 features', '#E7F3F0',COLORS[2])
     for y, color, fill in [(1.62,COLORS[0],'#EAF1FA'),(.62,COLORS[2],'#E7F3F0')]:
-        box(4.78,y,1.38,.81,'Direct target\nseeds 42 / 2026\n2 models',fill,color,7.6)
-        box(6.34,y,1.38,.81,'Residual target\nseeds 42 / 2026\n2 models',fill,color,7.6)
+        box(4.78,y,1.38,.81,'Direct target\nseeds 42 / 2026\n2 models',fill,color,8)
+        box(6.34,y,1.38,.81,'Residual target\nseeds 42 / 2026\n2 models',fill,color,8)
         arrow((4.27,y+.405),(4.75,y+.405))
         ax.plot([4.49,4.49,7.03],[y+.405,y+.92,y+.92],color='#667785',linewidth=.8,zorder=0)
         arrow((7.03,y+.92),(7.03,y+.83))
@@ -74,7 +74,7 @@ def model_overview():
         for ty in [2.02,1.02]:
             arrow((1.76,sy),(2.09,ty))
     ax.text(5,.18,'TRAIN: original transaction weight is preserved.   PREDICT: both views use all permitted earlier rents.',
-            fontsize=7.5,ha='center',color='#52616E')
+            fontsize=8,ha='center',color='#52616E')
     fig.savefig(HERE/'figures/model_overview.pdf')
     plt.close(fig)
 
@@ -90,7 +90,7 @@ def validation_overview():
         cutoff = pd.Timestamp(cut)+pd.offsets.MonthBegin(1)
         finish = pd.Timestamp(end)+pd.offsets.MonthBegin(1)
         ax.barh(row,(cutoff-start).days,left=mdates.date2num(start),height=.49,color=COLORS[0],
-                label='Fit on earlier months' if row==0 else None)
+                label='Earlier training' if row==0 else None)
         ax.barh(row,(finish-cutoff).days,left=mdates.date2num(cutoff),height=.49,color=COLORS[1],
                 label='Frozen validation' if row==0 else None,hatch='///',edgecolor='white',linewidth=.3)
     ax.set_yticks(range(4),[r[0] for r in intervals])
@@ -98,7 +98,7 @@ def validation_overview():
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     ax.set_xlim(start,pd.Timestamp('2025-04-01'))
-    ax.legend(loc='lower left',bbox_to_anchor=(-.32,1.01),frameon=False,ncol=2,fontsize=7)
+    ax.legend(loc='lower left',bbox_to_anchor=(-.32,1.01),frameon=False,ncol=2,fontsize=8)
     ax.tick_params(axis='both',length=0)
     ax.spines[['left','bottom']].set_visible(False)
     fig.savefig(HERE/'figures/validation_windows.pdf')
@@ -168,7 +168,7 @@ def main():
     fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.35), constrained_layout=True)
     for i, flat in enumerate(["2 room", "3 room", "4 room", "5 room", "executive"]):
         axes[0].plot(trend.index, trend[flat], label=flat.replace(" ", "-"),
-                     color=COLORS[i], linewidth=1.35, linestyle=["-", "--", "-.", ":", "-"][i])
+                     color=COLORS[i], linewidth=1.35, linestyle=["-", "--", "-.", ":", (0, (5, 1, 1, 1, 1, 1))][i])
     axes[0].set(xlabel="Approval month", ylabel="Median monthly rent (SGD)")
     axes[0].xaxis.set_major_locator(mdates.YearLocator())
     axes[0].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
@@ -190,7 +190,7 @@ def main():
                 xytext=(0,4),textcoords='offset points',ha='center',fontsize=8,color=COLORS[1],weight='bold')
     ax.set_xticks(x, ["\u2264 2500", "2501-3000", "3001-3500", "3501-4000", ">4000"], rotation=20)
     ax.set(xlabel="Actual monthly rent band (SGD)", ylabel="Share (%)")
-    ax.legend(frameon=False,loc='upper right',fontsize=7)
+    ax.legend(frameon=False,loc='upper right',fontsize=8)
     ax.set_axisbelow(True)
     ax.yaxis.grid(True,color='#E7ECF1',linewidth=.5)
     ax.set_ylim(0,62)
@@ -221,7 +221,7 @@ def main():
         bars = ax.bar(np.arange(4) + (i-.5)*.34, gains, width=.34, label=label,
                color=COLORS[i], hatch=["", "//"][i],edgecolor='white',linewidth=.4)
         if candidate == MAIN:
-            ax.bar_label(bars,labels=[f'{g:+.2f}' for g in gains],fontsize=7,padding=3,color=COLORS[1])
+            ax.bar_label(bars,labels=[f'{g:+.2f}' for g in gains],fontsize=8,padding=3,color=COLORS[1])
     ax.axhline(0, color="0.6", linewidth=.7)
     ax.set_xticks(range(4), ["Recent\nquarter", "Recent\nyear", "Older\nyear", "16-month\nwindow"])
     ax.set(ylabel="RMSE improvement (SGD)", ylim=(-12, 8))

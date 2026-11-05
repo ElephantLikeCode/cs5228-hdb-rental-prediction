@@ -2445,3 +2445,70 @@ citations/references. Workload Appendix B remains deliberately unfilled at the
 user's request; this version is for human review, not an assertion of final team
 approval or Canvas submission. Original model files, selected CSV, immutable
 data, training code/configuration and historical result tables are unchanged.
+
+## 6 November 2026 - Supervisor-Skills paper review and light polish
+
+Applied the relevant installed Supervisor-Skills workflows: technical-paper
+logic, pre-submission review, evidence-preserving prose polish and figure design,
+alongside PDF render/verify. This is an empirical course application, not a new
+benchmark or a claim of algorithmic novelty. Course requirements take priority
+over generic suggestions to add datasets, force six introduction paragraphs or
+invent a new-method contribution. No additional report, handoff or skill file
+was added to the project.
+
+The logic audit maps the questions to evidence:
+
+| Question | Method and evidence | Bounded finding |
+| --- | --- | --- |
+| Consistent inputs and spatial information | Canonicalisation and joins in Section II; baseline/spatial results in V-A | Formatting variants are unified; equal fields do not establish flat identity. |
+| Comparable-market estimation and history diversity | Section III; fixed-budget comparisons in V-B | Recent and two longer-window gains coexist with an older-period deficit. |
+| Transfer and residual error | Section V-C through V-E; limitations in VI | Stacking remains optional; low-rent detectability and targeted shrinkage do not establish a reliable replacement. |
+
+Review dispositions across the five submission-review dimensions:
+
+- **Macro logic (clarity issue resolved):** the abstract and introduction now
+  state the problem, market-normalised comparables, history diversity and
+  empirical contribution explicitly. The conclusion synthesises the observed
+  gains and transfer failure rather than suggesting universal superiority.
+- **Writing details (minor issues resolved):** defined MRT, CPI, URA, MLP, AUC,
+  IQR, LTA, LRT and TEL stages at first use. Captions lead with the finding and
+  retain non-causal and point-estimate qualifications.
+- **Grammar and claim strength:** preserved tense and terminology, removed
+  awkward connectors and scanned the entire manuscript for the skill's flagged
+  vocabulary and em-dash patterns (no remaining matches in the checked list).
+  No new data, mechanisms, citations, significance or novelty claims were added.
+- **LaTeX (minor issues resolved):** all four numbered equations have labels
+  and in-text references; bibliography calls use nonbreaking spaces. The official
+  10pt Letter/two-column template and margins remain unchanged.
+- **Figures (minor issues resolved):** raised the remaining upright 7--7.6pt
+  labels to at least 8pt in the vector sources; all five flat-type curves now
+  have distinct line styles. Existing figures already cover motivation, full
+  model, evaluation and results, so no decorative figure was added.
+
+To retain the eight-page body after clarifying the argument, moved shrinkage
+runtime/provenance details and the environment/test count to the existing
+reproduction appendix. The main text retains the intervention, adverse result,
+uncertainty and non-adoption decision, with an appendix cross-reference. This is
+a placement change, not deletion of contrary evidence. The original thirteen
+references and every generated numeric table remain unchanged.
+
+The review included a primary-source metadata screen of neighbouring rental
+prediction work (Yoshida and Seya, https://arxiv.org/abs/2107.12539;
+Chen and Si, https://arxiv.org/abs/2405.17505). No citation was inserted merely
+to lengthen the bibliography. Journal/conference submission would require a
+separate, systematic housing-domain positioning and independent evaluation
+plan; presentation polish does not establish publication readiness.
+
+Validation: a fresh multi-pass build produces ten pages (eight body, one
+references, one appendices), with no overfull boxes or unresolved references or
+citations. All ten pages were visually inspected after the final build. Figure
+font checks, equation-reference checks and `git diff --check` pass. The full
+test suite passes 142 tests with four optional LightGBM skips. Regeneration
+changes only figure presentation; generated numeric tables, `src/`, `configs/`
+and `reports/` have no diff. Production model, raw-data and selected-submission
+hashes are checked separately before synchronisation.
+
+Human work remains unchanged: the user supplies workload attribution for
+Appendix B, the team approves the report and packaging, and an authorised group
+member performs the final course submission. No account action or Kaggle/Canvas
+submission was performed by this review.

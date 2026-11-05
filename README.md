@@ -835,6 +835,12 @@ article update log. Rebuild and recheck pages after any subsequent edits.
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
+The latest Supervisor-Skills review improves the empirical argument, acronym
+definitions, equation references and figure readability without changing scores
+or the selected model. All ten PDF pages were rendered and inspected; the body
+remains eight pages in the official format. Its scope and outstanding human
+checks are appended to `docs/PROGRESS.md`, not a separate report version.
+
 The focused review adds recorded address-cluster gain intervals, explicit
 training cutoffs and fixed rental-history evaluation, and definitions of the
 low-rent detector and nearest-comparable/specialist/mixture candidates. The
