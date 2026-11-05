@@ -12,7 +12,12 @@ if [[ -n "${TECTONIC:-}" ]] || command -v tectonic >/dev/null 2>&1; then
     cp "$task_build/main.pdf" "$task_output"
 elif command -v pdflatex >/dev/null 2>&1 && command -v bibtex >/dev/null 2>&1; then
     pdflatex -interaction=nonstopmode -halt-on-error -output-directory="$task_build" -jobname=CS5228_Final_Report main.tex
-    bibtex "$task_build/CS5228_Final_Report"
+    # BibTeX's restricted output policy rejects absolute output filenames.
+    # Run beside the aux file while retaining access to the source bibliography.
+    (
+        cd "$task_build"
+        BIBINPUTS="$task_project/final_report:${BIBINPUTS:-}" bibtex CS5228_Final_Report
+    )
     pdflatex -interaction=nonstopmode -halt-on-error -output-directory="$task_build" -jobname=CS5228_Final_Report main.tex
     pdflatex -interaction=nonstopmode -halt-on-error -output-directory="$task_build" -jobname=CS5228_Final_Report main.tex
     cp "$task_build/CS5228_Final_Report.pdf" "$task_output"

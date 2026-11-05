@@ -1,0 +1,35 @@
+{
+  "checks_passed": true,
+  "paired_gain_positive_means_candidate_better": true,
+  "bootstrap": "1000 address-cluster resamples; overlapping development windows; exploratory",
+  "windows": [
+    {
+      "window": "short_recent",
+      "rows": 8924,
+      "clusters": 5211,
+      "parent_win_rate": 0.5131107126848947,
+      "tie_rate": 0.0,
+      "mse_gain_child_minus_parent": 91.71889217664337,
+      "rmse_gain_child_minus_parent": 0.10289139413566772,
+      "rmse_gain_ci_low": -0.5351791360422823,
+      "rmse_gain_ci_high": 0.7955926339404186,
+      "mse_gain_ci_low": -478.9994628986904,
+      "mse_gain_ci_high": 715.1500488569094,
+      "conclusion": "uncertain"
+    },
+    {
+      "window": "horizon16",
+      "rows": 47171,
+      "clusters": 8865,
+      "parent_win_rate": 0.4982086451421424,
+      "tie_rate": 0.0,
+      "mse_gain_child_minus_parent": -308.8614670317816,
+      "rmse_gain_child_minus_parent": -0.31723461909246,
+      "rmse_gain_ci_low": -0.7928878625421504,
+      "rmse_gain_ci_high": 0.12576011342024004,
+      "mse_gain_ci_low": -769.2776964847108,
+      "mse_gain_ci_high": 123.30081346460624,
+      "conclusion": "uncertain"
+    }
+  ]
+}
