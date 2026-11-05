@@ -19,6 +19,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+try:
+    from .submission_contract import submission_frame
+except ImportError:
+    from submission_contract import submission_frame
 
 
 TARGET = "MONTHLY_RENT"
@@ -129,7 +133,7 @@ def audit(project_root: Path) -> dict[str, Any]:
 
     train = pd.read_csv(train_path)
     test = pd.read_csv(test_path)
-    sample = pd.read_csv(sample_path)
+    sample = submission_frame(raw, len(test))
     blocks = pd.read_csv(block_path)
 
     train_dates = date_summary(train)
@@ -141,7 +145,7 @@ def audit(project_root: Path) -> dict[str, Any]:
     quantiles = numeric_target.quantile([0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1])
 
     auxiliary: dict[str, Any] = {}
-    input_files = [train_path, test_path, sample_path]
+    input_files = [train_path, test_path] + ([sample_path] if sample_path.is_file() else [])
     for path in sorted((raw / "auxiliary").glob("*.csv")):
         frame = pd.read_csv(path)
         auxiliary[path.name] = frame_summary(frame)
@@ -159,6 +163,7 @@ def audit(project_root: Path) -> dict[str, Any]:
         "train": frame_summary(train),
         "test": frame_summary(test),
         "example_submission": frame_summary(sample),
+        "submission_layout_source": "course template" if sample_path.is_file() else "in-memory zero-based positional IDs; not a course file",
         "dates": {
             "train": train_dates,
             "test": test_dates,

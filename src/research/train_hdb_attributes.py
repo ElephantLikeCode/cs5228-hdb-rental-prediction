@@ -6,6 +6,7 @@ import json
 import time
 from importlib.metadata import version
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run
 
 import numpy as np
 import pandas as pd
@@ -29,8 +30,11 @@ def run():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidates", nargs="+", choices=["resale", "stock_snapshot", "given_macro"],
                         default=["resale", "stock_snapshot", "given_macro"])
+    add_cache_arguments(parser)
     args = parser.parse_args()
-    OUT.mkdir(exist_ok=True)
+    PARENT = reference_run(args, globals()['PARENT'])
+    OUT = args.output_dir or globals()['OUT']
+    OUT.mkdir(parents=True, exist_ok=True)
     data = pd.read_csv(ROOT / "data/raw/train.csv")
     rows = pd.read_csv(PARENT / "short_recent_scoring_rows.csv")
     train = data.loc[data.RENT_APPROVAL_DATE.lt("2025-01")].drop(columns="MONTHLY_RENT").reset_index(drop=True)
@@ -59,6 +63,7 @@ def run():
                               for name in ["sg-coe-prices.csv", "sg-stock-prices.csv"]},
         packages={name: version(name) for name in ["catboost", "pandas", "numpy"]},
     )
+    protocols['reference_cache_dir'] = str(PARENT)
     identity = hashlib.sha256(json.dumps(protocols, sort_keys=True).encode()).hexdigest()[:16]
     folder = OUT / identity
     folder.mkdir(exist_ok=True)

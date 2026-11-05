@@ -176,8 +176,10 @@ def main():
         (ROOT / "src" / name).read_bytes()
         for name in ("research/compare_models.py", "features.py", "modeling.py")
     )).hexdigest()
-    packages = {name: version(name) for name in
-                ("numpy", "pandas", "scikit-learn", "catboost", "lightgbm")}
+    package_names = ["numpy", "pandas", "scikit-learn", "catboost"]
+    if any(c.startswith('lgbm') for c in args.candidates):
+        package_names.append('lightgbm')
+    packages = {name: version(name) for name in package_names}
     protocol = {
         "config": config, "windows": {w: WINDOWS[w] for w in args.windows},
         "seeds": args.seeds, "candidates": args.candidates,

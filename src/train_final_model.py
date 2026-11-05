@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
+from submission_contract import submission_frame
 from modeling import (DEFAULT_CONFIG, CANDIDATES, ADAPTIVE_RECIPES, HISTORY_RECIPES, load_config, build_features,
                       build_training_features, fit_model, predict_model)
 
@@ -139,7 +140,7 @@ def create_reweighted_submission(args) -> None:
 
     train = pd.read_csv(RAW / "train.csv")
     test = pd.read_csv(RAW / "test.csv")
-    sample = pd.read_csv(RAW / "example-submission.csv")
+    sample = submission_frame(RAW, len(test))
     raw_train = train.drop(columns=[TARGET])
     target = train[TARGET].astype(float)
     for name, expected in source["raw_sha256"].items():
@@ -319,7 +320,7 @@ def main() -> None:
     started = time.perf_counter()
     train = pd.read_csv(RAW / "train.csv")
     test = pd.read_csv(RAW / "test.csv")
-    sample = pd.read_csv(RAW / "example-submission.csv")
+    sample = submission_frame(RAW, len(test))
     lookup = build_block_lookup(RAW / "auxiliary")
     raw_y = train[TARGET].astype(float)
     raw_train = train.drop(columns=[TARGET])

@@ -526,3 +526,13 @@ PDF is 10 pages (8 body, 1 references, 1 appendix). Older page counts are histor
 Team workload/approval and cross-device verification remain team tasks. The
 previously verified Overview deadline was 6 November 2026, 23:59 Singapore;
 recheck Canvas for any update before actual submission.
+
+### Reproduction entry repairs -- 5 November 2026
+
+The two identified input problems are addressed: the missing optional submission
+template no longer blocks the official eight-file data layout, and historical
+research cache directories can be supplied explicitly with fail-fast diagnostics.
+Use README's current commands rather than renaming new run IDs to old ones.
+No training recipe, fitted model, saved prediction or paper has changed. Remaining
+team tasks are workload attribution, review, cross-device confirmation, teacher
+code access and actual submission; these fixes do not assert those are complete.

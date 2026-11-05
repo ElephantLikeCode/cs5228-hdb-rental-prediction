@@ -2,9 +2,11 @@
 
 import csv
 import hashlib
+import argparse
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run
 
 import numpy as np
 import pandas as pd
@@ -77,7 +79,12 @@ def eligible_additions(train, path, origin):
 
 
 def main():
-    OUT.mkdir(exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_cache_arguments(parser)
+    args = parser.parse_args()
+    PARENT = reference_run(args, globals()['PARENT'])
+    OUT = args.output_dir or globals()['OUT']
+    OUT.mkdir(parents=True, exist_ok=True)
     source = pd.read_csv(ROOT / "data/raw/train.csv")
     train = source.loc[source.RENT_APPROVAL_DATE.lt("2025-01")].reset_index(drop=True)
     scoring = pd.read_csv(PARENT / "short_recent_scoring_rows.csv")

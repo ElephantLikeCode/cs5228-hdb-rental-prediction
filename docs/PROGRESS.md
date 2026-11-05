@@ -1976,3 +1976,41 @@ core conclusions and all result ledgers remain unchanged. Full-budget repeat
 details remain in reports/full_budget_reproduction.json and the cumulative log.
 The PDF remains 10 pages (8 body, references, appendix); all pages visually checked
 and the final compiler log has no overflow or unresolved-reference warnings.
+
+## 5 November 2026 - Repair reproduction input contracts only
+
+Fixed the official-ZIP path without the optional example-submission.csv. The
+eight mandatory CSVs still require their recorded hashes; an existing course
+template is still checked, but absence no longer blocks setup, audit or either
+final-output entry path. The shared submission_contract helper validates ordered
+zero-based IDs or constructs the same layout in memory. It never writes a fake
+course template. Audit explicitly records a synthetic layout as such and does
+not claim a raw-file checksum for a nonexistent template.
+
+Historical CPU-cache consumers now accept explicit reference/housing directories;
+multi-window probes allow a supplied reference folder rather than a hardcoded ID.
+Reference input paths enter the affected run identities. Low-rent mixture also
+accepts its classifier folder; the market-normalized submission builder accepts
+stock and selected-model folders. Positional MLP/sparse/analysis inputs have
+fail-fast prerequisite checks. Missing-file messages identify exact filenames,
+the path option and prerequisite command. Historical defaults remain; no cache is
+automatically discovered, renamed or silently substituted. README distinguishes
+the CPU PKL/NPY family from temporal_comparison NPZ caches and warns that pickles
+must be trusted. External datasets and compatible protocols are still required.
+CatBoost-only comparison no longer asks for LightGBM package metadata.
+
+Validation includes synthetic eight-file setup without a template, strict raw
+checksum rejection, invalid-template rejection, path override and missing-window
+checks, CLI failure before output creation, and final-entry save/reload/CSV smoke
+using a fake model in a temporary directory. No real model training occurred.
+Original model/feature algorithms, configs, raw data, prediction ledgers and
+paper files remain unchanged; existing metadata continues to identify the code
+used for its original historical fit, not this input-handling revision.
+Workload completion and cross-device execution remain with the team.
+
+Final verification for this repair: 85 tests pass and four optional LightGBM
+tests skip; Python compilation and the documented cache CLI help succeed.
+check_setup.py passes with all eight mandatory data hashes and the optional
+template hash when present. All eight original CBMs and final_submission.csv
+match the recorded metadata; no report, PDF, config, result-table or feature/
+modeling-algorithm diff is present.

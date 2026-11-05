@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from src.research.cache_inputs import add_cache_arguments, reference_run, housing_run
 
 import numpy as np
 import pandas as pd
@@ -72,8 +73,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--windows", nargs="+", choices=list(CACHES), default=["short_recent"])
     parser.add_argument("--candidates", nargs="+", choices=["duplicate_mean", "market_normalized"], default=["duplicate_mean", "market_normalized"])
+    add_cache_arguments(parser)
     args = parser.parse_args()
-    OUT.mkdir(exist_ok=True)
+    parents = {w: reference_run(args, ROOT/'artifacts/research_20261102'/CACHES[w], [w]) for w in args.windows}
+    OUT = args.output_dir or globals()['OUT']
+    OUT.mkdir(parents=True, exist_ok=True)
     config = load_config()
     protocol = dict(
         candidates=args.candidates, windows=args.windows, config=config, seed=42, threads=8,
@@ -85,6 +89,7 @@ def main():
         exclusions="No outer-validation early stopping, no test rental labels, no threshold tuning or deleting scoring labels",
         code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     )
+    protocol['reference_cache_dirs'] = {w:str(p) for w,p in parents.items()}
     identity = hashlib.sha256(json.dumps(protocol,sort_keys=True).encode()).hexdigest()[:16]
     folder = OUT / identity
     folder.mkdir(exist_ok=True)
@@ -92,7 +97,7 @@ def main():
     source = pd.read_csv(ROOT / "data/raw/train.csv")
     records = []
     for window in args.windows:
-        parent = ROOT / "artifacts/research_20261102" / CACHES[window]
+        parent = parents[window]
         fit_x, query_x, fit_y, _, fit_raw = pd.read_pickle(parent/f"{window}_local_trend_0.pkl")
         scoring = pd.read_csv(parent/f"{window}_scoring_rows.csv")
         query = source.iloc[scoring.source_row].reset_index(drop=True)
