@@ -18,7 +18,7 @@
 \bstctlcite{full-author-names}
 
 \title{Predicting Singapore HDB Rents with Comparable Transactions and Temporally Diverse Ensembles%
-\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis through 2 November 2026.}}
+\thanks{CS5228 Group 44, National University of Singapore. Results include follow-up analysis through 5 November 2026.}}
 \author{\IEEEauthorblockN{Han Linxuan}\IEEEauthorblockA{A0350911M}
 \and\IEEEauthorblockN{Sun Shenghe}\IEEEauthorblockA{A0354849L}
 \and\IEEEauthorblockN{Zhang Yuhong}\IEEEauthorblockA{A0356795H}
@@ -192,6 +192,8 @@ Frozen-component decomposition localises the trade-off. Older-year normal-histor
 \subsection{Stacking and supplementary competition evidence}
 Four-head recent-window stacking improves local recent RMSE from 440.7629 to 440.6565, but its paired gain interval $[-0.0342,0.2262]$ crosses zero. The eight-output version instead scores 440.8165. Earlier transfer tests are inconsistent; a sixteen-month stress check loses 0.538 with four inputs and 1.189 with eight. That check changes regime, fitting interval and horizon together, so it does not isolate recency weighting. Stacking remains an alternative rather than the default.
 
+Two further weighting studies reuse the frozen component predictions. One varies the normal/stale-history weight linearly with forecast horizon; the other learns separate weights for address/type histories containing 0--4, 5--19 or at least 20 records. Both learn only from earlier validation windows and shrink weights toward 50:50. Each improves three of seven overlapping forward comparisons but worsens recent-quarter RMSE, to 441.08 and 441.09, respectively. Both also worsen the recent-year and sixteen-month results. These tests support retaining equal weights within the evaluated settings; neither horizon nor historical support provides a stable weighting rule across periods.
+
 The competition provides supplementary public RMSE: 432.14881 for the selected model and 432.04286 for stacking. Two later four-component CPU probes score 432.70689 with building-stock features and 434.72053 with a market-normalized target; neither is promoted. Their seed count, device and composition differ from the selected ensemble, so public differences do not isolate feature effects. Public-subset membership and official rent labels are hidden; these scores cannot diagnose mechanisms or replace local evaluation. The submission ledger retains all probes, including those made despite failing local advancement rules.
 
 An earlier keep-versus-remove sensitivity probe changes public RMSE by only 0.17 in a different model family. It supplies no convincing reason to declare flagged labels wrong. The selected model retains all labels; every local comparison retains its complete scoring population.
@@ -220,7 +222,9 @@ For this detector, a depth-4 CatBoost binary classifier uses 600 trees, learning
 
 A simpler earlier-OOF town/type risk estimate gives recent AUC 0.5134 and average precision 0.03095, close to prevalence 0.02992; older-year AUC is 0.5176. Richer housing information is also tested against a distinct event: rent below 65\% of a strictly-past adaptive address/type/area reference. This covers 282 recent rows (3.160\%) and 32.598\% of reference squared error. Adding housing features changes AUC from 0.65761 to 0.65835, with an incremental 95\% address-cluster interval of $[-0.00625,0.00740]$. A two-expert relative-rent mixture and its 25\% blend score 453.993 and 442.223 versus CPU reference 441.843. Thus some ranking signal exists, but the added information does not yield useful routing. The different event definitions are not interchangeable or verified room-rental labels.
 
-Large errors occur beyond rare executive flats. Contract terms, condition, renovation, household relationships or label problems remain possible explanations. The next useful analysis should seek a stable observable signal across periods before fitting another specialist.
+A separate reliability audit groups frozen predictions by historical support, recency and rent dispersion, using only records available at each validation origin. Dispersion is the address/type interquartile range divided by the median of market-normalised rent ratios, estimated with at least five records. In the recent quarter, the high-dispersion group (ratio above 0.25) contains 18.53\% of observations but contributes 24.88\% of squared error. Its RMSE exceeds that of the low-dispersion group in all four main windows, including within strata of support, flat type, month and area. Matched strata cover only part of the population, and the earliest supplementary annual window reverses the unstratified pattern. Support and recency associations are less stable after stratification. Historical dispersion therefore identifies elevated error risk, but does not establish label errors or show that stronger smoothing would improve prediction.
+
+Large errors occur beyond rare executive flats. Contract terms, condition, renovation, household relationships or label problems remain possible explanations. Further work should establish a correctable, stable error pattern before fitting another specialist.
 
 \subsection{Exploratory extensions and negative evidence}\label{sec:extensions}
 \begin{table}[t]
@@ -231,6 +235,33 @@ Large errors occur beyond rare executive flats. Contract terms, condition, renov
 Table~\ref{tab:research} compares hypotheses under differing budgets. Nearest-comparable, specialist and soft-mixture blends can improve sixteen months while losing recently. Matched-input XGBoost worsens both windows; highly correlated errors limit the tested blend's complementarity. These findings favour the selected recipe within the tested budget.
 
 Cross-fitting excludes a held-out inner fold from training statistics; outer validation uses only outer-training labels. Full-interval statistics worsen both windows, whereas strict-past dispersion replacement gains only about 0.12 and 0.14 RMSE. Changed training/inference support distributions limit generalisation of this finding. The isolated area/age composition-trend ablation provides essentially no recent gain and worsens the other main windows.
+
+\paragraph{Parent--child reference accuracy}
+To determine which historical level might benefit from stronger smoothing, we compare parent and child references on identical high-dispersion validation rows. All references use origin-frozen histories and the same forecast-month market level, avoiding comparisons between unadjusted historical means and market-adjusted rents. Street/type references have higher RMSE than address/type references in all four core windows, providing no support for generally favouring coarser groups. At the finest level, however, address/type references outperform address/type/area references by 2.79, 3.20, 4.34 and 3.85 SGD in the recent quarter, recent year, older year and sixteen-month window, respectively. The recent-quarter 95\% address-cluster interval is $[-0.65,6.76]$; the other three intervals exclude zero, although the windows overlap. In the audited data, these two finest levels use the same matched historical records. Their differences therefore arise from hierarchical smoothing rather than additional area-specific evidence. Low-dispersion controls do not show a consistent parent advantage, arguing against removing the finest level universally. These are gains in historical-reference accuracy, not CatBoost predictions: the model already receives both levels. The diagnostic thus motivates testing stronger shrinkage only at the finest level for high-dispersion cases, while leaving the remaining hierarchy unchanged.
+
+\paragraph{Dispersion-adaptive shrinkage}
+Following this diagnostic, we conduct a controlled test of dispersion-adaptive historical smoothing. For address/type histories with at least five records and a market-normalised relative IQR above 0.25, we increase only the finest address/type/area shrinkage strength from 5 to 10 in Eq.~\eqref{eq:premium}. The modified premium and level are used as input features, while residual training targets and prediction offsets retain the original historical reference. All historical statistics use only permitted earlier training labels. We compare original and candidate recipes using CPU CatBoost with seed 42 and 1,600 trees, fitting direct and residual models on two validation windows (eight fits in total). This is a controlled component-level comparison rather than a full eight-model ensemble evaluation.
+
+\begin{table}[t]
+\caption{Dispersion-adaptive shrinkage: paired CPU RMSE (SGD).}
+\label{tab:dispersion-shrinkage}\centering\footnotesize
+\begin{tabular}{llrrr}
+\toprule Window & Target & Original & Candidate & $\Delta$ \\
+\midrule
+Recent & Direct & 446.090 & 445.555 & $-0.535$ \\
+ & Residual & 447.295 & 447.522 & $+0.227$ \\
+ & Mean & 445.759 & 445.656 & $-0.103$ \\
+16 months & Direct & 487.732 & 489.052 & $+1.320$ \\
+ & Residual & 488.744 & 488.082 & $-0.662$ \\
+ & Mean & 486.644 & 486.962 & $+0.317$ \\
+\bottomrule
+\end{tabular}
+\par\smallskip\raggedright\footnotesize Recent: Jan--Mar 2025 (8,924 rows); 16 months: Dec 2023--Mar 2025 (47,171 rows). Mean averages the two targets. $\Delta=$ candidate minus original; negative is better. One seed, matched validation rows and settings.
+\end{table}
+
+Table~\ref{tab:dispersion-shrinkage} reports the results. Averaging direct and residual predictions yields a small RMSE improvement of 0.103 SGD in the recent quarter but a deterioration of 0.317 SGD over the 16-month window. Paired address-cluster bootstrap intervals for RMSE improvement are $[-0.535, 0.796]$ and $[-0.793, 0.126]$, respectively, both including zero. Thus, historical dispersion is associated with prediction difficulty, but this fixed increase in shrinkage does not demonstrate a consistent benefit.
+
+Post-hoc analysis shows that the 16-month deterioration is not concentrated at longer forecast horizons: RMSE increases by 0.324 and 0.310 SGD in the first and last eight months, respectively. Direct prediction worsens in 14 of 16 months, while residual prediction improves in 11, partially offsetting the loss. Five-room flats account for 22.9\% of observations but 60.0\% of the net increase in squared error, although this does not establish a causal explanation. High-dispersion cases also show inconsistent monthly changes. Given the overlapping validation windows and single-seed CPU setting, we retain the original recipe rather than introduce subgroup-specific adjustments.
 
 COE and stock features use preceding-month summaries and origin-frozen controls. Monthly lags approximate release timing, and stock membership is a supplied snapshot; neither materially improves prediction. Ridge exposes extrapolation instability when future numeric inputs exceed training ranges. Joint range clipping stabilises predictions, yet its blend loses recently while gaining over sixteen months. Multiple fields change together, preventing attribution to one variable.
 
@@ -290,6 +321,7 @@ Obtain the original course files under \code{data/raw/}, then run \code{python s
 
 Fixed-budget comparisons use \path{src/run_experiments.py} with the \code{--compare-candidates} option. The selected ensemble is generated by \path{src/train_final_model.py} with the recorded configuration; research uses \path{src/feedback_experiments.py}, including \code{--families public} for indices and rail. These are abbreviated entry points; use the complete README commands for exact windows and options.\par
 Supplementary CPU modules are under \path{src/research/}, with a separate \path{requirements-research.txt}. Their aggregate evidence is in \path{reports/november_cpu_comparisons_20261102.csv} and \path{reports/november_log_integration_20261102.csv}. The consolidated research record preserves protocols and unsuccessful probes.
+The shrinkage study uses \path{src/research/dispersion_shrinkage.py}; saved scores and paired uncertainty checks are under \path{artifacts/dispersion_shrinkage_cpu_v1/}. The read-only module \path{src/research/analyze_shrinkage_errors.py} produces the monthly and subgroup evidence under \path{artifacts/dispersion_shrinkage_attribution_v1/}. These diagnostics reuse predictions without additional model fitting.
 For clarity, the historical core-baseline settings are listed in Table~\ref{tab:parameters}. They are bounded references, not the outcome of an exhaustive or common-compute search. The selected ensemble's settings and history coefficients are given in the main text.
 \begin{table}[!ht]
 \caption{Principal historical baseline settings; preprocessing is described in the main text.}

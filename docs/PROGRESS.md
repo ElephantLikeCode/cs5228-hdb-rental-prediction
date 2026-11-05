@@ -5,6 +5,42 @@ work updates the current validated pipeline in this file; unsuccessful trials
 remain in machine-readable experiment records rather than creating a new
 versioned summary document.
 
+## Current checkpoint — 5 November 2026
+
+This summary describes the latest state; dated entries below preserve what was
+known at each checkpoint. In particular, earlier missing-cache, untrained-study
+and page-count statements are historical, not current status.
+
+- **Production:** local-trend/history-diversity eight-component CatBoost remains
+  selected (recent RMSE 440.762863; recorded public RMSE 432.14881).
+  Fixed stacking retains the public-best 432.04286 probe, without promotion.
+- **Completed follow-ups:** horizon/support weights failed the recent/long-window
+  screen; reliability and parent–child diagnostics led to one paired CPU
+  shrinkage experiment. That experiment gained 0.103 recent RMSE but lost 0.317
+  over sixteen months, with both gain intervals crossing zero. No replacement.
+- **Report:** the single `final_report/main.tex` includes the diagnostic-to-test
+  chain and adverse results. Recompile after edits and recheck the eight-page
+  body limit, references and layout. Complete actual team workload attribution.
+- **Scope:** overlapping development windows, one-seed CPU screens and repeated
+  evaluation limit claims. No further training or Kaggle upload is implied.
+
+### Reading guide
+
+| Topic | Where to read |
+| --- | --- |
+| Setup, commands and current mainline | [README](../README.md) |
+| Original baselines and preprocessing | September entries below; historical early-stopping block |
+| Adaptive comparables, history diversity, local trends and stacking | 21–24 September entries |
+| Feedback-driven information and model screens | 6 October entries |
+| Paper review and independent reproduction | 23–29 October entries |
+| Consolidated CPU evidence and research structure | 2–3 November entries |
+| Horizon/support weighting | 3–4 November entries |
+| Reliability, parent–child comparison, shrinkage and attribution | [5 November evidence reconciliation](#5-november-2026---historical-reliability-evidence-reconciliation) |
+
+Historical entries and the `CURRENT_RESULTS` auto-update markers are retained.
+New outcomes belong at the end of this log; the checkpoint above is a navigation
+summary, not a replacement for source metrics or provenance.
+
 ## Initial reproducible foundation (18 September 2026)
 
 Established the private Git repository, environment/data checks, a chronological
@@ -1976,3 +2012,182 @@ core conclusions and all result ledgers remain unchanged. Full-budget repeat
 details remain in reports/full_budget_reproduction.json and the cumulative log.
 The PDF remains 10 pages (8 body, references, appendix); all pages visually checked
 and the final compiler log has no overflow or unresolved-reference warnings.
+
+## 3 November 2026 - Horizon-dependent blending implementation
+
+At the user's request, added `src/research/horizon_blend.py` as an isolated
+follow-up to the history-view decomposition. Seven prespecified forward plans
+reuse the frozen stacking manifest. Equal weights, a regularized constant gate,
+and a two-endpoint linear horizon gate form the comparison. Branches retain
+equal direct/residual and seed weights. Ridge ratio 0.1 and 50% shrinkage are
+fixed before evaluation; deployed normal-history weights are bounded to
+[0.25, 0.75]. Beyond-fit horizons clamp to endpoints and are counted explicitly.
+No latest-history-age input is added in this first isolated horizon experiment.
+
+Input checks cover cache hashes, protocol, matched complete official validation
+rows, training CSV hash, strictly forward label availability and disjoint
+meta-training IDs. Windows retain their original overlap and development-use
+limitations. Windows path separators are normalized only during reading;
+historical manifests are not rewritten. Outputs use a fresh directory, leaving
+production metadata, configs, CBMs and submission files unchanged.
+
+Five focused tests pass, including a synthetic end-to-end run and a control
+showing that changing held-out labels cannot alter learned gate parameters.
+The real audit exits with missing-input status: all 72 expected prediction
+caches and `data/raw/train.csv` are absent in this checkout. No real fitting,
+MSE/RMSE improvement, promotion, or Kaggle submission is claimed. Restore the
+original private artifacts from the training machine before running this study;
+README contains the step-by-step commands and interpretation rules.
+
+## 4 November 2026 - Horizon blending evaluated on restored caches
+
+The user restored the temporal prediction caches and ran horizon_blend_v1.
+Verified all 72 source cache hashes, the official training-data hash and source
+code hash. Independently reran all seven forward plans in a temporary directory;
+results.csv, by_horizon.csv and fitted coefficients reproduce within numerical
+tolerance (rtol 1e-10; metric atol 1e-9). Original artifacts remain unchanged.
+
+Dynamic versus equal-weight RMSE: recent quarter 441.082828 vs 440.762863;
+recent year 467.205812 vs 466.756591; older year 582.049446 vs 590.347337;
+sixteen months 483.653355 vs 483.434457. Dynamic weighting improves three of
+seven overlapping development comparisons but loses the recent/long-window
+screen. Older-year gains are identical to the learned constant control: both
+saturate at 75% normal-history weight, so that gain is not evidence of a useful
+horizon-dependent slope. The sixteen-month gate also collapses to constant
+75%; 11,820 rows lie beyond its twelve-month fitting support and use endpoint
+clamping. No promotion, production change, base-model retraining or submission.
+The scored artifacts remain under artifacts/horizon_blend_v1/.
+
+## 4 November 2026 - Support-group weighting follow-up
+
+Implemented and executed src/research/support_blend.py on all seven frozen
+forward plans, using a single origin-frozen support-count dimension. Prespecified
+bins: 0–4, 5–19, 20+ normalized town/block/street/flat-type records. Each bin
+learns a regularized constant weight with 50% shrinkage plus n/(n+1000)
+sample-size shrinkage; fewer than 200 meta rows falls back to equal weights.
+No horizon gate is combined with this change. Counts include no future records
+or target values. Missing keys receive zero support. All original v1 code and
+artifacts are preserved; no production configuration or submission changed.
+
+Seven focused tests pass across horizon/support modules. Checks include future
+record and target invariance, text normalization, bin boundaries and sparse-group
+fallback. Real execution verifies the original prediction/data hashes and uses
+the same forward-label isolation and complete-row checks.
+
+Results at artifacts/support_blend_v1: recent-quarter RMSE 441.090988 versus
+440.762863 equal weights; recent-year 467.269293 versus 466.756591; older-year
+582.745949 versus 590.347337; sixteen-month 483.542750 versus 483.434457.
+Three of seven overlapping development comparisons improve, but the recent and
+long windows do not pass. The older-year gain is smaller than the constant-gate
+control (582.049446). No promotion. This result tests these fixed bins and
+shrinkage settings only, not all reliability-based weighting approaches.
+
+## 5 November 2026 - Historical reliability evidence reconciliation
+
+This entry consolidates completed local evidence that had not yet been added to
+this cumulative log. It does not claim that all studies executed on this date.
+No models were fitted during this documentation update.
+
+### Historical reliability: risk association, not a correction rule
+
+`src/research/history_reliability.py` audits existing production features and
+frozen predictions. The saved report is
+`artifacts/history_reliability_diagnostic_v1/REPORT.md` (dated 4 November).
+The audit verifies 72 frozen cache sources and matching validation rows. Production
+already contains hierarchical smoothing, time decay, counts/effective mass and
+age, but does not directly adapt smoothing to historical dispersion.
+
+Market-normalised address/type IQR divided by its median, with at least five
+historical records, defines dispersion. The high group (>0.25) has higher RMSE
+than the low group in all four core windows, also within the recorded common
+strata. Recent high-dispersion cases are 18.53% of rows and 24.88% of SSE.
+Coverage limitations and a reversal in the earliest supplementary window prevent
+a universal claim. Support and recency associations are less stable after
+stratification. Counts, decayed mass and effective sample size are distinct.
+These observations identify risk, not erroneous labels or a proven improvement.
+
+### Parent–child comparison: a finest-level hypothesis
+
+`src/research/parent_child_reference.py` compares references on identical rows,
+with origin-frozen histories and the same forecast-month market scale. Evidence:
+`artifacts/parent_child_reference_v1/REPORT.md`, `reference_metrics.csv` and
+`paired_comparisons.csv`.
+
+| High-dispersion window | Address vs Address/Area RMSE gain | 95% address-cluster interval |
+| --- | ---: | --- |
+| Jan–Mar 2025 | 2.79 | [-0.65, 6.76] |
+| Apr 2024–Mar 2025 | 3.20 | [1.55, 5.16] |
+| Apr 2023–Mar 2024 | 4.34 | [2.06, 6.76] |
+| Dec 2023–Mar 2025 | 3.85 | [2.10, 5.56] |
+
+Positive gain means the Address parent reference has lower RMSE. Street references
+are worse than Address in all four windows; the evidence does not support
+stronger shrinkage at every level. Address and Address/Area use identical matched
+historical records here, so their differences come from smoothing, not extra
+area-specific records. Low-dispersion controls do not show a consistent parent
+advantage. These are reference-estimator gains, not CatBoost gains, and overlapping
+windows are not independent confirmations. The diagnostic motivated a bounded
+finest-level test only; it did not justify production promotion.
+
+### Executed dispersion-adaptive shrinkage experiment
+
+Code: `src/research/dispersion_shrinkage.py`. Completed artifacts:
+`artifacts/dispersion_shrinkage_cpu_v1/` (`metadata.json`, `results.csv`,
+`groups.csv`, saved predictions/models and `local_evaluation_check.json`).
+
+The fixed hypothesis increases only Area-level alpha from 5 to 10 for histories
+with at least five records and adjusted relative IQR >0.25. LEVEL/PREMIUM inputs
+change; original residual training and prediction offsets stay fixed. Statistics
+exclude query-month labels and validation histories remain frozen at origin.
+Two windows x original/candidate x direct/residual = eight CPU fits, each with
+seed 42 and 1,600 trees. This is not the eight-component production ensemble.
+
+| Window | Target | Original RMSE | Candidate RMSE | Candidate minus original |
+| --- | --- | ---: | ---: | ---: |
+| Recent quarter | Direct | 446.090 | 445.555 | -0.535 |
+| Recent quarter | Residual | 447.295 | 447.522 | +0.227 |
+| Recent quarter | Equal mean | 445.759 | 445.656 | -0.103 |
+| Sixteen months | Direct | 487.732 | 489.052 | +1.320 |
+| Sixteen months | Residual | 488.744 | 488.082 | -0.662 |
+| Sixteen months | Equal mean | 486.644 | 486.962 | +0.317 |
+
+For the mean, 1,000 paired address-cluster bootstrap samples give RMSE-improvement
+intervals [-0.535, 0.796] and [-0.793, 0.126]. Both cross zero. Improvement is
+original minus candidate, opposite to the change column above. **No-Go for
+promotion:** the recent gain is small and the long window deteriorates. Production
+features/configuration, frozen GPU caches and submissions remain unchanged.
+
+### Read-only monthly and subgroup attribution
+
+`src/research/analyze_shrinkage_errors.py` reads saved predictions, raw training
+rows and cached historical statistics without fitting models or weights. Results:
+`artifacts/dispersion_shrinkage_attribution_v1/REPORT.md`, `error_changes.csv`,
+`monthly_data_profile.csv` and `audit.json`. Row IDs, labels and saved overall
+scores agree; subgroup SSE changes sum to the overall change.
+
+- The long-window loss starts in December 2023 (+0.615 RMSE). First/last eight
+  months worsen by 0.324/0.310, not a loss confined to later horizons.
+- Direct prediction worsens in 14/16 months; residual prediction improves in
+  11/16. High-dispersion cases improve in nine months and worsen in seven.
+- Five-room flats are 22.9% of long-window rows and contribute 60.0% of the
+  **net SSE increase**, with RMSE +0.803. This is not their share of total error
+  and does not explain the mechanism or justify a five-room-specific rule.
+- The recent mean gain combines January deterioration (+1.043) with February
+  and March improvements (-1.081/-0.262); it is not a uniform monthly gain.
+
+All comparisons are descriptive, reuse development labels and include only one
+training seed. Different origins change both trained models and historical
+statistics. No causal mechanism, new routing rule or fusion weight was inferred.
+
+### Report integration and remaining work
+
+The existing final-report source now describes horizon/support weighting,
+historical reliability, parent–child evidence, the paired shrinkage experiment
+and its uncertainty/attribution. The BibTeX shell-build invocation was corrected
+to run inside the build directory, avoiding restricted absolute output paths.
+Later wording additions require a fresh build and page-limit/layout check; older
+10-page/8-body-page statements in this log refer to their dated versions.
+
+Complete real team workload attribution and review the final claims before
+submission. No additional training, public submission or mainline change is
+recommended by these results alone.

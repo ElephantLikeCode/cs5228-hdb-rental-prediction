@@ -1,11 +1,38 @@
 # CS5228 HDB Rental Prediction
 
-### 2 November evidence and report update
+Private group-project repository for predicting Singapore HDB monthly rent.
+The evaluation metric is RMSE, and chronological validation is the primary
+local evaluation method.
+
+Quick navigation: [current model](#current-mainline-and-retained-reference),
+[setup](#setup-from-a-fresh-clone), [reproduction](#reproduce-the-current-result),
+[research modules](#research-layout-and-execution),
+[latest reliability studies](#historical-reliability-studies-35-november),
+[repository map](#repository-structure),
+[final report](#final-report-working-draft), and
+[cumulative progress](docs/PROGRESS.md).
+
+## Current status — 5 November 2026
+
+- **Selected model unchanged:** eight-component local-trend/history-diversity
+  CatBoost; recent validation RMSE **440.76**, recorded public RMSE **432.14881**.
+  The best recorded public probe is **432.04286** and is not the default recipe.
+- Horizon/support weighting, historical reliability, parent–child reference
+  comparisons and the paired CPU shrinkage experiment are complete. None
+  establishes a replacement for the selected model; see the study index below.
+- The final-report source incorporates these studies. Rebuild the PDF after
+  editing and verify the eight-main-text-page limit; previous page-count claims
+  describe older drafts, not the current layout. Team workload remains pending.
+- README is the entry-point and execution guide. `docs/PROGRESS.md` retains
+  dated decisions, protocols and negative results; `docs/RESEARCH_NOTES.md`
+  preserves the consolidated earlier research evidence.
+
+## Evidence and report status
 
 The existing [final report](output/pdf/CS5228_Final_Report.pdf) integrates the
 follow-up evidence into its original data, methods, error-analysis and results
-sections. There is no separate chronological November appendix. The current
-paper is eight body pages, one reference page and one appendix page.
+sections. There is no separate chronological November appendix. Recheck the
+compiled layout after changes rather than relying on an earlier page count.
 [Consolidated research notes](docs/RESEARCH_NOTES.md) distinguish authorship,
 validation protocols, unsuccessful candidates and abandoned code from executed runs.
 Aggregate evidence is committed as `reports/november_*20261102.*`.
@@ -29,7 +56,7 @@ The optional course example CSV is absent from the official Kaggle ZIP, so its
 template-specific test skips when missing. Other output and data checks still run.
 Team workload responsibilities and percentages remain for team confirmation.
 
-### Research layout and execution
+## Research layout and execution
 
 The selected production entry remains `python src/train_final_model.py --task-type GPU`.
 Optional follow-up modules live under `src/research/`, not alongside production
@@ -53,6 +80,10 @@ four LightGBM-specific smoke tests skip. MLP additionally requires PyTorch.
 | `analyze_research`, `analyze_hdb_attributes`, `audit_course_generation`, `check_low_rent_information` | Paired metrics, attribute provenance and low-rent diagnostics |
 | `probe_rmse_structure`, `probe_historical_augmentation`, `probe_low_rent_mixture`, `probe_cat_capacity` | Target, historical-data, specialist and tree-capacity probes |
 | `research_lgbm_sparse`, `research_mlp` | Optional learner variants |
+| `horizon_blend`, `support_blend` | Learn forward-only blend weights from frozen predictions; no base-model fitting |
+| `history_reliability`, `parent_child_reference` | Read-only historical support, dispersion, recency and reference diagnostics |
+| `dispersion_shrinkage` | Paired original/candidate CPU training; separate from production |
+| `analyze_shrinkage_errors` | Read-only monthly/target/flat-type attribution of saved shrinkage predictions |
 | `submit_stock_probe`, `submit_market_normalized` | Historical probe builders; local saved caches required, no automatic upload |
 | `src/audits/public_source_diagnostic.py` | Quarantined, disabled target-visible audit; not part of research training or submission |
 | `build_submission_attributes` | Abandoned prototype, explicitly guarded; not a recommended workflow |
@@ -67,16 +98,6 @@ resolved before running dependent probes. The report tables compile without cach
 The consolidated notes include old commands for historical provenance; use the
 module commands here, not the old macOS wrappers. New decisions belong in
 `docs/PROGRESS.md`; do not create another dated handoff or report draft.
-
-Private group-project repository for predicting Singapore HDB monthly rent.
-The evaluation metric is RMSE, and chronological validation is the primary
-local evaluation method.
-
-Quick navigation: [setup](#setup-from-a-fresh-clone),
-[run the selected model](#reproduce-the-current-result),
-[repository map](#repository-structure),
-[final paper and build instructions](#final-report-working-draft),
-and [cumulative research decisions](docs/PROGRESS.md).
 
 ## Current mainline and retained reference
 
@@ -755,8 +776,8 @@ chronological validation windows, temporal RMSE trade-offs and error concentrati
 `python final_report/prepare_report.py` regenerates them from protected local
 evidence (including retained prediction caches); compilation alone needs no data.
 The draft prioritises local temporal evaluation and subgroup interpretation;
-Kaggle scores are supplementary historical observations. It currently has
-eight main-text pages, one reference page and one appendix page (ten total).
+Kaggle scores are supplementary historical observations. Rebuild and check the
+current body-page count against the eight-page limit before submission.
 Workload attribution is explicitly reserved in Appendix B and remains unfilled.
 It is a review draft, not a final submission or an assertion of team approval.
 
@@ -765,11 +786,19 @@ training cutoffs and fixed rental-history evaluation, and definitions of the
 low-rent detector and nearest-comparable/specialist/mixture candidates. The
 main temporal table appears beside the main results. PROGRESS records the
 disposition of all fourteen suggestions; workload completion and team review
-remain pending. The official template is retained; the 29 October follow-up
-expands the body to eight pages, within the course limit.
+remain pending. The official template is retained; subsequent additions require
+a fresh page-limit check.
 
-Compile the committed text, figures and tables in the built-in LaTeX editor,
-or on Windows with existing MiKTeX/TeX tools:
+Compile from the repository root on macOS/Linux with Tectonic or
+pdflatex/BibTeX installed:
+
+```bash
+bash final_report/build.sh
+```
+
+The script updates `output/pdf/CS5228_Final_Report.pdf`. Its BibTeX pass runs
+inside the build directory to respect restricted output-path policies.
+On Windows with existing MiKTeX/TeX tools:
 
 ```powershell
 ./final_report/build.ps1
@@ -864,3 +893,83 @@ Remaining team actions and longer-term research:
 
 Keep one cumulative `docs/PROGRESS.md`, one main results table here, and the
 existing evidence tables. See `docs/PROJECT_PLAN.md` for scope and responsibilities.
+
+## Historical reliability studies (3–5 November)
+
+The following are completed development studies, not new production recipes.
+Detailed artifacts are local/ignored; a fresh clone must restore the original
+course data and validated caches before repeating prediction-based diagnostics.
+All windows overlap; they are not independent final tests.
+
+| Study | Existing local evidence | Result / decision |
+| --- | --- | --- |
+| Horizon-dependent weights | `artifacts/horizon_blend_v1/` | Recent RMSE 441.083 vs 440.763; no promotion |
+| Support-group weights | `artifacts/support_blend_v1/` | Recent RMSE 441.091 vs 440.763; no promotion |
+| Historical reliability | `artifacts/history_reliability_diagnostic_v1/REPORT.md` | High dispersion is a relatively stable risk marker; support/age are confounded |
+| Parent–child references | `artifacts/parent_child_reference_v1/REPORT.md` | Finest-level parent advantage motivated a bounded experiment, not deployment |
+| Dispersion shrinkage | `artifacts/dispersion_shrinkage_cpu_v1/results.csv` | Two-head recent gain 0.103, 16-month loss 0.317 RMSE; no promotion |
+| Saved-prediction attribution | `artifacts/dispersion_shrinkage_attribution_v1/REPORT.md` | Loss starts in the first month; target modes and monthly effects differ |
+
+### Reuse predictions before retraining
+
+The blending studies require `reports/stacking_sources.csv`, its original
+`artifacts/temporal_comparison/` prediction caches and `data/raw/train.csv`.
+Use fresh output directories; the examples below do not overwrite completed v1
+studies. Run only the study needed, not this entire block as a training pipeline.
+
+```bash
+python -m src.research.horizon_blend --audit-only
+python -m src.research.horizon_blend --output artifacts/horizon_blend_v2
+python -m src.research.support_blend --output artifacts/support_blend_v2
+python -m src.research.history_reliability --output artifacts/history_reliability_diagnostic_v2
+python -m src.research.parent_child_reference --output artifacts/parent_child_reference_v2
+```
+
+The first two blending modules fit combination weights using earlier labels;
+the reliability and parent–child modules fit no models or weights. No command
+above retrains CatBoost or generates a submission. Missing or mismatched caches
+must be resolved rather than silently substituting new predictions.
+
+### Finest-level dispersion shrinkage (completed; not promoted)
+
+`src/research/dispersion_shrinkage.py` is a separate paired CatBoost study.
+Only high past-dispersion records (at least five comparables and adjusted
+IQR/median > 0.25) change the Address/Flat/Area parent strength from 5 to 10.
+Only its LEVEL and PREMIUM input columns change. Original residual offsets
+remain fixed in both recipes. Training statistics exclude the entire query
+month; validation histories are frozen at the training origin. No production
+configuration, submission or frozen GPU comparison is changed.
+
+```bash
+python -m src.research.dispersion_shrinkage --task-type CPU --windows short_recent horizon16 --iterations 1600 --seed 42 --output artifacts/dispersion_shrinkage_cpu_v2
+```
+
+This fits eight models: two windows x original/candidate x direct/residual.
+Compare the same-device two-head pair rows in results.csv, not the historical
+GPU eight-model RMSE. groups.csv reports high/low/other/all slices (overlapping
+slices are not additive); feature_changes.csv records changed-row counts.
+Models, original offsets in feature caches, predictions and provenance are
+saved only in the new directory. Add `--resume` to the identical command to
+reuse completed fits; changed code/data/options are rejected. Interrupted
+in-progress fits restart. Local pickle feature caches must not be replaced with
+untrusted files. Small --iterations runs are execution checks, not score evidence.
+No automatic second seed, promotion or Kaggle submission is performed.
+
+The command above starts a **new training run** in a fresh directory; it is not
+needed to read completed v1 results. In the executed seed-42 CPU comparison:
+
+| Validation window | Original two-head RMSE | Candidate two-head RMSE | Candidate minus original |
+| --- | ---: | ---: | ---: |
+| Jan–Mar 2025 | 445.759 | 445.656 | -0.103 |
+| Dec 2023–Mar 2025 | 486.644 | 486.962 | +0.317 |
+
+Both paired address-cluster gain intervals cross zero. The candidate remains
+research-only; these scores must not be compared as a method gain against the
+eight-component GPU mainline. See the progress log for uncertainty and attribution.
+
+`python -m src.research.analyze_shrinkage_errors` reads the existing
+`artifacts/dispersion_shrinkage_cpu_v1/` predictions and feature caches. It has
+fixed input/output paths and refuses to overwrite its existing
+`artifacts/dispersion_shrinkage_attribution_v1/` output. Read that directory's
+`REPORT.md`, `error_changes.csv`, `monthly_data_profile.csv` and `audit.json`
+for the completed analysis; do not delete results just to rerun it.
