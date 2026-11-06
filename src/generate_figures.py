@@ -14,7 +14,10 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import Ridge
 
-from features import suspected_low_rent_mask
+if __package__:
+    from .features import normalize_text, suspected_low_rent_mask
+else:
+    from features import normalize_text, suspected_low_rent_mask
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -508,7 +511,6 @@ def summarize_temporal(bootstrap=False, reference_candidate="legacy", error_grou
                               baseline_candidate=reference_candidate, baseline_code_sha256=reference_code,
                               **uncertainty))
         if error_groups and candidate.endswith("blend"):
-            from features import normalize_text
             frame = raw.iloc[row_ids].reset_index(drop=True)
             frame["MONTH"] = months
             for field in ["TOWN", "FLAT_TYPE"]:

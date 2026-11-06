@@ -26,6 +26,7 @@ submissions/*.csv
 artifacts/
 logs/
 tmp/
+output/
 
 # LaTeX build intermediates; keep the final PDF
 output/pdf/*.aux
@@ -35,6 +36,11 @@ output/pdf/*.out
 output/pdf/*.snm
 output/pdf/*.toc
 progress_report/*.log
+progress_report/*.aux
+progress_report/*.nav
+progress_report/*.out
+progress_report/*.snm
+progress_report/*.toc
 final_report/*.aux
 final_report/*.bbl
 final_report/*.blg

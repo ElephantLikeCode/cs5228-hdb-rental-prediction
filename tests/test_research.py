@@ -18,14 +18,16 @@ def test_relocated_research_uses_repository_root():
 
 
 @pytest.mark.parametrize("module", ["src.audits.public_source_diagnostic", "src.research.build_submission_attributes"])
-def test_quarantined_entries_refuse_default_execution(module):
+def test_target_visible_and_abandoned_entries_are_not_shipped(module):
     import subprocess
     import sys
     from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    assert not (root / Path(*module.split('.'))).with_suffix('.py').exists()
     result = subprocess.run([sys.executable, "-m", module], cwd=Path(__file__).resolve().parents[1],
                             capture_output=True, text=True)
     assert result.returncode != 0
-    assert "Disabled audit" in result.stderr or "Abandoned prototype" in result.stderr
+    assert "No module named" in result.stderr
 
 
 def test_query_vocabulary_cannot_change_training_encoding():

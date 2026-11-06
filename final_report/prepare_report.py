@@ -9,13 +9,15 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import argparse
+import shutil
+import subprocess
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 from matplotlib import font_manager, ticker
 import numpy as np
 import pandas as pd
@@ -31,52 +33,24 @@ COLORS = ["#356AA0", "#D58A36", "#258E83", "#8A6BA8", "#667785"]
 
 
 def model_overview():
-    """Vector schematic; counts and views follow the frozen selected recipe."""
+    """Package the reviewed illustration at publication size; never fit models."""
     config = json.loads((ROOT/'configs/model.json').read_text())
     assert config['seeds'] == [42,2026] and set(config['target_modes']) == {False,True}
     assert config['history_views'] == [dict(history='local_trend',lag=0),dict(history='hierarchical',lag=6)]
     metadata = json.loads((ROOT/'reports/final_model_metadata.json').read_text())
     assert metadata['feature_counts'] == {'local_trend:0':78,'hierarchical:6':74}
-    fig, ax = plt.subplots(figsize=(7.0, 2.0))
-    fig.subplots_adjust(left=.005, right=.995, top=.995, bottom=.005)
-    ax.set(xlim=(0, 10), ylim=(0, 3.1))
-    ax.axis('off')
-    ink = '#263746'
-
-    def box(x, y, w, h, text, fill, edge=ink, size=8, bold=False):
-        ax.add_patch(FancyBboxPatch((x,y), w,h, boxstyle='round,pad=0.025,rounding_size=0.055',
-                                   facecolor=fill, edgecolor=edge, linewidth=.8))
-        ax.text(x+w/2,y+h/2,text,ha='center',va='center',fontsize=size,
-                color=ink,weight='bold' if bold else 'normal',linespacing=1.22)
-
-    def arrow(a,b):
-        ax.add_patch(FancyArrowPatch(a,b,arrowstyle='-|>',mutation_scale=8,
-                                    linewidth=.8,color='#667785',zorder=0))
-
-    for x, title in [(0.1,'1  INPUTS'),(2.12,'2  HISTORY VIEWS'),(4.78,'3  CATBOOST COMPONENTS'),(8.15,'4  OUTPUT')]:
-        ax.text(x,2.93,title,fontsize=8,color=ink,weight='bold',va='center')
-    box(.1,1.62,1.63,.81,'Flat attributes\n+ spatial context', '#EEF2F6')
-    box(.1,.62,1.63,.81,'Permitted earlier\ntraining rents', '#EEF2F6')
-    box(2.12,1.62,2.13,.81,'Normal history\n+ local trends\n78 features', '#EAF1FA', COLORS[0])
-    box(2.12,.62,2.13,.81,'Original + 6-month\nstale-history augmentation\n74 features', '#E7F3F0',COLORS[2])
-    for y, color, fill in [(1.62,COLORS[0],'#EAF1FA'),(.62,COLORS[2],'#E7F3F0')]:
-        box(4.78,y,1.38,.81,'Direct target\nseeds 42 / 2026\n2 models',fill,color,8)
-        box(6.34,y,1.38,.81,'Residual target\nseeds 42 / 2026\n2 models',fill,color,8)
-        arrow((4.27,y+.405),(4.75,y+.405))
-        ax.plot([4.49,4.49,7.03],[y+.405,y+.92,y+.92],color='#667785',linewidth=.8,zorder=0)
-        arrow((7.03,y+.92),(7.03,y+.83))
-        ax.plot([5.47,5.47,7.92],[y,y-.12,y-.12],color='#667785',linewidth=.8,zorder=0)
-        arrow((7.92,y-.12),(8.13,1.53))
-        arrow((7.74,y+.405),(8.13,1.53))
-    box(8.16,1.08,1.7,.9,'Equal mean\n8 predictions\nweight = 1/8', '#FFF1DF',COLORS[1],8,True)
-    ax.text(9.01,.74,'Monthly rent (SGD)',ha='center',fontsize=8,color=ink)
-    for sy in [2.02,1.02]:
-        for ty in [2.02,1.02]:
-            arrow((1.76,sy),(2.09,ty))
-    ax.text(5,.18,'TRAIN: original transaction weight is preserved.   PREDICT: both views use all permitted earlier rents.',
-            fontsize=8,ha='center',color='#52616E')
-    fig.savefig(HERE/'figures/model_overview.pdf')
-    plt.close(fig)
+    if not (HERE / 'figures/model_overview.png').is_file():
+        raise FileNotFoundError('Figure 2 source image is missing: final_report/figures/model_overview.png')
+    build = ROOT / 'artifacts/final_report_build/overview'
+    build.mkdir(parents=True, exist_ok=True)
+    command = ['xelatex', '--interaction=nonstopmode', '--halt-on-error',
+               f'--output-directory={build}', 'model_overview.tex']
+    result = subprocess.run(command, cwd=HERE / 'figures',
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (build / 'compile.log').write_bytes(result.stdout)
+    if result.returncode:
+        raise RuntimeError(f'Figure 2 compilation failed; see {build / "compile.log"}')
+    shutil.copyfile(build / 'model_overview.pdf', HERE / 'figures/model_overview.pdf')
 
 
 def validation_overview():
@@ -119,6 +93,13 @@ def signed_bias(value):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--overview-only', action='store_true',
+                        help='Package the saved Figure 2 image only; no data, caches or image API required')
+    args = parser.parse_args()
+    if args.overview_only:
+        model_overview()
+        return
     for directory in ("figures", "generated"):
         (HERE / directory).mkdir(exist_ok=True)
     # Follow the course template at final publication size; never silently fall back.

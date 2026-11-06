@@ -1,4 +1,7 @@
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
@@ -336,6 +339,24 @@ def test_weighted_stacking_can_prioritize_recent_rows():
 
 
 def test_eight_model_stacking_preserves_seed_predictions(tmp_path, monkeypatch):
+    # Fresh interpreters must work without path changes made by earlier tests.
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    invocations = [
+        (["-c", "import src.generate_figures as f; "
+          "assert f.normalize_text.__module__ == 'src.features'; "
+          "print(f.suspected_low_rent_mask.__module__)"], "src.features"),
+        (["-m", "src.generate_figures", "--help"], "usage:"),
+        (["src/generate_figures.py", "--help"], "usage:"),
+    ]
+    for arguments, expected in invocations:
+        result = subprocess.run(
+            [sys.executable, "-B", *arguments], cwd=ROOT, env=environment,
+            capture_output=True, text=True, timeout=60,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert expected in result.stdout
+
     import src.generate_figures as figures
 
     monkeypatch.setattr(figures, "ROOT", tmp_path)

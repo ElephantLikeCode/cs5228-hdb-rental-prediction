@@ -3,7 +3,7 @@
 set -euo pipefail
 task_project="$(cd "$(dirname "$0")/.." && pwd)"
 task_build="$task_project/artifacts/final_report_build"
-task_output="$task_project/output/pdf/CS5228_Final_Report.pdf"
+task_output="$task_project/final_report/project-report-team44.pdf"
 mkdir -p "$task_build"
 cd "$task_project/final_report"
 if [[ -n "${TECTONIC:-}" ]] || command -v tectonic >/dev/null 2>&1; then

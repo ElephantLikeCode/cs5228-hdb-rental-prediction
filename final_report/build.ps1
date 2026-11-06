@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 $taskProject = Split-Path -Parent $PSScriptRoot
 $taskBuild = Join-Path $taskProject 'artifacts/final_report_build'
-$taskOutput = Join-Path $taskProject 'output/pdf/CS5228_Final_Report.pdf'
+$taskOutput = Join-Path $taskProject 'final_report/project-report-team44.pdf'
 New-Item -ItemType Directory -Path $taskBuild -Force | Out-Null
 Push-Location $PSScriptRoot
 try {
